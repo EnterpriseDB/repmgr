@@ -44,6 +44,7 @@ static void _do_node_restore_config(void);
 static void do_node_check_replication_connection(void);
 static CheckStatus do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+static CheckStatus do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
@@ -791,6 +792,15 @@ do_node_check(void)
 		exit(return_code);
 	}
 
+	if (runtime_options.upstream == true)
+	{
+		return_code = do_node_check_upstream(conn,
+											 runtime_options.output_mode,
+											 &node_info,
+											 NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
 
 	if (runtime_options.replication_lag == true)
 	{
@@ -876,6 +886,9 @@ do_node_check(void)
 		issue_detected = true;
 
 	if (do_node_check_downstream(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_upstream(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
 	if (do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
@@ -1332,6 +1345,87 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	}
 	termPQExpBuffer(&details);
 	clear_node_info_list(&downstream_nodes);
+	return status;
+}
+
+
+static CheckStatus
+do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	PGconn	   *upstream_conn = NULL;
+	t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
+	PQExpBufferData details;
+
+	CheckStatus status = CHECK_STATUS_OK;
+
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --upstream option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (get_node_record(conn, node_info->upstream_node_id, &upstream_node_info) != RECORD_FOUND)
+	{
+		log_error(_("no record found for upstream node %i"), node_info->upstream_node_id);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	upstream_conn = establish_db_connection(upstream_node_info.conninfo, true);
+
+	/* check our node is connected */
+	if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) != NODE_ATTACHED)
+	{
+		appendPQExpBuffer(&details,
+						  _("node \"%s\" (ID: %i) is not attached to expected upstream node \"%s\" (ID: %i)"),
+						  node_info->node_name,
+						  node_info->node_id,
+						  upstream_node_info.node_name,
+						  upstream_node_info.node_id);
+		status = CHECK_STATUS_CRITICAL;
+	}
+	else
+	{
+		appendPQExpBuffer(&details,
+						  _("node \"%s\" (ID: %i) is attached to expected upstream node \"%s\" (ID: %i)"),
+						  node_info->node_name,
+						  node_info->node_id,
+						  upstream_node_info.node_name,
+						  upstream_node_info.node_id);
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			{
+				printf("REPMGR_UPSTREAM_SERVER %s: %s | ",
+					   output_check_status(status),
+					   details.data);
+			}
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Upstream connection",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	termPQExpBuffer(&details);
+
 	return status;
 }
 
@@ -3254,6 +3348,7 @@ do_node_help(void)
 	printf(_("  Following options check an individual status:\n"));
 	printf(_("    --archive-ready           number of WAL files ready for archiving\n"));
 	printf(_("    --downstream              whether all downstream nodes are connected\n"));
+	printf(_("    --uptream                 whether the node is connected to its upstream\n"));
 	printf(_("    --replication-lag         replication lag in seconds (standbys only)\n"));
 	printf(_("    --role                    check node has expected role\n"));
 	printf(_("    --slots                   check for inactive replication slots\n"));

@@ -505,6 +505,10 @@ main(int argc, char **argv)
 				runtime_options.downstream = true;
 				break;
 
+			case OPT_UPSTREAM:
+				runtime_options.upstream = true;
+				break;
+
 			case OPT_REPLICATION_LAG:
 				runtime_options.replication_lag = true;
 				break;

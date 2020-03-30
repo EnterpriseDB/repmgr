@@ -81,24 +81,25 @@
 #define OPT_SIBLINGS_FOLLOW				   1028
 #define OPT_ROLE						   1029
 #define OPT_DOWNSTREAM					   1030
-#define OPT_SLOTS						   1031
-#define OPT_CONFIG_ARCHIVE_DIR			   1032
-#define OPT_HAS_PASSFILE				   1033
-#define OPT_WAIT_START					   1034
-#define OPT_REPL_CONN					   1035
-#define OPT_REMOTE_NODE_ID				   1036
-#define OPT_REPLICATION_CONF_ONLY		   1037
-#define OPT_NO_WAIT						   1038
-#define OPT_MISSING_SLOTS				   1039
-#define OPT_REPMGRD_NO_PAUSE			   1040
-#define OPT_VERSION_NUMBER				   1041
-#define OPT_DATA_DIRECTORY_CONFIG		   1042
-#define OPT_COMPACT						   1043
-#define OPT_DISABLE_WAL_RECEIVER		   1044
-#define OPT_ENABLE_WAL_RECEIVER			   1045
-#define OPT_DETAIL						   1046
-#define OPT_REPMGRD_FORCE_UNPAUSE		   1047
-#define OPT_REPLICATION_CONFIG_OWNER	   1048
+#define OPT_UPSTREAM					   1031
+#define OPT_SLOTS						   1032
+#define OPT_CONFIG_ARCHIVE_DIR			   1033
+#define OPT_HAS_PASSFILE				   1034
+#define OPT_WAIT_START					   1035
+#define OPT_REPL_CONN					   1036
+#define OPT_REMOTE_NODE_ID				   1037
+#define OPT_REPLICATION_CONF_ONLY		   1038
+#define OPT_NO_WAIT						   1039
+#define OPT_MISSING_SLOTS				   1040
+#define OPT_REPMGRD_NO_PAUSE			   1041
+#define OPT_VERSION_NUMBER				   1042
+#define OPT_DATA_DIRECTORY_CONFIG		   1043
+#define OPT_COMPACT						   1044
+#define OPT_DISABLE_WAL_RECEIVER		   1045
+#define OPT_ENABLE_WAL_RECEIVER			   1046
+#define OPT_DETAIL						   1047
+#define OPT_REPMGRD_FORCE_UNPAUSE		   1048
+#define OPT_REPLICATION_CONFIG_OWNER	   1049
 
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
@@ -179,6 +180,7 @@ static struct option long_options[] =
 /* "node check" options */
 	{"archive-ready", no_argument, NULL, OPT_ARCHIVE_READY},
 	{"downstream", no_argument, NULL, OPT_DOWNSTREAM},
+	{"upstream", no_argument, NULL, OPT_UPSTREAM},
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG},
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},

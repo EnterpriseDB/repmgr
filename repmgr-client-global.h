@@ -111,6 +111,7 @@ typedef struct
 	/* "node check" options */
 	bool		archive_ready;
 	bool		downstream;
+	bool		upstream;
 	bool		replication_lag;
 	bool		role;
 	bool		slots;
@@ -171,7 +172,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	false, false, \
+		false, false, false, false, false, false, false, false,	false, false, false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \

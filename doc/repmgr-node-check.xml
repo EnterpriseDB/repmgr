@@ -84,6 +84,12 @@
 
      <listitem>
       <simpara>
+        <option>--upstream</option>: checks that the node is attached to its expected upstream
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
         <option>--slots</option>: checks there are no inactive physical replication slots
       </simpara>
      </listitem>
