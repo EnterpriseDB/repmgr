@@ -783,21 +783,21 @@ do_node_check(void)
 		exit(return_code);
 	}
 
-	if (runtime_options.downstream == true)
-	{
-		return_code = do_node_check_downstream(conn,
-											   runtime_options.output_mode,
-											   NULL);
-		PQfinish(conn);
-		exit(return_code);
-	}
-
 	if (runtime_options.upstream == true)
 	{
 		return_code = do_node_check_upstream(conn,
 											 runtime_options.output_mode,
 											 &node_info,
 											 NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
+
+	if (runtime_options.downstream == true)
+	{
+		return_code = do_node_check_downstream(conn,
+											   runtime_options.output_mode,
+											   NULL);
 		PQfinish(conn);
 		exit(return_code);
 	}
@@ -885,10 +885,10 @@ do_node_check(void)
 	if (do_node_check_archive_ready(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
-	if (do_node_check_downstream(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
+	if (do_node_check_upstream(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
-	if (do_node_check_upstream(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+	if (do_node_check_downstream(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
 	if (do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
