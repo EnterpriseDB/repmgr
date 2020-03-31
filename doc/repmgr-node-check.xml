@@ -37,6 +37,7 @@
             Server role: OK (node is primary)
             Replication lag: OK (N/A - node is primary)
             WAL archiving: OK (0 pending files)
+            Upstream connection: OK (N/A - is primary)
             Downstream servers: OK (2 of 2 downstream nodes attached)
             Replication slots: OK (node has no physical replication slots)
             Missing replication slots: OK (node has no missing physical replication slots)</programlisting>

@@ -1358,7 +1358,6 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 
 	CheckStatus status = CHECK_STATUS_OK;
 
-
 	if (mode == OM_CSV && list_output == NULL)
 	{
 		log_error(_("--csv output not provided with --upstream option"));
@@ -1366,36 +1365,48 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (get_node_record(conn, node_info->upstream_node_id, &upstream_node_info) != RECORD_FOUND)
-	{
-		log_error(_("no record found for upstream node %i"), node_info->upstream_node_id);
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
 	initPQExpBuffer(&details);
 
-	upstream_conn = establish_db_connection(upstream_node_info.conninfo, true);
-
-	/* check our node is connected */
-	if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) != NODE_ATTACHED)
+	if (get_node_record(conn, node_info->upstream_node_id, &upstream_node_info) != RECORD_FOUND)
 	{
-		appendPQExpBuffer(&details,
-						  _("node \"%s\" (ID: %i) is not attached to expected upstream node \"%s\" (ID: %i)"),
-						  node_info->node_name,
-						  node_info->node_id,
-						  upstream_node_info.node_name,
-						  upstream_node_info.node_id);
-		status = CHECK_STATUS_CRITICAL;
+		if (get_recovery_type(conn) == RECTYPE_STANDBY)
+		{
+			appendPQExpBuffer(&details,
+							  _("node \"%s\" (ID: %i) is a standby but no upstream record found"),
+							  node_info->node_name,
+							  node_info->node_id);
+			status = CHECK_STATUS_CRITICAL;
+		}
+		else
+		{
+			appendPQExpBufferStr(&details,
+								 _("N/A - node is primary"));
+		}
 	}
 	else
 	{
-		appendPQExpBuffer(&details,
-						  _("node \"%s\" (ID: %i) is attached to expected upstream node \"%s\" (ID: %i)"),
-						  node_info->node_name,
-						  node_info->node_id,
-						  upstream_node_info.node_name,
-						  upstream_node_info.node_id);
+		upstream_conn = establish_db_connection(upstream_node_info.conninfo, true);
+
+		/* check our node is connected */
+		if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) != NODE_ATTACHED)
+		{
+			appendPQExpBuffer(&details,
+							  _("node \"%s\" (ID: %i) is not attached to expected upstream node \"%s\" (ID: %i)"),
+							  node_info->node_name,
+							  node_info->node_id,
+							  upstream_node_info.node_name,
+							  upstream_node_info.node_id);
+			status = CHECK_STATUS_CRITICAL;
+		}
+		else
+		{
+			appendPQExpBuffer(&details,
+							  _("node \"%s\" (ID: %i) is attached to expected upstream node \"%s\" (ID: %i)"),
+							  node_info->node_name,
+							  node_info->node_id,
+							  upstream_node_info.node_name,
+							  upstream_node_info.node_id);
+		}
 	}
 
 	switch (mode)
