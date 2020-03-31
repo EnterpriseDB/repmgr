@@ -31,6 +31,7 @@
   <refsect1>
     <title>Example</title>
     <para>
+      Execution on the primary server:
       <programlisting>
        $ repmgr -f /etc/repmgr.conf node check
        Node "node1":
@@ -40,7 +41,22 @@
             Upstream connection: OK (N/A - is primary)
             Downstream servers: OK (2 of 2 downstream nodes attached)
             Replication slots: OK (node has no physical replication slots)
-            Missing replication slots: OK (node has no missing physical replication slots)</programlisting>
+            Missing replication slots: OK (node has no missing physical replication slots)
+            Configured data directory: OK (configured "data_directory" is "/var/lib/postgresql/data")</programlisting>
+    </para>
+    <para>
+      Execution on a standby server:
+      <programlisting>
+       $ repmgr -f /etc/repmgr.conf node check
+       Node "node2":
+            Server role: OK (node is standby)
+            Replication lag: OK (0 seconds)
+            WAL archiving: OK (0 pending archive ready files)
+            Upstream connection: OK (node "node2" (ID: 2) is attached to expected upstream node "node1" (ID: 1))
+            Downstream servers: OK (this node has no downstream nodes)
+            Replication slots: OK (node has no physical replication slots)
+            Missing physical replication slots: OK (node has no missing physical replication slots)
+            Configured data directory: OK (configured "data_directory" is "/var/lib/postgresql/data")</programlisting>
     </para>
   </refsect1>
   <refsect1>
