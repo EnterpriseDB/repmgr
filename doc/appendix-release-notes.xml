@@ -51,6 +51,14 @@
         <itemizedlist>
           <listitem>
             <para>
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              when executed with <option>--dry-run</option>, the method which would be used to promote the node
+              will be displayed.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
               Improve logging and checking of potential failure situations.
             </para>
@@ -67,7 +75,7 @@
           <listitem>
             <para>
               <link linkend="repmgr-node-check"><command>repmgr node check</command></link>:
-              accept option <option>-S</option>/<option>--superuser</option> GitHub #621.
+              accept option <option>-S</option>/<option>--superuser</option>. GitHub #621.
             </para>
           </listitem>
         </itemizedlist>

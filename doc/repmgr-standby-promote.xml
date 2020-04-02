@@ -116,6 +116,10 @@
     </para>
     <tip>
       <para>
+        Execute <command>repmgr standby promote</command> with the <option>--dry-run</option>
+        to check whether the &repmgr; user has permission to execute <function>pg_promote()</function>.
+      </para>
+      <para>
         If the <literal>repmgr</literal> user is not a superuser, execution permission for this
         function can be granted with e.g.:
         <programlisting>

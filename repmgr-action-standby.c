@@ -2409,6 +2409,37 @@ do_standby_promote(void)
 		}
 	}
 
+	/*
+	 * In --dry-run mode, note which promotion method will be used.
+	 * For Pg12 and later, check whether pg_promote() can be executed.
+	 */
+	if (runtime_options.dry_run == true)
+	{
+		if (config_file_options.service_promote_command[0] != '\0')
+		{
+			log_info(_("node will be promoted using command defined in \"service_promote_command\""));
+			log_detail(_("\"service_promote_command\" is \"%s\""),
+					   config_file_options.service_promote_command);
+		}
+		else if (PQserverVersion(local_conn) >= 120000)
+		{
+			if (can_execute_pg_promote(local_conn) == false)
+			{
+				log_info(_("node will be promoted using \"pg_ctl promote\""));
+				log_detail(_("user \"%s\" does not have permission to execute \"pg_promote()\""),
+						   PQuser(local_conn));
+			}
+			else
+			{
+				log_info(_("node will be promoted using the \"pg_promote()\" function"));
+			}
+		}
+		else
+		{
+			log_info(_("node will be promoted using \"pg_ctl promote\""));
+		}
+	}
+
 	if (runtime_options.dry_run == true)
 	{
 		PQfinish(local_conn);
