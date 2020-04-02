@@ -125,6 +125,8 @@ static void clear_child_node_info_list(t_child_node_info_list *nodes);
 static void parse_child_nodes_disconnect_command(char *parsed_command, char *template, int reporting_node_id);
 static void execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_child_node_info_list *local_child_nodes);
 
+static int try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info);
+
 void
 handle_sigint_physical(SIGNAL_ARGS)
 {
@@ -1497,7 +1499,34 @@ monitor_streaming_standby(void)
 					check_connection(&local_node_info, &local_conn);
 				}
 
-				try_reconnect(&upstream_conn, &upstream_node_info);
+
+				if (upstream_node_info.type == PRIMARY)
+				{
+					primary_node_id = try_primary_reconnect(&upstream_conn, local_conn, &upstream_node_info);
+
+					/*
+					 * We were notified by the the primary during our own reconnection
+					 * retry phase, in which case we can leave the failover process early
+					 * and connect to the new primary.
+					 */
+					if (primary_node_id == ELECTION_RERUN_NOTIFICATION)
+					{
+						if (do_primary_failover() == true)
+						{
+							primary_node_id = get_primary_node_id(local_conn);
+							return;
+						}
+					}
+					if (primary_node_id != UNKNOWN_NODE_ID && primary_node_id != ELECTION_RERUN_NOTIFICATION)
+					{
+						follow_new_primary(primary_node_id);
+						return;
+					}
+				}
+				else
+				{
+					try_reconnect(&upstream_conn, &upstream_node_info);
+				}
 
 				/* Upstream node has recovered - log and continue */
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
@@ -2632,7 +2661,6 @@ loop:
 	}
 
 	return;
-
 }
 
 
@@ -5114,4 +5142,118 @@ parse_child_nodes_disconnect_command(char *parsed_command, char *template, int r
 	*dst_ptr = '\0';
 
 	return;
+}
+
+
+int
+try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
+{
+	PGconn	   *our_conn;
+	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
+
+	int			i;
+
+	int			max_attempts = config_file_options.reconnect_attempts;
+
+	initialize_conninfo_params(&conninfo_params, false);
+
+	/* we assume by now the conninfo string is parseable */
+	(void) parse_conninfo_string(node_info->conninfo, &conninfo_params, NULL, false);
+
+	/* set some default values if not explicitly provided */
+	param_set_ine(&conninfo_params, "connect_timeout", "2");
+	param_set_ine(&conninfo_params, "fallback_application_name", "repmgr");
+
+	for (i = 0; i < max_attempts; i++)
+	{
+		log_info(_("checking state of node %i, %i of %i attempts"),
+				 node_info->node_id, i + 1, max_attempts);
+		if (is_server_available_params(&conninfo_params) == true)
+		{
+			log_notice(_("node %i has recovered, reconnecting"), node_info->node_id);
+
+			/*
+			 * Note: we could also handle the case where node is pingable but
+			 * connection denied due to connection exhaustion, by falling back to
+			 * degraded monitoring (make configurable)
+			 */
+			our_conn = establish_db_connection_by_params(&conninfo_params, false);
+
+			if (PQstatus(our_conn) == CONNECTION_OK)
+			{
+				free_conninfo_params(&conninfo_params);
+
+				log_info(_("connection to node %i succeeded"), node_info->node_id);
+
+				if (PQstatus(*conn) == CONNECTION_BAD)
+				{
+					log_verbose(LOG_INFO, _("original connection handle returned CONNECTION_BAD, using new connection"));
+					close_connection(conn);
+					*conn = our_conn;
+				}
+				else
+				{
+					ExecStatusType ping_result;
+
+					ping_result = connection_ping(*conn);
+
+					if (ping_result != PGRES_TUPLES_OK)
+					{
+						log_info(_("original connection no longer available, using new connection"));
+						close_connection(conn);
+						*conn = our_conn;
+					}
+					else
+					{
+						log_info(_("original connection is still available"));
+
+						PQfinish(our_conn);
+					}
+				}
+
+				node_info->node_status = NODE_STATUS_UP;
+
+				return UNKNOWN_NODE_ID;
+			}
+
+			close_connection(&our_conn);
+			log_notice(_("unable to reconnect to node \"%s\" (ID: %i)"),
+					   node_info->node_name,
+					   node_info->node_id);
+		}
+
+		if (i + 1 < max_attempts)
+		{
+			int j;
+			log_info(_("sleeping %i seconds until next reconnection attempt"),
+					 config_file_options.reconnect_interval);
+			for (j = 0; j < config_file_options.reconnect_interval; j++)
+			{
+				int new_primary_node_id;
+				if (get_new_primary(local_conn, &new_primary_node_id) == true && new_primary_node_id != UNKNOWN_NODE_ID)
+				{
+					if (new_primary_node_id == ELECTION_RERUN_NOTIFICATION)
+					{
+						log_notice(_("received rerun notification"));
+					}
+					else
+					{
+						log_notice(_("received notification that new primary is node %i"), new_primary_node_id);
+					}
+					return new_primary_node_id;
+				}
+				sleep(1);
+			}
+		}
+	}
+
+	log_warning(_("unable to reconnect to node %i after %i attempts"),
+				node_info->node_id,
+				max_attempts);
+
+	node_info->node_status = NODE_STATUS_DOWN;
+
+	free_conninfo_params(&conninfo_params);
+
+	return UNKNOWN_NODE_ID;
 }
