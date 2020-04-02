@@ -121,6 +121,10 @@
         <programlisting>
     GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
       </para>
+      <para>
+        Note that permissions are only effective for the database they are granted in, so
+        this <emphasis>must</emphasis> be executed in the &repmgr; database to be effective.
+      </para>
     </tip>
     <para>
       For more details on <function>pg_promote()</function>, see the
