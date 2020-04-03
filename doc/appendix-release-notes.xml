@@ -17,12 +17,12 @@
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
 
-  <sect1 id="release-5.1.0">
-    <title>Release 5.1.0</title>
+  <sect1 id="release-5.1">
+    <title>Release 5.1</title>
     <para><emphasis>?? ?? ??, 2020</emphasis></para>
 
     <para>
-      &repmgr; 5.1.0 is a major release.
+      &repmgr; 5.1 is a major release.
     </para>
     <para>
       For details on how to upgrade an existing &repmgr; installation, see
