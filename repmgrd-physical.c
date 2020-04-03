@@ -3683,7 +3683,9 @@ follow_new_primary(int new_primary_id)
 		else
 		{
 			new_primary_ok = false;
-			log_warning(_("new primary is in recovery"));
+			log_warning(_("new primary \"%s\" (node ID: %i) is in recovery"),
+						new_primary.node_name,
+						new_primary_id);
 			close_connection(&upstream_conn);
 		}
 	}
@@ -3876,7 +3878,9 @@ witness_follow_new_primary(int new_primary_id)
 				break;
 			case RECTYPE_STANDBY:
 				new_primary_ok = false;
-				log_warning(_("new primary is in recovery"));
+				log_warning(_("new primary \"%s\" (node ID: %i) is in recovery"),
+							new_primary.node_name,
+							new_primary_id);
 				break;
 			case RECTYPE_UNKNOWN:
 				new_primary_ok = false;
