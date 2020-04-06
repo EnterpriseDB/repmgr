@@ -49,6 +49,16 @@
       <title>General improvements</title>
       <para>
         <itemizedlist>
+
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
+              Warn if neither of data page checksums or <option>wal_log_hints</option> are active,
+              as this will preclude later usage of <command>pg_rewind</command>.
+            </para>
+          </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:

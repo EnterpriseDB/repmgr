@@ -48,7 +48,7 @@ static PGconn * _establish_replication_connection_from_params(PGconn *conn, cons
 static PGconn *_get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
-static bool _get_pg_setting(PGconn *conn, const char *setting, char *str_output, int *int_output);
+static bool _get_pg_setting(PGconn *conn, const char *setting, char *str_output, bool *bool_output, int *int_output);
 
 static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_defaults);
@@ -1076,7 +1076,7 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 bool
 get_pg_setting(PGconn *conn, const char *setting, char *output)
 {
-	bool success = _get_pg_setting(conn, setting, output, NULL);
+	bool success = _get_pg_setting(conn, setting, output, NULL, NULL);
 
 	if (success == true)
 	{
@@ -1086,11 +1086,24 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 	return success;
 }
 
+bool
+get_pg_setting_bool(PGconn *conn, const char *setting, bool *output)
+{
+	bool success = _get_pg_setting(conn, setting, NULL, output, NULL);
+
+	if (success == true)
+	{
+		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\""),
+					*output == true ? "TRUE" : "FALSE");
+	}
+
+	return success;
+}
 
 bool
 get_pg_setting_int(PGconn *conn, const char *setting, int *output)
 {
-	bool success = _get_pg_setting(conn, setting, NULL, output);
+	bool success = _get_pg_setting(conn, setting, NULL, NULL, output);
 
 	if (success == true)
 	{
@@ -1102,7 +1115,7 @@ get_pg_setting_int(PGconn *conn, const char *setting, int *output)
 
 
 bool
-_get_pg_setting(PGconn *conn, const char *setting, char *str_output, int *int_output)
+_get_pg_setting(PGconn *conn, const char *setting, char *str_output, bool *bool_output, int *int_output)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -1144,9 +1157,24 @@ _get_pg_setting(PGconn *conn, const char *setting, char *str_output, int *int_ou
 		if (strcmp(PQgetvalue(res, i, 0), setting) == 0)
 		{
 			if (str_output != NULL)
+			{
 				snprintf(str_output, MAXLEN, "%s", PQgetvalue(res, i, 1));
+			}
+			else if (bool_output != NULL)
+			{
+				/*
+				 * Note we assume the caller is sure this is a boolean parameter
+				 */
+				printf("YYY %s\n", PQgetvalue(res, i, 1));
+				if (strncmp(PQgetvalue(res, i, 1), "on", MAXLEN) == 0)
+					*bool_output = true;
+				else
+					*bool_output = false;
+			}
 			else if (int_output != NULL)
+			{
 				*int_output = atoi(PQgetvalue(res, i, 1));
+			}
 
 			success = true;
 			break;

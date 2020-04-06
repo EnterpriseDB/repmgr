@@ -6194,6 +6194,51 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		}
 	}
 
+	/*
+	 * Finally, add some checks for recommended settings
+	 */
+
+	{
+		bool data_checksums = false;
+		bool wal_log_hints = false;
+
+		/* data_checksums available from PostgreSQL 9.3; can be read by any user */
+		if (get_pg_setting_bool(conn, "data_checksums", &data_checksums) == false)
+		{
+			/* highly unlikely this will happen */
+			log_error(_("unable to determine value for \"data_checksums\""));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* wal_log_hints available from PostgreSQL 9.4; can be read by any user */
+		if (PQserverVersion(conn) >= 90400)
+		{
+			if (get_pg_setting_bool(conn, "wal_log_hints", &wal_log_hints) == false)
+			{
+				/* highly unlikely this will happen */
+				log_error(_("unable to determine value for \"wal_log_hints\""));
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		printf("XXX %i\n", PQserverVersion(conn));
+		if (data_checksums == false && wal_log_hints == false)
+		{
+			/*
+			 * If anyone's still on 9.3, there's not a lot we can do anyway
+			 */
+			if (PQserverVersion(conn) < 90400)
+			{
+				log_warning(_("data checksums are not enabled"));
+			}
+			else
+			{
+				log_warning(_("data checksums are not enabled and \"wal_log_hints\" is \"off\""));
+				log_detail(_("pg_rewind requires \"wal_log_hints\" to be enabled"));
+			}
+		}
+	}
+
 	return config_ok;
 }
 
