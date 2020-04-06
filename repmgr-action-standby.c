@@ -5532,7 +5532,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	{
 		if (i == 0)
 		{
-			log_error(_("parameter 'hot_standby' must be set to 'on'"));
+			log_error(_("parameter \"hot_standby\" must be set to \"on\""));
 		}
 
 		if (exit_on_error == true)
@@ -5550,7 +5550,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	{
 		if (pg_setting_ok == true)
 		{
-			log_error(_("parameter \"max_wal_senders\" must be set to be at least 1 %i"), i);
+			log_error(_("parameter \"max_wal_senders\" must be set to be at least %i"), i);
 			log_hint(_("\"max_wal_senders\" should be set to at least the number of expected standbys"));
 		}
 
