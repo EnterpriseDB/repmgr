@@ -1821,6 +1821,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 
 	FILE	   *fp;
 	mode_t		um;
+	struct stat auto_conf_st;
 
 	KeyValueList config = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
@@ -1877,8 +1878,13 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 						  cell->key, cell->value);
 	}
 
-	/* Set umask to 0600 */
-	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	stat(auto_conf.data, &auto_conf_st);
+
+	/*
+	 * Set umask so the temporary file is created in the same mode as the original
+	 * postgresql.auto.conf file.
+	 */
+	um = umask(~(auto_conf_st.st_mode));
 	fp = fopen(auto_conf_tmp.data, "w");
 	umask(um);
 

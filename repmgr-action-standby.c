@@ -6221,7 +6221,6 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 			}
 		}
 
-		printf("XXX %i\n", PQserverVersion(conn));
 		if (data_checksums == false && wal_log_hints == false)
 		{
 			/*

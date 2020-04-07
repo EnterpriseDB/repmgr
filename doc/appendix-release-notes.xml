@@ -136,6 +136,13 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              Ensure <filename>postgresql.auto.conf</filename> is created with
+              correct permissions (PostgreSQL 12 and later).
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

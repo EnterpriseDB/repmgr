@@ -1165,7 +1165,6 @@ _get_pg_setting(PGconn *conn, const char *setting, char *str_output, bool *bool_
 				/*
 				 * Note we assume the caller is sure this is a boolean parameter
 				 */
-				printf("YYY %s\n", PQgetvalue(res, i, 1));
 				if (strncmp(PQgetvalue(res, i, 1), "on", MAXLEN) == 0)
 					*bool_output = true;
 				else
