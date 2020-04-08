@@ -1,6 +1,6 @@
 # repmgr extension
 comment = 'Replication manager for PostgreSQL'
-default_version = '5.1'
+default_version = '5.2'
 module_pathname = '$libdir/repmgr'
 relocatable = false
 schema = repmgr

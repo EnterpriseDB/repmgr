@@ -1,4 +1,4 @@
-AC_INIT([repmgr], [5.1], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
+AC_INIT([repmgr], [5.2], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
 
 AC_COPYRIGHT([Copyright (c) 2010-2020, 2ndQuadrant Ltd.])
 
