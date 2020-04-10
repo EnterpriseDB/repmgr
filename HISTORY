@@ -1,4 +1,4 @@
-5.1     2020-??-??
+5.1.0   2020-04-13
         repmgr: remove BDR 2.x support
         repmgr: don't query upstream's data directory (Ian)
         repmgr: rename --recovery-conf-only to --replication-conf-only (Ian)
