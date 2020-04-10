@@ -50,6 +50,23 @@
       <para>
         <itemizedlist>
 
+          <listitem>
+            <para>
+              The requirement that the &repmgr; user is a database superuser has been
+              removed as far as possible.
+            </para>
+            <para>
+              In theory, &repmgr; can be operated with a normal database user for managing
+              the &repmgr; database, and a separate replication user for managing replication
+              connections (and replication slots, if these are in use).
+            </para>
+            <para>
+              Some operations will still require superuser permissions, e.g. for issuing
+              a <command>CHECKPOINT</command> as par of a switchover operation; in this case
+              a valid superuser should be provided with the <option>-S</option>/<option>--superuser</option>
+              option.
+            </para>
+          </listitem>
 
           <listitem>
             <para>
@@ -73,6 +90,7 @@
               Improve logging and checking of potential failure situations.
             </para>
           </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
@@ -82,12 +100,37 @@
               data directory.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Provide additional information in <option>--dry-run mode</option> output.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Checks that the demotion candidate's registered repmgr.conf file can be found, to
+              prevent confusing references to an incorrectly configured data directory. GitHub 615.
+            </para>
+          </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-node-check"><command>repmgr node check</command></link>:
               accept option <option>-S</option>/<option>--superuser</option>. GitHub #621.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check"><command>repmgr node check</command></link>:
+              add  <option>--upstream</option> option to check whether the node is attached
+              to the expected upstream node.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>
@@ -112,6 +155,15 @@
             </para>
           </listitem>
 
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              in <option>--dry-run mode</option>, display promote command which will be executed.
+            </para>
+          </listitem>
+
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>
@@ -123,8 +175,17 @@
 
           <listitem>
             <para>
-              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
-              in PostgreSQL 12 and later, use <varname>service_promote_command</varname> if set.
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              check for demotion candidate reattachment as late as possible to avoid spurious failure
+              reports.
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+              &repmgrd;: check for presence of <option>promote_command</option> and
+              <option>follow_command</option> on receipt of <literal>SIGHUP</literal>. GitHub 614.
             </para>
           </listitem>
 

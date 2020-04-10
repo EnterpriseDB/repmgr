@@ -14,6 +14,8 @@
         repmgr: improve "standby switchover" completion checks (Ian)
         repmgr: add replication configuration file ownership check to
           "standby switchover" (Ian)
+        repmgr: check the demotion candidate's registered repmgr.conf file can
+          be found (laixiong; GitHub 615)
         repmgr: consolidate replication connection code (Ian)
         repmgr: check permissions for "pg_promote()" and fall back to pg_ctl
           if necessary (Ian)
