@@ -471,7 +471,7 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
       <title>Debian/Ubuntu</title>
       <para>
         An archive of old packages (<literal>3.3.2</literal> and later) for Debian/Ubuntu-based systems is available here:
-        <ulink url="http://atalia.postgresql.org/morgue/r/repmgr/">http://atalia.postgresql.org/morgue/r/repmgr/</ulink>
+        <ulink url="https://apt-archive.postgresql.org/">https://apt-archive.postgresql.org/</ulink>
       </para>
     </sect2>
 
