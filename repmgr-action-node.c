@@ -36,6 +36,8 @@ static bool copy_file(const char *src_file, const char *dest_file);
 static void format_archive_dir(PQExpBufferData *archive_dir);
 static t_server_action parse_server_action(const char *action);
 
+static void exit_optformat_error(const char *error, int errcode);
+
 static void _do_node_service_list_actions(t_server_action action);
 static void _do_node_status_is_shutdown_cleanly(void);
 static void _do_node_archive_config(void);
@@ -686,6 +688,26 @@ _do_node_status_is_shutdown_cleanly(void)
 	return;
 }
 
+static void
+exit_optformat_error(const char *error, int errcode)
+{
+	PQExpBufferData output;
+
+	Assert(runtime_options.output_mode == OM_OPTFORMAT);
+
+	initPQExpBuffer(&output);
+
+	appendPQExpBuffer(&output,
+					  "--error=%s",
+					  error);
+
+	printf("%s\n", output.data);
+
+	termPQExpBuffer(&output);
+
+	exit(errcode);
+}
+
 /*
  * Configuration file required
  */
@@ -702,6 +724,7 @@ do_node_check(void)
 	CheckStatusListCell *cell = NULL;
 
 	bool			issue_detected = false;
+	bool			exit_on_connection_error = true;
 
 	/* for internal use */
 	if (runtime_options.has_passfile == true)
@@ -717,6 +740,15 @@ do_node_check(void)
 		exit(SUCCESS);
 	}
 
+	/*
+	 * If --optformat was provided, we'll assume this is a remote invocation
+	 * and instead of exiting with an error, we'll return an error string to
+	 * so the remote invoker will know what's happened.
+	 */
+	if (runtime_options.output_mode == OM_OPTFORMAT)
+	{
+		exit_on_connection_error = false;
+	}
 
 	if (config_file_options.conninfo[0] != '\0')
 	{
@@ -732,6 +764,12 @@ do_node_check(void)
 
 		if (parse_success == false)
 		{
+			if (runtime_options.output_mode == OM_OPTFORMAT)
+			{
+				exit_optformat_error("CONNINFO_PARSE_ERROR",
+									 ERR_BAD_CONFIG);
+			}
+
 			log_error(_("unable to parse conninfo string \"%s\" for local node"),
 					  config_file_options.conninfo);
 			log_detail("%s", errmsg);
@@ -749,16 +787,26 @@ do_node_check(void)
 				config_file_options.conninfo,
 				"user",
 				runtime_options.superuser,
-				true);
+				exit_on_connection_error);
 		}
 		else
 		{
-			conn = establish_db_connection_by_params(&node_conninfo, true);
+			conn = establish_db_connection_by_params(&node_conninfo, exit_on_connection_error);
 		}
 	}
 	else
 	{
-		conn = establish_db_connection_by_params(&source_conninfo, true);
+		conn = establish_db_connection_by_params(&source_conninfo, exit_on_connection_error);
+	}
+
+	/*
+	 * If we've reached here, and the connection is invalid, then --optformat was provided
+	 */
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		exit_optformat_error("CONNECTION_ERROR",
+							 ERR_DB_CONN);
+
 	}
 
 	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
@@ -986,7 +1034,15 @@ do_node_check_replication_connection(void)
 	}
 
 	/* retrieve remote node record from local database */
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
+	local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		appendPQExpBufferStr(&output, "CONNECTION_ERROR");
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
 
 	record_status = get_node_record(local_conn, runtime_options.remote_node_id, &node_record);
 	PQfinish(local_conn);
