@@ -221,6 +221,13 @@ typedef enum
 	JOIN_FAIL_NO_REPLICATION
 } standy_join_status;
 
+typedef enum
+{
+	REMOTE_ERROR_UNKNOWN = -1,
+	REMOTE_ERROR_NONE,
+	REMOTE_ERROR_DB_CONNECTION,
+	REMOTE_ERROR_CONNINFO_PARSE
+} t_remote_error_type;
 
 typedef struct ColHeader
 {

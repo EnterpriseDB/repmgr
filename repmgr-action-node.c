@@ -766,7 +766,7 @@ do_node_check(void)
 		{
 			if (runtime_options.output_mode == OM_OPTFORMAT)
 			{
-				exit_optformat_error("CONNINFO_PARSE_ERROR",
+				exit_optformat_error("CONNINFO_PARSE",
 									 ERR_BAD_CONFIG);
 			}
 
@@ -804,7 +804,7 @@ do_node_check(void)
 	 */
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
-		exit_optformat_error("CONNECTION_ERROR",
+		exit_optformat_error("DB_CONNECTION",
 							 ERR_DB_CONN);
 
 	}

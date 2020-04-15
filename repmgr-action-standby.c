@@ -129,10 +129,12 @@ static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *s
 
 static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 
+static t_remote_error_type parse_remote_error(const char *error);
+
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
-static bool parse_data_directory_config(const char *node_check_output);
+static bool parse_data_directory_config(const char *node_check_output, t_remote_error_type *remote_error);
 static bool parse_replication_config_owner(const char *node_check_output);
 
 
@@ -4049,23 +4051,58 @@ do_standby_switchover(void)
 	}
 
 	/* check remote repmgr has the data directory correctly configured */
-
-	if (parse_data_directory_config(command_output.data) == false)
 	{
-		log_error(_("\"data_directory\" parameter in \"repmgr.conf\" on \"%s\" (ID: %i) is incorrectly configured"),
-				  remote_node_record.node_name,
-				  remote_node_record.node_id);
+		t_remote_error_type remote_error = REMOTE_ERROR_NONE;
 
-		log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" (ID: %i) to diagnose the issue"),
-				 remote_node_record.node_name,
-				 remote_node_record.node_id);
 
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+		if (parse_data_directory_config(command_output.data, &remote_error) == false)
+		{
+			if (remote_error != REMOTE_ERROR_NONE)
+			{
+				log_error(_("unable to run data directory check on node \"%s\" (ID: %i)"),
+							remote_node_record.node_name,
+							remote_node_record.node_id);
 
-		termPQExpBuffer(&command_output);
+				if (remote_error == REMOTE_ERROR_DB_CONNECTION)
+				{
+					/* can happen if the connection configuration is not consistent across nodes */
+					log_detail(_("an error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
+							   remote_node_record.node_name,
+							   remote_node_record.node_id);
+				}
+				else if (remote_error == REMOTE_ERROR_CONNINFO_PARSE)
+				{
+					/* highly unlikely */
+					log_detail(_("an error was encountered when parsing the \"conninfo\" paremeter in \"rempgr.conf\" on node \"%s\" (ID: %i)"),
+							   remote_node_record.node_name,
+							   remote_node_record.node_id);
+				}
+				else
+				{
+					log_detail(_("an unknown error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
+							   remote_node_record.node_name,
+							   remote_node_record.node_id);
+				}
+			}
+			else
+			{
+				log_error(_("\"data_directory\" parameter in \"repmgr.conf\" on \"%s\" (ID: %i) is incorrectly configured"),
+						  remote_node_record.node_name,
+						  remote_node_record.node_id);
 
-		exit(ERR_BAD_CONFIG);
+				log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" (ID: %i) to diagnose the issue"),
+						 remote_node_record.node_name,
+						 remote_node_record.node_id);
+
+			}
+
+			PQfinish(remote_conn);
+			PQfinish(local_conn);
+
+			termPQExpBuffer(&command_output);
+
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 	termPQExpBuffer(&command_output);
@@ -8192,6 +8229,22 @@ sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes
 
 
 
+static t_remote_error_type
+parse_remote_error(const char *error)
+{
+	if (error[0] == '\0')
+		return REMOTE_ERROR_UNKNOWN;
+
+	if (strcasecmp(error, "DB_CONNECTION") == 0)
+		return REMOTE_ERROR_DB_CONNECTION;
+
+	if (strcasecmp(error, "CONNINFO_PARSE") == 0)
+		return REMOTE_ERROR_CONNINFO_PARSE;
+
+	return REMOTE_ERROR_UNKNOWN;
+}
+
+
 static NodeStatus
 parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint)
 {
@@ -8412,7 +8465,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 }
 
 static bool
-parse_data_directory_config(const char *node_check_output)
+parse_data_directory_config(const char *node_check_output, t_remote_error_type *remote_error)
 {
 	bool		config_ok = true;
 
@@ -8425,6 +8478,7 @@ parse_data_directory_config(const char *node_check_output)
 	struct option node_check_options[] =
 	{
 		{"configured-data-directory", required_argument, NULL, 'C'},
+		{"error", required_argument, NULL, 'E'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -8442,7 +8496,7 @@ parse_data_directory_config(const char *node_check_output)
 	/* Prevent getopt from emitting errors */
 	opterr = 0;
 
-	while ((c = getopt_long(argc_item, argv_array, "C:", node_check_options,
+	while ((c = getopt_long(argc_item, argv_array, "C:E:", node_check_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -8455,9 +8509,14 @@ parse_data_directory_config(const char *node_check_output)
 						config_ok = false;
 				}
 				break;
+			case 'E':
+				{
+					*remote_error = parse_remote_error(optarg);
+					config_ok = false;
+				}
+				break;
 		}
 	}
-
 	free_parsed_argv(&argv_array);
 
 	return config_ok;
