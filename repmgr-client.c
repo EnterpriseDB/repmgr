@@ -541,6 +541,10 @@ main(int argc, char **argv)
 				runtime_options.replication_config_owner = true;
 				break;
 
+			case OPT_DB_CONNECTION:
+				runtime_options.db_connection = true;
+				break;
+
 				/*--------------------
 				 * "node rejoin" options
 				 *--------------------

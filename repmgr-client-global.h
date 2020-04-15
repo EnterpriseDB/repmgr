@@ -120,6 +120,7 @@ typedef struct
 	bool		replication_connection;
 	bool		data_directory_config;
 	bool		replication_config_owner;
+	bool		db_connection;
 
 	/* "node rejoin" options */
 	char		config_files[MAXLEN];
@@ -172,7 +173,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	false, false, false, \
+		false, false, false, false, false, false, false, false,	false, false, false, false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \

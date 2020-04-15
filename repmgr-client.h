@@ -100,6 +100,7 @@
 #define OPT_DETAIL						   1047
 #define OPT_REPMGRD_FORCE_UNPAUSE		   1048
 #define OPT_REPLICATION_CONFIG_OWNER	   1049
+#define OPT_DB_CONNECTION				   1050
 
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
@@ -189,6 +190,7 @@ static struct option long_options[] =
 	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
 	{"data-directory-config", no_argument, NULL, OPT_DATA_DIRECTORY_CONFIG},
 	{"replication-config-owner", no_argument, NULL, OPT_REPLICATION_CONFIG_OWNER},
+	{"db-connection", no_argument, NULL, OPT_DB_CONNECTION},
 
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},

@@ -53,6 +53,8 @@ static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_inf
 static CheckStatus do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_config_owner(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_db_connection(PGconn *conn, OutputMode mode);
+
 /*
  * NODE STATUS
  *
@@ -734,10 +736,16 @@ do_node_check(void)
 		exit(return_code);
 	}
 
+	/* for use by "standby switchover" */
 	if (runtime_options.replication_connection == true)
 	{
 		do_node_check_replication_connection();
 		exit(SUCCESS);
+	}
+
+	if (runtime_options.db_connection == true)
+	{
+		exit_on_connection_error = false;
 	}
 
 	/*
@@ -749,6 +757,7 @@ do_node_check(void)
 	{
 		exit_on_connection_error = false;
 	}
+
 
 	if (config_file_options.conninfo[0] != '\0')
 	{
@@ -797,6 +806,17 @@ do_node_check(void)
 	else
 	{
 		conn = establish_db_connection_by_params(&source_conninfo, exit_on_connection_error);
+	}
+
+
+	/*
+	 * --db-connection option provided
+	 */
+	if (runtime_options.db_connection == true)
+	{
+		return_code = do_node_check_db_connection(conn, runtime_options.output_mode);
+		PQfinish(conn);
+		exit(return_code);
 	}
 
 	/*
@@ -2147,6 +2167,72 @@ CheckStatus do_node_check_replication_config_owner(PGconn *conn, OutputMode mode
 
 	printf("--replication-config-owner=%s\n",
 		   output_check_status(status));
+
+	return status;
+}
+
+
+/*
+ * This is not included in the general list output
+ */
+static CheckStatus
+do_node_check_db_connection(PGconn *conn, OutputMode mode)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+	PQExpBufferData details;
+
+	if (mode == OM_CSV)
+	{
+		log_error(_("--csv output not provided with --db-connection option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* This check is for configuration diagnostics only */
+	if (mode == OM_NAGIOS)
+	{
+		log_error(_("--nagios output not provided with --db-connection option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		t_conninfo_param_list conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+		int c;
+
+		status = CHECK_STATUS_CRITICAL;
+		initialize_conninfo_params(&conninfo, false);
+		conn_to_param_list(conn, &conninfo);
+
+		appendPQExpBufferStr(&details,
+							 "connection parameters used:");
+		for (c = 0; c < conninfo.size && conninfo.keywords[c] != NULL; c++)
+		{
+			if (conninfo.values[c] != NULL && conninfo.values[c][0] != '\0')
+			{
+				appendPQExpBuffer(&details,
+								  " %s=%s",
+								  conninfo.keywords[c], conninfo.values[c]);
+			}
+		}
+
+	}
+
+	if (mode == OM_OPTFORMAT)
+	{
+		printf("--db-connection=%s\n",
+			   output_check_status(status));
+	}
+	else if (mode == OM_TEXT)
+	{
+		printf("%s (%s)\n",
+			   output_check_status(status),
+			   details.data);
+	}
+	termPQExpBuffer(&details);
 
 	return status;
 }
