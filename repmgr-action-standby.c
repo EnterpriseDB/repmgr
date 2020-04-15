@@ -132,7 +132,7 @@ static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *s
 static t_remote_error_type parse_remote_error(const char *error);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
-static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
+static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold, t_remote_error_type *remote_error);
 static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
 static bool parse_data_directory_config(const char *node_check_output, t_remote_error_type *remote_error);
 static bool parse_replication_config_owner(const char *node_check_output);
@@ -4054,7 +4054,6 @@ do_standby_switchover(void)
 	{
 		t_remote_error_type remote_error = REMOTE_ERROR_NONE;
 
-
 		if (parse_data_directory_config(command_output.data, &remote_error) == false)
 		{
 			if (remote_error != REMOTE_ERROR_NONE)
@@ -4273,6 +4272,7 @@ do_standby_switchover(void)
 		{
 			int			files = 0;
 			int			threshold = 0;
+			t_remote_error_type remote_error = REMOTE_ERROR_NONE;
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
@@ -4291,7 +4291,7 @@ do_standby_switchover(void)
 
 			if (command_success == true)
 			{
-				status = parse_node_check_archiver(command_output.data, &files, &threshold);
+				status = parse_node_check_archiver(command_output.data, &files, &threshold, &remote_error);
 			}
 
 			termPQExpBuffer(&command_output);
@@ -4300,11 +4300,18 @@ do_standby_switchover(void)
 			{
 				case CHECK_STATUS_UNKNOWN:
 					{
-						if (runtime_options.force == false)
+						if (runtime_options.force == false || remote_error == REMOTE_ERROR_DB_CONNECTION)
 						{
 							log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
 									  remote_node_record.node_name);
-							log_hint(_("use -F/--force to continue anyway"));
+
+							if (remote_error == REMOTE_ERROR_DB_CONNECTION)
+								log_detail(_("an error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
+										   remote_node_record.node_name,
+										   remote_node_record.node_id);
+							else
+								log_hint(_("use -F/--force to continue anyway"));
+
 							PQfinish(remote_conn);
 							PQfinish(local_conn);
 
@@ -8381,7 +8388,7 @@ parse_remote_node_replication_connection(const char *node_check_output)
 
 
 static CheckStatus
-parse_node_check_archiver(const char *node_check_output, int *files, int *threshold)
+parse_node_check_archiver(const char *node_check_output, int *files, int *threshold, t_remote_error_type *remote_error)
 {
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 
@@ -8396,6 +8403,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 		{"status", required_argument, NULL, 'S'},
 		{"files", required_argument, NULL, 'f'},
 		{"threshold", required_argument, NULL, 't'},
+		{"error", required_argument, NULL, 'E'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -8456,6 +8464,12 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 					}
 				}
 				break;
+			case 'E':
+				{
+					*remote_error = parse_remote_error(optarg);
+					status = CHECK_STATUS_UNKNOWN;
+				}
+				break;
 		}
 	}
 
@@ -8463,6 +8477,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 
 	return status;
 }
+
 
 static bool
 parse_data_directory_config(const char *node_check_output, t_remote_error_type *remote_error)

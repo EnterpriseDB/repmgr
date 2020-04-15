@@ -806,7 +806,6 @@ do_node_check(void)
 	{
 		exit_optformat_error("DB_CONNECTION",
 							 ERR_DB_CONN);
-
 	}
 
 	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
