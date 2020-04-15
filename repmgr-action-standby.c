@@ -4052,11 +4052,13 @@ do_standby_switchover(void)
 
 	if (parse_data_directory_config(command_output.data) == false)
 	{
-		log_error(_("\"data_directory\" parameter in repmgr.conf on \"%s\" is incorrectly configured"),
-				  remote_node_record.node_name);
+		log_error(_("\"data_directory\" parameter in \"repmgr.conf\" on \"%s\" (ID: %i) is incorrectly configured"),
+				  remote_node_record.node_name,
+				  remote_node_record.node_id);
 
-		log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" to diagnose the issue"),
-				 remote_node_record.node_name);
+		log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" (ID: %i) to diagnose the issue"),
+				 remote_node_record.node_name,
+				 remote_node_record.node_id);
 
 		PQfinish(remote_conn);
 		PQfinish(local_conn);
