@@ -1,3 +1,7 @@
+5.2.0   2020-??-??
+        repmgr: improve database connection failure error checking on the
+          demotion candidate during "standby switchover" (Ian)
+
 5.1.0   2020-04-13
         repmgr: remove BDR 2.x support
         repmgr: don't query upstream's data directory (Ian)

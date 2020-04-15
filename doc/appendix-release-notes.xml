@@ -17,6 +17,36 @@
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
 
+  <sect1 id="release-5.2.0">
+    <title>Release 5.2.0</title>
+    <para><emphasis>??? ?? ???, 2020</emphasis></para>
+
+    <para>
+      &repmgr; 5.2.0 is a major release.
+    </para>
+
+    <sect2>
+      <title>General improvements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Improve sanity check failure log output from the demotion candidate.
+            </para>
+            <para>
+              If database connection configuration is not consistent across all nodes, it's
+              possible remote &repmgr; invocations (e.g. during switchover, from the promotion candidate
+              to the demotion candidate) will not be able to connect to the database. This will
+              now be explicitly reported as a database connection failure, rather than as a failure
+              of the respective sanity check.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-5.1.0">
     <title>Release 5.1.0</title>
     <para><emphasis>Mon 13 April, 2020</emphasis></para>
