@@ -132,6 +132,46 @@
   </refsect1>
 
   <refsect1>
+    <title>Additional checks</title>
+    <para>
+      Several checks are provided for diagnostic purposes and are not
+      included in the general output:
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <option>--db-connection</option>: checks if &repmgr; can connect to the
+            database on the local node.
+          </simpara>
+          <simpara>
+            This option is particularly useful in combination with <command>SSH</command>, as
+            it can be used to troubleshoot connection issues encountered when &repmgr; is
+            executed remotely (e.g. during a switchover operation).
+          </simpara>
+
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <option>--replication-config-owner</option>: checks if the file containing replication
+            configuration (PostgreSQL 12 and later: <filename>postgresql.auto.conf</filename>;
+            PostgreSQL 11 and earlier: <filename>recovery.conf</filename>) is
+            owned by the same user who owns the data directory.
+          </simpara>
+          <simpara>
+            Incorrect ownership of these files (e.g. if they are owned by <literal>root</literal>)
+            will cause operations which need to update the replication configuration
+            (e.g. <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>
+            or <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>)
+            to fail.
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Connection options</title>
     <para>
       <itemizedlist spacing="compact" mark="bullet">
