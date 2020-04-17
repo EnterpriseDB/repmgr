@@ -4064,10 +4064,31 @@ do_standby_switchover(void)
 
 				if (remote_error == REMOTE_ERROR_DB_CONNECTION)
 				{
+					PQExpBufferData ssh_command;
+
 					/* can happen if the connection configuration is not consistent across nodes */
 					log_detail(_("an error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
 							   remote_node_record.node_name,
 							   remote_node_record.node_id);
+
+					/* output a helpful hint to help diagnose the issue */
+					initPQExpBuffer(&remote_command_str);
+					make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+					appendPQExpBufferStr(&remote_command_str, "node check --db-connection");
+
+					initPQExpBuffer(&ssh_command);
+
+					make_remote_command(remote_host,
+										runtime_options.remote_user,
+										remote_command_str.data,
+										config_file_options.ssh_options,
+										&ssh_command);
+
+					log_hint(_("diagnose with:\n  %s"), ssh_command.data);
+
+					termPQExpBuffer(&remote_command_str);
+					termPQExpBuffer(&ssh_command);
 				}
 				else if (remote_error == REMOTE_ERROR_CONNINFO_PARSE)
 				{

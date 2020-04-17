@@ -118,28 +118,13 @@ remote_command(const char *host, const char *user, const char *command, const ch
 {
 	FILE	   *fp;
 	PQExpBufferData ssh_command;
-	PQExpBufferData ssh_host;
 
 	char		output[MAXLEN] = "";
 
-	initPQExpBuffer(&ssh_host);
-
-	if (*user != '\0')
-	{
-		appendPQExpBuffer(&ssh_host, "%s@", user);
-	}
-
-	appendPQExpBufferStr(&ssh_host, host);
 
 	initPQExpBuffer(&ssh_command);
 
-	appendPQExpBuffer(&ssh_command,
-					  "ssh -o Batchmode=yes %s %s %s",
-					  ssh_options,
-					  ssh_host.data,
-					  command);
-
-	termPQExpBuffer(&ssh_host);
+	make_remote_command(host, user, command, ssh_options, &ssh_command);
 
 	log_debug("remote_command():\n  %s", ssh_command.data);
 
@@ -184,6 +169,32 @@ remote_command(const char *host, const char *user, const char *command, const ch
 	}
 
 	return true;
+}
+
+
+void
+make_remote_command(const char *host, const char *user, const char *command, const char *ssh_options, PQExpBufferData *ssh_command)
+{
+	PQExpBufferData ssh_host;
+
+	initPQExpBuffer(&ssh_host);
+
+	if (*user != '\0')
+	{
+		appendPQExpBuffer(&ssh_host, "%s@", user);
+	}
+
+	appendPQExpBufferStr(&ssh_host, host);
+
+
+	appendPQExpBuffer(ssh_command,
+					  "ssh -o Batchmode=yes %s %s %s",
+					  ssh_options,
+					  ssh_host.data,
+					  command);
+
+	termPQExpBuffer(&ssh_host);
+
 }
 
 
