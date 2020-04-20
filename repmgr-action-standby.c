@@ -3565,7 +3565,8 @@ do_standby_switchover(void)
 	{
 		if (runtime_options.dry_run == true)
 		{
-			log_info(_("validating database connection for superuser \"%s\""), runtime_options.superuser);
+			log_info(_("validating connection to local database for superuser \"%s\""),
+					 runtime_options.superuser);
 		}
 
 		superuser_conn = establish_db_connection_with_replacement_param(
@@ -3575,23 +3576,27 @@ do_standby_switchover(void)
 
 		if (PQstatus(superuser_conn) != CONNECTION_OK)
 		{
-			log_error(_("unable to connect as provided superuser \"%s\""),
+			log_error(_("unable to connect to local database \"%s\" as provided superuser \"%s\""),
+					  PQdb(superuser_conn),
 					  runtime_options.superuser);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		if (is_superuser_connection(superuser_conn, NULL) == false)
 		{
-			log_error(_("database connection established for provided superuser \"%s\" is not a superuser connection"),
+			log_error(_("connection established to local database \"%s\" for provided superuser \"%s\" is not a superuser connection"),
+					  PQdb(superuser_conn),
 					  runtime_options.superuser);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		if (runtime_options.dry_run == true)
 		{
-			log_info(_("successfully established database connection established for provided superuser \"%s\""),
+			log_info(_("successfully established connection to local database \"%s\" for provided superuser \"%s\""),
+					 PQdb(superuser_conn),
 					 runtime_options.superuser);
 		}
+
 	}
 
 	/*
