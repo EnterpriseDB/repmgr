@@ -95,6 +95,7 @@ clean:
 	rm -f repmgr.html
 	rm -f repmgr-A4.pdf
 	rm -f repmgr-US.pdf
+	rm -f html/*
 
 maintainer-clean:
 	rm -rf html
