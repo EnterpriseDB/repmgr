@@ -2951,7 +2951,7 @@ get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list)
 					  "     WHERE n.upstream_node_id = %i ",
 					  node_id);
 
-		log_verbose(LOG_DEBUG, "get_active_sibling_node_records():\n%s", query.data);
+	log_verbose(LOG_DEBUG, "get_child_nodes():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 
