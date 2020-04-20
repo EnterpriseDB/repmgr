@@ -170,6 +170,42 @@
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><option>-F</option></term>
+        <term><option>--force</option></term>
+        <listitem>
+          <para>
+            Ignore warnings and continue anyway.
+          </para>
+          <para>
+            This option is relevant in the following situations if <option>--siblings-follow</option> was specified:
+            <itemizedlist spacing="compact" mark="bullet">
+              <listitem>
+                <simpara>
+                  If one or more sibling nodes was not reachable via SSH, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  If the promotion candidate has insufficient free walsenders to accomodate the standbys which will
+                  be attached to it, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  If replication slots are in use but the promotion candidate has insufficient free replication slots
+                  to accomodate the standbys which will be attached to it, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+            </itemizedlist>
+          </para>
+          <para>
+            Note that if the <option>-F</option>/<option>--force</option> option is used when any of the above
+            situations is encountered, the onus is on the user to manually resolve any resulting issues.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
