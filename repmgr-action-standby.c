@@ -2390,7 +2390,7 @@ do_standby_promote(void)
 	 */
 	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats, &dry_run_success) == false)
 	{
-		if (runtime_options.dry_run == false)
+		if (runtime_options.dry_run == false || runtime_options.force == false)
 		{
 			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
@@ -2404,7 +2404,7 @@ do_standby_promote(void)
 	 */
 	if (check_free_slots(&local_node_record, &sibling_nodes_stats, &dry_run_success) == false)
 	{
-		if (runtime_options.dry_run == false)
+		if (runtime_options.dry_run == false || runtime_options.force == false)
 		{
 			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
@@ -2505,7 +2505,7 @@ _do_standby_promote_internal(PGconn *conn)
 	/*
 	 * Promote standby to primary.
 	 *
-	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w
+	 * "pg_ctl promote: returns immediately and (prior to 10.0) has no -w
 	 * option so we can't be sure when or if the promotion completes. For now
 	 * we'll poll the server until the default timeout (60 seconds)
 	 *
@@ -8675,6 +8675,10 @@ do_standby_help(void)
 	printf(_("STANDBY PROMOTE\n"));
 	puts("");
 	printf(_("  \"standby promote\" promotes a standby node to primary.\n"));
+	puts("");
+	printf(_("  --dry-run                           perform checks etc. but don't actually promote the node\n"));
+	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
+	printf(_("  --siblings-follow                   have other standbys follow new primary\n"));
 	puts("");
 
 	printf(_("STANDBY FOLLOW\n"));
