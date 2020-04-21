@@ -3438,6 +3438,8 @@ promote_self(void)
 
 	r = system(promote_command);
 
+	log_debug("result of promote_command: %i", WEXITSTATUS(r));
+
 	/* connection should stay up, but check just in case */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
@@ -3456,9 +3458,14 @@ promote_self(void)
 		}
 	}
 
-	if (r != 0)
+	if (WIFEXITED(r) && WEXITSTATUS(r))
 	{
-		int			primary_node_id;
+		int			primary_node_id = UNKNOWN_NODE_ID;
+
+		log_error(_("promote command failed"));
+		log_detail(_("promote command exited with error code %i"), WEXITSTATUS(r));
+
+		log_info(_("checking if original primary node has reappeared"));
 
 		upstream_conn = get_primary_connection(local_conn,
 											   &primary_node_id,
@@ -3493,8 +3500,7 @@ promote_self(void)
 			return FAILOVER_STATE_PRIMARY_REAPPEARED;
 		}
 
-
-		log_error(_("promote command failed"));
+		log_warning(_("promotion "));
 
 		create_event_notification(NULL,
 								  &config_file_options,
