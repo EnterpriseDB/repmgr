@@ -130,6 +130,7 @@ static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *s
 static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 
 static t_remote_error_type parse_remote_error(const char *error);
+static CheckStatus parse_check_status(const char *status_str);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold, t_remote_error_type *remote_error);
@@ -3559,7 +3560,10 @@ do_standby_switchover(void)
 				   local_node_record.node_id);
 	}
 
-	/* if -S/--superuser option provided, check that a superuser connection can be made */
+	/*
+	 * If -S/--superuser option provided, check that a superuser connection can be made
+	 * to the local database. We'll check the remote superuser connection later,
+	 */
 
 	if (runtime_options.superuser[0] != '\0')
 	{
@@ -4137,6 +4141,83 @@ do_standby_switchover(void)
 		log_info(_("able to execute \"%s\" on remote host \"%s\""),
 				 progname(),
 				 remote_host);
+	}
+
+	/*
+	 * If -S/--superuser option provided, check that a superuser connection can be made
+	 * to the local database on the remote node.
+	 */
+
+	if (runtime_options.superuser[0] != '\0')
+	{
+		CheckStatus status = CHECK_STATUS_UNKNOWN;
+
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+		appendPQExpBuffer(&remote_command_str,
+						  "node check --db-connection --superuser=%s --optformat -LINFO 2>/dev/null",
+						  runtime_options.superuser);
+
+		initPQExpBuffer(&command_output);
+		command_success = remote_command(remote_host,
+										 runtime_options.remote_user,
+										 remote_command_str.data,
+										 config_file_options.ssh_options,
+										 &command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		if (command_success == false)
+		{
+			log_error(_("unable to execute \"%s node check --db-connection\" on \"%s\":"),
+					  progname(), remote_host);
+			log_detail("%s", command_output.data);
+
+			PQfinish(remote_conn);
+			PQfinish(local_conn);
+
+			termPQExpBuffer(&command_output);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		status = parse_check_status(command_output.data);
+
+		if (status != CHECK_STATUS_OK)
+		{
+			PQExpBufferData ssh_command;
+			log_error(_("unable to connect locally as superuser \"%s\" on node  \"%s\" (ID: %i)"),
+					  runtime_options.superuser,
+					  remote_node_record.node_name,
+					  remote_node_record.node_id);
+
+			/* output a helpful hint to help diagnose the issue */
+			initPQExpBuffer(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+			appendPQExpBuffer(&remote_command_str,
+							  "node check --db-connection --superuser=%s",
+							  runtime_options.superuser);
+
+			initPQExpBuffer(&ssh_command);
+
+			make_remote_command(remote_host,
+								runtime_options.remote_user,
+								remote_command_str.data,
+								config_file_options.ssh_options,
+								&ssh_command);
+
+			log_hint(_("diagnose with:\n  %s"), ssh_command.data);
+
+			termPQExpBuffer(&remote_command_str);
+			termPQExpBuffer(&ssh_command);
+			exit(ERR_DB_CONN);
+		}
+
+
+
+		termPQExpBuffer(&command_output);
 	}
 
 	/*
@@ -8278,6 +8359,31 @@ parse_remote_error(const char *error)
 }
 
 
+static CheckStatus
+parse_check_status(const char *status_str)
+{
+	CheckStatus status = CHECK_STATUS_UNKNOWN;
+
+	if (strncmp(status_str, "OK", MAXLEN) == 0)
+	{
+		status = CHECK_STATUS_OK;
+	}
+	else if (strncmp(status_str, "WARNING", MAXLEN) == 0)
+	{
+		status = CHECK_STATUS_WARNING;
+	}
+	else if (strncmp(status_str, "CRITICAL", MAXLEN) == 0)
+	{
+		status = CHECK_STATUS_CRITICAL;
+	}
+	else if (strncmp(status_str, "UNKNOWN", MAXLEN) == 0)
+	{
+		status = CHECK_STATUS_UNKNOWN;
+	}
+
+	return status;
+}
+
 static NodeStatus
 parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint)
 {
@@ -8467,28 +8573,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 
 				/* --status */
 			case 'S':
-				{
-					if (strncmp(optarg, "OK", MAXLEN) == 0)
-					{
-						status = CHECK_STATUS_OK;
-					}
-					else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
-					{
-						status = CHECK_STATUS_WARNING;
-					}
-					else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
-					{
-						status = CHECK_STATUS_CRITICAL;
-					}
-					else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
-					{
-						status = CHECK_STATUS_UNKNOWN;
-					}
-					else
-					{
-						status = CHECK_STATUS_UNKNOWN;
-					}
-				}
+				status = parse_check_status(optarg);
 				break;
 			case 'E':
 				{
