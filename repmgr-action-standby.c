@@ -989,14 +989,15 @@ check_barman_config(void)
 /*
  * _do_create_replication_conf()
  *
- * Create recovery.conf for a previously cloned instance.
+ * Create replication configuration for a previously cloned instance.
  *
  * Prerequisites:
  *
- * - data directory must be provided
+ * - data directory must be provided, either explicitly or via
+ *   repmgr.conf
  * - the instance should not be running
  * - an existing "recovery.conf" file can only be overwritten with
- *   -F/--force
+ *   -F/--force (Pg11 and earlier)
  * - connection parameters for an existing, running node must be provided
  * - --upstream-node-id, if provided, will be "primary_conninfo",
  *   otherwise primary node id; node must exist; unless -F/--force
@@ -1171,7 +1172,7 @@ _do_create_replication_conf(void)
 		}
 		else
 		{
-			log_hint(_("standby must be registered before a new recovery.conf file can be created"));
+			log_hint(_("standby must be registered before replication can be configured"));
 		}
 
 		exit(ERR_BAD_CONFIG);
