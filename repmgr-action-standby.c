@@ -137,7 +137,7 @@ static CheckStatus parse_node_check_archiver(const char *node_check_output, int 
 static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
 static bool parse_data_directory_config(const char *node_check_output, t_remote_error_type *remote_error);
 static bool parse_replication_config_owner(const char *node_check_output);
-
+static CheckStatus parse_db_connection(const char *db_connection);
 
 /*
  * STANDBY CLONE
@@ -4183,12 +4183,12 @@ do_standby_switchover(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		status = parse_check_status(command_output.data);
+		status = parse_db_connection(command_output.data);
 
 		if (status != CHECK_STATUS_OK)
 		{
 			PQExpBufferData ssh_command;
-			log_error(_("unable to connect locally as superuser \"%s\" on node  \"%s\" (ID: %i)"),
+			log_error(_("unable to connect locally as superuser \"%s\" on node \"%s\" (ID: %i)"),
 					  runtime_options.superuser,
 					  remote_node_record.node_name,
 					  remote_node_record.node_id);
@@ -8601,7 +8601,7 @@ parse_data_directory_config(const char *node_check_output, t_remote_error_type *
 	char	  **argv_array = NULL;
 	int			optindex = 0;
 
-	/* We're only interested in this option */
+	/* We're only interested in these options */
 	struct option node_check_options[] =
 	{
 		{"configured-data-directory", required_argument, NULL, 'C'},
@@ -8660,7 +8660,7 @@ parse_replication_config_owner(const char *node_check_output)
 	char	  **argv_array = NULL;
 	int			optindex = 0;
 
-	/* We're only interested in this option */
+	/* We're only interested in these options */
 	struct option node_check_options[] =
 	{
 		{"replication-config-owner", required_argument, NULL, 'C'},
@@ -8700,6 +8700,57 @@ parse_replication_config_owner(const char *node_check_output)
 	free_parsed_argv(&argv_array);
 
 	return config_ok;
+}
+
+
+static CheckStatus
+parse_db_connection(const char *db_connection)
+{
+	CheckStatus status = CHECK_STATUS_UNKNOWN;
+
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
+	int			optindex = 0;
+
+	/* We're only interested in this option */
+	struct option node_check_options[] =
+	{
+		{"db-connection", required_argument, NULL, 'c'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(db_connection))
+	{
+		return false;
+	}
+
+	argc_item = parse_output_to_argv(db_connection, &argv_array);
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "c:", node_check_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			/* --db-connection */
+			case 'c':
+				{
+					status = parse_check_status(optarg);
+				}
+				break;
+		}
+	}
+
+	free_parsed_argv(&argv_array);
+
+	return status;
 }
 
 
