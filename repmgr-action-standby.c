@@ -8849,4 +8849,7 @@ do_standby_help(void)
 	printf(_("  --siblings-follow                   have other standbys follow new primary\n"));
 
 	puts("");
+
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
+
 }

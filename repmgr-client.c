@@ -2666,6 +2666,8 @@ do_help(void)
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 
 	puts("");
+
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
 }
 
 

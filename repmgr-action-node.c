@@ -3539,8 +3539,8 @@ do_node_help(void)
 	printf(_("    --list-actions            show what command would be performed for each action\n"));
 	printf(_("    --checkpoint              issue a CHECKPOINT before stopping or restarting the node\n"));
 	printf(_("    -S, --superuser=USERNAME  superuser to use, if repmgr user is not superuser\n"));
+
 	puts("");
 
-
-
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
 }

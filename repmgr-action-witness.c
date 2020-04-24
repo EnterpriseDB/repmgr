@@ -569,5 +569,5 @@ void do_witness_help(void)
 
 	puts("");
 
-	return;
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
 }

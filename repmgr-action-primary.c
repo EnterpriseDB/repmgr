@@ -575,4 +575,5 @@ do_primary_help(void)
 
 	puts("");
 
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
 }

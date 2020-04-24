@@ -543,4 +543,6 @@ void do_service_help(void)
 	puts("");
 
 	puts("");
+
+	printf(_("%s home page: <%s>\n"), "repmgr", REPMGR_URL);
 }

@@ -145,6 +145,6 @@
 #define TABLESPACE_MAP "tablespace_map"
 #endif
 
-
+#define REPMGR_URL "https://repmgr.org/"
 
 #endif							/* _REPMGR_H_ */
