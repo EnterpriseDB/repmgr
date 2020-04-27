@@ -6032,7 +6032,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		config_ok = false;
 	}
 
-	if (config_file_options.use_replication_slots)
+	if (config_file_options.use_replication_slots == true)
 	{
 		pg_setting_ok = get_pg_setting_int(conn, "max_replication_slots", &i);
 
@@ -6058,7 +6058,6 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 			log_info(_("parameter \"max_replication_slots\" set to %i"), i);
 		}
 	}
-
 	/*
 	 * physical replication slots not available or not requested - check if
 	 * there are any circumstances where `wal_keep_segments` should be set
@@ -6115,6 +6114,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 				log_info(_("parameter \"wal_keep_segments\" set to %i"), i);
 			}
 		}
+	}
+
+
+	if (config_file_options.use_replication_slots == false && server_version_num >= 90400)
+	{
+		log_info(_("replication slot usage not requested;  no replication slot will be set up for this standby"));
 	}
 
 
