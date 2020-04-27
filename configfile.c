@@ -1843,9 +1843,16 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 		return false;
 	}
 
-	// XXX check return value
-	(void) ProcessPostgresConfigFile(fp, auto_conf.data, &config, NULL, NULL);
+	success = ProcessPostgresConfigFile(fp, auto_conf.data, &config, NULL, NULL);
 	fclose(fp);
+
+	if (success == false)
+	{
+		fprintf(stderr, "unable to process \"%s\"\n",
+				auto_conf.data);
+		termPQExpBuffer(&auto_conf);
+		return false;
+	}
 
 	/*
 	 * Append requested items to items extracted from the existing file.
@@ -1855,7 +1862,6 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 		key_value_list_replace_or_set(&config,
 									  cell->key,
 									  cell->value);
-
 	}
 
 	initPQExpBuffer(&auto_conf_tmp);
@@ -1911,9 +1917,12 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 			 * (unlikely) event that a repmgr built against one of those versions
 			 * is being used against Pg 12 and later.
 			 */
-			// XXX check return values
+
 #if (PG_ACTUAL_VERSION_NUM >= 100000)
-			(void) durable_rename(auto_conf_tmp.data, auto_conf.data, LOG);
+			if (durable_rename(auto_conf_tmp.data, auto_conf.data, LOG) != 0)
+			{
+				success = false;
+			}
 #else
 			if (rename(auto_conf_tmp.data, auto_conf.data) < 0)
 			{
