@@ -454,7 +454,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else
 		{
-			log_error(_("unable to open default configuration file	\"%s\"; terminating"),
+			log_error(_("unable to open default configuration file \"%s\"; terminating"),
 					  config_file_path);
 		}
 
