@@ -279,6 +279,7 @@ static void
 _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
+	char		base_directory[MAXPGPATH];
 
 	/*
 	 * Clear lists pointing to allocated memory
@@ -497,8 +498,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	fclose(fp);
 
+
+	strncpy(base_directory, config_file_path, MAXPGPATH);
+	canonicalize_path(base_directory);
+	get_parent_directory(base_directory);
+
 	// XXX fail here if processing issue found
-	(void) ProcessRepmgrConfigFile(config_file_path, options, error_list, warning_list);
+	(void) ProcessRepmgrConfigFile(config_file_path, base_directory, options, error_list, warning_list);
 
 
 	/* check required parameters */
@@ -1970,8 +1976,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	}
 	fclose(fp);
 
-	success = ProcessPostgresConfigFile(auto_conf.data, &config, NULL, NULL);
-
+	success = ProcessPostgresConfigFile(auto_conf.data, NULL, &config, NULL, NULL);
 
 	if (success == false)
 	{

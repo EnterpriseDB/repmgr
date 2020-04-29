@@ -38,11 +38,11 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
-static bool ProcessConfigFile(const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 static bool ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
-static char *AbsoluteConfigLocation(const char *location, const char *calling_file);
+ static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
 %}
 
@@ -95,19 +95,19 @@ STRING			\'([^'\\\n]|\\.|\'\')*\'
 %%
 
 extern bool
-ProcessRepmgrConfigFile(const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(config_file, NULL, NULL, options, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, NULL, options, error_list, warning_list);
 }
 
 extern bool
-ProcessPostgresConfigFile(const char *config_file, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
+ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(config_file, NULL, contents, NULL, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, contents, NULL, error_list, warning_list);
 }
 
 static bool
-ProcessConfigFile(const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *abs_path;
 	bool		success = true;
@@ -123,7 +123,7 @@ ProcessConfigFile(const char *config_file, const char *calling_file, KeyValueLis
 		return false;
 	}
 
-	abs_path = AbsoluteConfigLocation(config_file, calling_file);
+	abs_path = AbsoluteConfigLocation(base_dir, config_file, calling_file);
 
 	// XXX reject direct recursion.
 
@@ -398,30 +398,33 @@ CONF_scanstr(const char *s)
  * the directory holding the calling file, or to DataDir if no calling file.
  */
 static char *
-AbsoluteConfigLocation(const char *location, const char *calling_file)
+AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file)
 {
 	char		abs_path[MAXPGPATH];
 
 	if (is_absolute_path(location))
 		return strdup(location);
+
+    if (calling_file != NULL)
+	{
+		strlcpy(abs_path, calling_file, sizeof(abs_path));
+		get_parent_directory(abs_path);
+		join_path_components(abs_path, abs_path, location);
+		canonicalize_path(abs_path);
+	}
+	else if (base_dir != NULL)
+	{
+		join_path_components(abs_path, base_dir, location);
+		canonicalize_path(abs_path);
+	}
 	else
 	{
-		if (calling_file != NULL)
-		{
-			strlcpy(abs_path, calling_file, sizeof(abs_path));
-			get_parent_directory(abs_path);
-			join_path_components(abs_path, abs_path, location);
-			canonicalize_path(abs_path);
-		}
-		else
-		{
-			/*AssertState(DataDir);
-			join_path_components(abs_path, DataDir, location);
-			canonicalize_path(abs_path);*/
-		}
-		return strdup(abs_path);
+		strlcpy(abs_path, location, sizeof(abs_path));
 	}
+
+	return strdup(abs_path);
 }
+
 
 /*
  * Flex fatal errors bring us here.  Stash the error message and jump back to
