@@ -38,7 +38,11 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
-static bool ProcessConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFile(const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+
+static bool ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+
+static char *AbsoluteConfigLocation(const char *location, const char *calling_file);
 
 %}
 
@@ -91,19 +95,59 @@ STRING			\'([^'\\\n]|\\.|\'\')*\'
 %%
 
 extern bool
-ProcessRepmgrConfigFile(FILE *fp, const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessRepmgrConfigFile(const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(fp, config_file, NULL, options, error_list, warning_list);
+	return ProcessConfigFile(config_file, NULL, NULL, options, error_list, warning_list);
 }
 
 extern bool
-ProcessPostgresConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
+ProcessPostgresConfigFile(const char *config_file, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(fp, config_file, contents, NULL, error_list, warning_list);
+	return ProcessConfigFile(config_file, NULL, contents, NULL, error_list, warning_list);
 }
 
 static bool
-ProcessConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFile(const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+{
+	char	   *abs_path;
+	bool		success = true;
+	FILE	   *fp;
+
+	/*
+	 * Reject file name that is all-blank (including empty), as that leads to
+	 * confusion --- we'd try to read the containing directory as a file.
+	 */
+	if (strspn(config_file, " \t\r\n") == strlen(config_file))
+	{
+
+		return false;
+	}
+
+	abs_path = AbsoluteConfigLocation(config_file, calling_file);
+
+	// XXX reject direct recursion.
+
+	fp = fopen(abs_path, "r");
+	if (!fp)
+	{
+		item_list_append_format(error_list,
+								"could not open configuration file \"%s\": %s",
+								abs_path,
+								strerror(errno));
+		success = false;
+	}
+	else
+	{
+		success = ProcessConfigFp(fp, abs_path, contents, options, error_list, warning_list);
+	}
+
+	free(abs_path);
+
+	return success;
+}
+
+static bool
+ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	volatile bool OK = true;
 	volatile YY_BUFFER_STATE lex_buffer = NULL;
@@ -348,6 +392,36 @@ CONF_scanstr(const char *s)
 	return newStr;
 }
 
+/*
+ * Given a configuration file or directory location that may be a relative
+ * path, return an absolute one.  We consider the location to be relative to
+ * the directory holding the calling file, or to DataDir if no calling file.
+ */
+static char *
+AbsoluteConfigLocation(const char *location, const char *calling_file)
+{
+	char		abs_path[MAXPGPATH];
+
+	if (is_absolute_path(location))
+		return strdup(location);
+	else
+	{
+		if (calling_file != NULL)
+		{
+			strlcpy(abs_path, calling_file, sizeof(abs_path));
+			get_parent_directory(abs_path);
+			join_path_components(abs_path, abs_path, location);
+			canonicalize_path(abs_path);
+		}
+		else
+		{
+			/*AssertState(DataDir);
+			join_path_components(abs_path, DataDir, location);
+			canonicalize_path(abs_path);*/
+		}
+		return strdup(abs_path);
+	}
+}
 
 /*
  * Flex fatal errors bring us here.  Stash the error message and jump back to

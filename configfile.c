@@ -468,13 +468,17 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		return;
 	}
 
-	fp = fopen(config_file_path, "r");
 
 	/*
 	 * A configuration file has been found, either provided by the user or
-	 * found in one of the default locations. If we can't open it, fail with
-	 * an error.
+	 * found in one of the default locations. Sanity check whether we
+	 * can open it, and fail with an error about the nature of the file
+	 * (provided or default) if not. We do this here rather than having
+	 * to teach the configuration file parser the difference.
 	 */
+
+	fp = fopen(config_file_path, "r");
+
 	if (fp == NULL)
 	{
 		if (config_file_provided)
@@ -491,9 +495,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		exit(ERR_BAD_CONFIG);
 	}
 
-	(void) ProcessRepmgrConfigFile(fp, config_file_path, options, error_list, warning_list);
-
 	fclose(fp);
+
+	// XXX fail here if processing issue found
+	(void) ProcessRepmgrConfigFile(config_file_path, options, error_list, warning_list);
+
 
 	/* check required parameters */
 	if (options->node_id == UNKNOWN_NODE_ID)
@@ -1951,6 +1957,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	appendPQExpBuffer(&auto_conf, "%s/%s",
 					  data_dir, PG_AUTOCONF_FILENAME);
 
+	// XXX do we need this?
 	fp = fopen(auto_conf.data, "r");
 
 	if (fp == NULL)
@@ -1961,9 +1968,10 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 		termPQExpBuffer(&auto_conf);
 		return false;
 	}
-
-	success = ProcessPostgresConfigFile(fp, auto_conf.data, &config, NULL, NULL);
 	fclose(fp);
+
+	success = ProcessPostgresConfigFile(auto_conf.data, &config, NULL, NULL);
+
 
 	if (success == false)
 	{
