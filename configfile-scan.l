@@ -40,7 +40,7 @@ static int	CONF_flex_fatal(const char *msg);
 
 static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
-static bool ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
  static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
@@ -103,6 +103,8 @@ ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configu
 extern bool
 ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
 {
+	printf("ProcessPostgresConfigFile(): base: %s file: %s\n", base_dir, config_file);
+
 	return ProcessConfigFile(base_dir, config_file, NULL, contents, NULL, error_list, warning_list);
 }
 
@@ -119,7 +121,6 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 	 */
 	if (strspn(config_file, " \t\r\n") == strlen(config_file))
 	{
-
 		return false;
 	}
 
@@ -138,7 +139,7 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 	}
 	else
 	{
-		success = ProcessConfigFp(fp, abs_path, contents, options, error_list, warning_list);
+		success = ProcessConfigFp(fp, abs_path, calling_file, base_dir, contents, options, error_list, warning_list);
 	}
 
 	free(abs_path);
@@ -147,7 +148,7 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 }
 
 static bool
-ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	volatile bool OK = true;
 	volatile YY_BUFFER_STATE lex_buffer = NULL;
@@ -172,7 +173,7 @@ ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_con
 		OK = false;
 		goto cleanup;
 	}
-
+	printf("ProcessConfigFp(): base: '%s' file: '%s'; calling: '%s'\n", base_dir, config_file, calling_file);
 	/*
 	 * Parse
 	 */
@@ -223,22 +224,46 @@ ProcessConfigFp(FILE *fp, const char *config_file, KeyValueList *contents, t_con
 			ConfigFileLineno++;
 		}
 
-		/* OK, process the option name and value */
-		if (contents != NULL)
+		/* Handle include files */
+		if (base_dir != NULL && strcasecmp(opt_name, "include_dir") == 0)
 		{
-			key_value_list_replace_or_set(contents,
-										  opt_name,
-										  opt_value);
+
+		}
+		else if (base_dir != NULL && strcasecmp(opt_name, "include_if_exists") == 0)
+		{
+		}
+		else if (base_dir != NULL && strcasecmp(opt_name, "include") == 0)
+		{
+			printf("ProcessConfigFp(): include  %s %s base: %s\n", opt_value, config_file, base_dir);
+			if (!ProcessConfigFile(base_dir, opt_value, config_file,
+								   contents, options,
+								   error_list, warning_list))
+				OK = false;
+
+			yy_switch_to_buffer(lex_buffer);
+			pfree(opt_name);
+			pfree(opt_value);
+		}
+		else
+		{
+			/* OK, process the option name and value */
+			if (contents != NULL)
+			{
+				key_value_list_replace_or_set(contents,
+											  opt_name,
+											  opt_value);
+			}
+
+			if (options != NULL)
+			{
+				parse_configuration_item(options,
+										 error_list,
+										 warning_list,
+										 opt_name,
+										 opt_value);
+			}
 		}
 
-		if (options != NULL)
-		{
-			parse_configuration_item(options,
-									 error_list,
-									 warning_list,
-									 opt_name,
-									 opt_value);
-		}
 
 		/* break out of loop if read EOF, else loop for next line */
 		if (token == 0)
