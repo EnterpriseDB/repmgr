@@ -38,11 +38,11 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
-static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
- static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
+static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
 %}
 
@@ -97,7 +97,7 @@ STRING			\'([^'\\\n]|\\.|\'\')*\'
 extern bool
 ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(base_dir, config_file, NULL, NULL, options, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, true, NULL, options, error_list, warning_list);
 }
 
 extern bool
@@ -105,11 +105,11 @@ ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValu
 {
 	printf("ProcessPostgresConfigFile(): base: %s file: %s\n", base_dir, config_file);
 
-	return ProcessConfigFile(base_dir, config_file, NULL, contents, NULL, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, true, contents, NULL, error_list, warning_list);
 }
 
 static bool
-ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *abs_path;
 	bool		success = true;
@@ -131,11 +131,20 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 	fp = fopen(abs_path, "r");
 	if (!fp)
 	{
-		item_list_append_format(error_list,
-								"could not open configuration file \"%s\": %s",
-								abs_path,
-								strerror(errno));
-		success = false;
+		if (strict == false)
+		{
+			item_list_append_format(error_list,
+									"skipping configuration file \"%s\"",
+									abs_path);
+		}
+		else
+		{
+			item_list_append_format(error_list,
+									"could not open configuration file \"%s\": %s",
+									abs_path,
+									strerror(errno));
+			success = false;
+		}
 	}
 	else
 	{
@@ -231,12 +240,19 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 		}
 		else if (base_dir != NULL && strcasecmp(opt_name, "include_if_exists") == 0)
 		{
+			if (!ProcessConfigFile(base_dir, opt_value, config_file,
+								   false, contents, options,
+								   error_list, warning_list))
+				OK = false;
+
+			yy_switch_to_buffer(lex_buffer);
+			pfree(opt_name);
+			pfree(opt_value);
 		}
 		else if (base_dir != NULL && strcasecmp(opt_name, "include") == 0)
 		{
-			printf("ProcessConfigFp(): include  %s %s base: %s\n", opt_value, config_file, base_dir);
 			if (!ProcessConfigFile(base_dir, opt_value, config_file,
-								   contents, options,
+								   true, contents, options,
 								   error_list, warning_list))
 				OK = false;
 
