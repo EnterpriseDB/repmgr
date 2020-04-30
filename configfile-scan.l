@@ -5,6 +5,8 @@
 %{
 
 #include <setjmp.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "repmgr.h"
 #include "configfile.h"
@@ -41,6 +43,8 @@ static int	CONF_flex_fatal(const char *msg);
 static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+
+static bool ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
@@ -236,7 +240,17 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 		/* Handle include files */
 		if (base_dir != NULL && strcasecmp(opt_name, "include_dir") == 0)
 		{
-
+			/*
+			 * An include_dir directive isn't a variable and should be
+			 * processed immediately.
+			 */
+			if (!ProcessConfigDirectory(base_dir, opt_value, config_file,
+										contents, options,
+									    error_list, warning_list))
+				OK = false;
+			yy_switch_to_buffer(lex_buffer);
+			pfree(opt_name);
+			pfree(opt_value);
 		}
 		else if (base_dir != NULL && strcasecmp(opt_name, "include_if_exists") == 0)
 		{
@@ -338,6 +352,132 @@ cleanup:
 	return OK;
 }
 
+/*
+ * Read and parse all config files in a subdirectory in alphabetical order
+ *
+ * includedir is the absolute or relative path to the subdirectory to scan.
+ *
+ * See ProcessConfigFp for further details.
+ */
+static bool
+ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+{
+	char	   *directory;
+	DIR		   *d;
+	struct dirent *de;
+	char	  **filenames;
+	int			num_filenames;
+	int			size_filenames;
+	bool		status;
+
+	/*
+	 * Reject directory name that is all-blank (including empty), as that
+	 * leads to confusion --- we'd read the containing directory, typically
+	 * resulting in recursive inclusion of the same file(s).
+	 */
+	if (strspn(includedir, " \t\r\n") == strlen(includedir))
+	{
+		item_list_append_format(error_list,
+								_("empty configuration directory name: \"%s\""),
+								includedir);
+
+		return false;
+	}
+
+	directory = AbsoluteConfigLocation(base_dir, includedir, calling_file);
+	d = opendir(directory);
+	if (d == NULL)
+	{
+		item_list_append_format(error_list,
+								_("could not open configuration directory \"%s\": %s"),
+								directory,
+								strerror(errno));
+		status = false;
+		goto cleanup;
+	}
+
+	/*
+	 * Read the directory and put the filenames in an array, so we can sort
+	 * them prior to processing the contents.
+	 */
+	size_filenames = 32;
+	filenames = (char **) palloc(size_filenames * sizeof(char *));
+	num_filenames = 0;
+
+	while ((de = readdir(d)) != NULL)
+	{
+		struct stat st;
+		char		filename[MAXPGPATH];
+
+		/*
+		 * Only parse files with names ending in ".conf".  Explicitly reject
+		 * files starting with ".".  This excludes things like "." and "..",
+		 * as well as typical hidden files, backup files, and editor debris.
+		 */
+		if (strlen(de->d_name) < 6)
+			continue;
+		if (de->d_name[0] == '.')
+			continue;
+		if (strcmp(de->d_name + strlen(de->d_name) - 5, ".conf") != 0)
+			continue;
+
+		join_path_components(filename, directory, de->d_name);
+		canonicalize_path(filename);
+		if (stat(filename, &st) == 0)
+		{
+			if (!S_ISDIR(st.st_mode))
+			{
+				/* Add file to array, increasing its size in blocks of 32 */
+				if (num_filenames >= size_filenames)
+				{
+					size_filenames += 32;
+					filenames = (char **) repalloc(filenames,
+											size_filenames * sizeof(char *));
+				}
+				filenames[num_filenames] = pstrdup(filename);
+				num_filenames++;
+			}
+		}
+		else
+		{
+			/*
+			 * stat does not care about permissions, so the most likely reason
+			 * a file can't be accessed now is if it was removed between the
+			 * directory listing and now.
+			 */
+			item_list_append_format(error_list,
+									_("could not stat file \"%s\": %s"),
+									filename, strerror(errno));
+			status = false;
+			goto cleanup;
+		}
+	}
+
+	if (num_filenames > 0)
+	{
+		int			i;
+
+		qsort(filenames, num_filenames, sizeof(char *), pg_qsort_strcmp);
+		for (i = 0; i < num_filenames; i++)
+		{
+			if (!ProcessConfigFile(base_dir, filenames[i], calling_file,
+								   true, contents, options,
+								   error_list, warning_list))
+			{
+				status = false;
+				goto cleanup;
+			}
+		}
+	}
+	status = true;
+
+
+cleanup:
+	if (d)
+		closedir(d);
+	pfree(directory);
+	return status;
+}
 
 /*
  *		scanstr
