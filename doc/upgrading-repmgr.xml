@@ -308,12 +308,12 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
    <orderedlist>
     <listitem>
      <simpara>
-       converting the repmgr.conf configuration files
+       converting the <filename>repmgr.conf</filename> configuration files
      </simpara>
     </listitem>
     <listitem>
      <simpara>
-       upgrading the repmgr schema using <command>CREATE EXTENSION</command>
+       upgrading the repmgr schema using <command>CREATE EXTENSION</command> (PostgreSQL 12 and earlier)
      </simpara>
     </listitem>
    </orderedlist>
@@ -457,22 +457,31 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
     <para>
       Please note that the the conversion script will add an empty
       placeholder parameter for <varname>data_directory</varname>, which
-      is a required parameter from &repmgr; 4.
+      is a required parameter from &repmgr; 4. This must be manually modified to contain
+      the correct data directory.
     </para>
    </sect3>
   </sect2>
   <sect2>
-   <title>Upgrading the repmgr schema</title>
+   <title>Upgrading the repmgr schema (PostgreSQL 12 and earlier)</title>
    <para>
     Ensure &repmgrd; is not running, or any cron jobs which execute the
     <command>repmgr</command> binary.
    </para>
    <para>
-    Install <literal>repmgr 4</literal> packages; any <literal>repmgr 3.x</literal> packages
+    Install the latest &repmgr; package; any <literal>repmgr 3.x</literal> packages
     should be uninstalled (if not automatically uninstalled already by your packaging system).
    </para>
    <sect3>
     <title>Upgrading from repmgr 3.1.1 or earlier</title>
+    <tip>
+     <simpara>
+      If you don't care about any data from the existing &repmgr; installation,
+      (e.g. the contents of the <structname>events</structname> and <structname>monitoring</structname>
+      tables), the follwing steps can be skipped; proceed to <xref linkend="upgrade-reregister-nodes"/>.
+     </simpara>
+    </tip>
+
     <para>
      If your repmgr version is 3.1.1 or earlier, you will need to update
      the schema to the latest version in the 3.x series (3.3.2) before
@@ -501,19 +510,37 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
     <para>
      In the database used by the existing &repmgr; installation, execute:
      <programlisting>
-      CREATE EXTENSION repmgr FROM unpackaged;</programlisting>
+      CREATE EXTENSION repmgr FROM unpackaged</programlisting>
     </para>
+
     <para>
      This will move and convert all objects from the existing schema
      into the new, standard <literal>repmgr</literal> schema.
     </para>
     <note>
-      <simpara>there must be only one schema matching <literal>repmgr_%</literal> in the
+      <simpara>There must be only one schema matching <literal>repmgr_%</literal> in the
         database, otherwise this step may not work.
       </simpara>
     </note>
    </sect3>
-   <sect3>
+  </sect2>
+
+  <sect2>
+   <title>Upgrading the repmgr schema (PostgreSQL 13 and later)</title>
+   <para>
+     Beginning with PostgreSQL 13, the <command>CREATE EXTENSION ... FROM</command>
+     syntax is no longer available. In the unlikely event you have ended up with an
+     installation running PostgreSQL 13 or later and containing the legacy &repmgr;
+     schema, there is no convenient way of upgrading this; instead you'll just need
+     to re-register the nodes as detailed in <link linkend="upgrade-reregister-nodes">the following section</link>,
+     which will create the &repmgr; extension automatically.
+   </para>
+   <para>
+     Any historical data you wish to retain (e.g. the contents of the <structname>events</structname>
+     and <structname>monitoring</structname> tables) will need to be exported manually.
+   </para>
+  </sect2>
+  <sect2 id="upgrade-reregister-nodes">
     <title>Re-register each node</title>
     <para>
      This is necessary to update the <literal>repmgr</literal> metadata with some additional items.
@@ -522,6 +549,10 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
      On the primary node, execute e.g.
      <programlisting>
       repmgr primary register -f /etc/repmgr.conf --force</programlisting>
+    </para>
+    <para>
+      If not already present (e.g. after executing <command>CREATE EXTENSION repmgr FROM unpackaged</command>),
+      the &repmgr; extension will be automatically created by <command>repmgr primary register</command>.
     </para>
     <para>
      On each standby node, execute e.g.
@@ -535,18 +566,20 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
     <para>
      The original <literal>repmgr_$cluster</literal> schema can be dropped at any time.
     </para>
-    <tip>
-     <simpara>
-      If you don't care about any data from the existing &repmgr; installation,
-      (e.g. the contents of the <structname>events</structname> and <structname>monitoring</structname>
-      tables), the manual <command>CREATE EXTENSION</command> step can be skipped; just re-register
-      each node, starting with the primary node, and the <literal>repmgr</literal> extension will be
-      automatically created.
-     </simpara>
-    </tip>
-   </sect3>
+
   </sect2>
 
+  <sect2 id="upgrade-drop-repmgr-cluster-schema">
+    <title>Drop the legacy repmgr schema</title>
+    <para>
+      Once the cluster has been registered with the current &repmgr; version, the legacy
+      <literal>repmgr_$cluster</literal> schema can be dropped at any time with:
+<programlisting>
+    DROP SCHEMA repmgr_$cluster CASCADE</programlisting>
+      (substitute <literal>$cluster</literal> with the value of the <varname>clustername</varname>
+      variable used in &repmgr; 3.x).
+    </para>
+  </sect2>
  </sect1>
 
 </chapter>
