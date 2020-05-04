@@ -191,6 +191,11 @@ typedef struct
 	int			promote_delay;
 } t_configuration_options;
 
+
+/* Declare the main configfile structure for client applications */
+extern t_configuration_options config_file_options;
+
+
 /*
  * The following will initialize the structure with a minimal set of options;
  * actual defaults are set in parse_config() before parsing the configuration file

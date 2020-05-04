@@ -39,12 +39,8 @@ static bool daemonize = true;
 static bool show_pid_file = false;
 static bool no_pid_file = false;
 
-t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
-
 t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
 PGconn	   *local_conn = NULL;
-
-
 
 /* Collate command line errors here for friendlier reporting */
 static ItemList cli_errors = {NULL, NULL};

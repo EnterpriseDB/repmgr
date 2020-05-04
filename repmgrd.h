@@ -17,7 +17,6 @@ extern volatile sig_atomic_t got_SIGHUP;
 extern MonitoringState monitoring_state;
 extern instr_time degraded_monitoring_start;
 
-extern t_configuration_options config_file_options;
 extern t_node_info local_node_info;
 extern PGconn *local_conn;
 extern bool startup_event_logged;

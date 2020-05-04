@@ -33,6 +33,7 @@ const static char *_progname = NULL;
 char		config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
 bool		config_file_found = false;
+t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void parse_config(t_configuration_options *options, bool terse);
 static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);

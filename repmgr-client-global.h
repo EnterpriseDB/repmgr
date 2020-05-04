@@ -240,19 +240,16 @@ typedef struct ColHeader
 
 
 
-/* global configuration structures */
+/* globally available configuration structures */
 extern t_runtime_options runtime_options;
-extern t_configuration_options config_file_options;
+extern t_conninfo_param_list source_conninfo;
+extern t_node_info target_node_info;
 
-t_conninfo_param_list source_conninfo;
-
-
+/* global variables */
 extern bool config_file_required;
 extern char pg_bindir[MAXLEN];
 
-extern t_node_info target_node_info;
-
-
+/* global functions */
 extern int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 extern void check_93_config(void);
 extern bool create_repmgr_extension(PGconn *conn);
