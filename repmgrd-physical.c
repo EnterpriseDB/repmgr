@@ -4688,7 +4688,7 @@ format_failover_state(FailoverState failover_state)
 static void
 handle_sighup(PGconn **conn, t_server_type server_type)
 {
-	log_debug("SIGHUP received");
+	log_notice(_("received SIGHUP, reloading configuration"));
 
 	if (reload_config(&config_file_options, server_type))
 	{
