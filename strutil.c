@@ -564,3 +564,10 @@ parse_follow_command(char *parsed_command, char *template, int node_id)
 
 	return;
 }
+
+
+const char *
+format_bool(bool value)
+{
+	return value == true ? "true" : "false";
+}

@@ -4690,7 +4690,7 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 {
 	log_notice(_("received SIGHUP, reloading configuration"));
 
-	if (reload_config(&config_file_options, server_type))
+	if (reload_config(server_type))
 	{
 		PQfinish(*conn);
 		*conn = establish_db_connection(config_file_options.conninfo, true);

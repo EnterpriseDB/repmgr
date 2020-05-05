@@ -320,7 +320,7 @@ void		set_progname(const char *argv0);
 const char *progname(void);
 
 void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
-bool		reload_config(t_configuration_options *orig_options, t_server_type server_type);
+bool		reload_config(t_server_type server_type);
 
 void		parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 
@@ -342,7 +342,7 @@ bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 
 int parse_output_to_argv(const char *string, char ***argv_array);
 void free_parsed_argv(char ***argv_array);
-
+const char *format_failover_mode(failover_mode_opt failover);
 
 /* called by repmgr-client and repmgrd */
 void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);

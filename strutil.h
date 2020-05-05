@@ -166,4 +166,6 @@ extern char *trim(char *s);
 extern void
 			parse_follow_command(char *parsed_command, char *template, int node_id);
 
+extern const char *format_bool(bool value);
+
 #endif							/* _STRUTIL_H_ */
