@@ -706,9 +706,34 @@ param_get(t_conninfo_param_list *param_list, const char *param)
 
 
 /*
+ * Validate a conninfo string by attempting to parse it.
+ *
+ * "errmsg": passed to PQconninfoParse(), may be NULL
+ *
+ * NOTE: PQconninfoParse() verifies the string format and checks for
+ * valid options but does not sanity check values.
+ */
+
+bool
+validate_conninfo_string(const char *conninfo_str, char **errmsg)
+{
+	PQconninfoOption *connOptions = NULL;
+
+	connOptions = PQconninfoParse(conninfo_str, errmsg);
+
+	if (connOptions == NULL)
+		return false;
+
+	return true;
+}
+
+
+/*
  * Parse a conninfo string into a t_conninfo_param_list
  *
- * See conn_to_param_list() to do the same for a PGconn
+ * See conn_to_param_list() to do the same for a PGconn.
+ *
+ * "errmsg": passed to PQconninfoParse(), may be NULL
  *
  * "ignore_local_params": ignores those parameters specific
  * to a local installation, i.e. when parsing an upstream
