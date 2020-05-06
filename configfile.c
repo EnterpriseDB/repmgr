@@ -77,6 +77,15 @@ struct ConfigFileOption config_file_options2[] =
 		-1,
 		-1
 	},
+	/* tablespace_mapping */
+	{
+		"tablespace_mapping",
+		CONFIG_TABLESPACE_MAPPING,
+		{ .tablespacemappingptr = &config_file_options.tablespace_mapping },
+		{},
+		-1,
+		-1
+	},
 	/* ================
 	 * repmgrd settings
 	 * ================
@@ -107,7 +116,7 @@ struct ConfigFileOption config_file_options2[] =
 		"event_notifications",
 		CONFIG_EVENT_NOTIFICATION_LIST,
 		{ .notificationlistptr = &config_file_options.event_notifications },
-		{ .notificationlistdefault = NULL },
+		{},
 		-1,
 		-1
 	},
@@ -132,7 +141,7 @@ static void parse_time_unit_parameter(const char *name, const char *value, char 
 
 static void copy_config_file_options(t_configuration_options *original, t_configuration_options *copy);
 
-static void tablespace_list_append(t_configuration_options *options, const char *arg);
+static void tablespace_list_append(TablespaceList *tablespace_mapping, const char *arg);
 static void tablespace_list_copy(t_configuration_options *original, t_configuration_options *copy);
 static void tablespace_list_free(t_configuration_options *options);
 
@@ -651,6 +660,18 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 					pfree(list_str);
 					break;
 				}
+				case CONFIG_TABLESPACE_MAPPING:
+				{
+					TablespaceListCell *cell;
+					for (cell = option->val.tablespacemappingptr->head; cell; cell = cell->next)
+					{
+						printf(" %s: %s=%s\n",
+							   option->name,
+							   cell->old_dir,
+							   cell->new_dir);
+					}
+					break;
+				}
 			}
 			i++;
 			option = &config_file_options2[i];
@@ -723,7 +744,14 @@ parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const ch
 				}
 				case CONFIG_EVENT_NOTIFICATION_LIST:
 				{
-					parse_event_notifications_list((EventNotificationList *)&option->val.notificationlistptr, value);
+					parse_event_notifications_list((EventNotificationList *)&option->val.notificationlistptr,
+												   value);
+					break;
+				}
+				case CONFIG_TABLESPACE_MAPPING:
+				{
+					tablespace_list_append((TablespaceList *)option->val.tablespacemappingptr, value);
+					break;
 				}
 				default:
 					log_error("encountered unknown configuration type %i when processing \"%s\"",
@@ -1177,7 +1205,7 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	else if (strcmp(name, "pg_basebackup_options") == 0)
 		strncpy(options->pg_basebackup_options, value, MAXLEN);
 	else if (strcmp(name, "tablespace_mapping") == 0)
-		tablespace_list_append(options, value);
+		tablespace_list_append(&options->tablespace_mapping, value);
 	else if (strcmp(name, "restore_command") == 0)
 		strncpy(options->restore_command, value, MAXLEN);
 	else if (strcmp(name, "recovery_min_apply_delay") == 0)
@@ -2356,7 +2384,7 @@ copy_config_file_options(t_configuration_options *original, t_configuration_opti
  * Adapted from pg_basebackup.c
  */
 static void
-tablespace_list_append(t_configuration_options *options, const char *arg)
+tablespace_list_append(TablespaceList *tablespace_mapping, const char *arg)
 {
 	TablespaceListCell *cell = NULL;
 	char	   *dst = NULL;
@@ -2407,12 +2435,12 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	canonicalize_path(cell->old_dir);
 	canonicalize_path(cell->new_dir);
 
-	if (options->tablespace_mapping.tail)
-		options->tablespace_mapping.tail->next = cell;
+	if (tablespace_mapping->tail)
+		tablespace_mapping->tail->next = cell;
 	else
-		options->tablespace_mapping.head = cell;
+		tablespace_mapping->head = cell;
 
-	options->tablespace_mapping.tail = cell;
+	tablespace_mapping->tail = cell;
 }
 
 

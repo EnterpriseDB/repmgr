@@ -85,7 +85,8 @@ typedef enum
 	CONFIG_STRING,
 	CONFIG_FAILOVER_MODE,
 	CONFIG_CONNECTION_CHECK_TYPE,
-	CONFIG_EVENT_NOTIFICATION_LIST
+	CONFIG_EVENT_NOTIFICATION_LIST,
+	CONFIG_TABLESPACE_MAPPING
 } ConfigItemType;
 
 
@@ -101,6 +102,7 @@ typedef struct ConfigFileOption
 		failover_mode_opt *failovermodeptr;
 		ConnectionCheckType *checktypeptr;
 		EventNotificationList *notificationlistptr;
+		TablespaceList *tablespacemappingptr;
 	} val;
 	union {
 		int			intdefault;
@@ -108,7 +110,6 @@ typedef struct ConfigFileOption
 		bool		booldefault;
 		failover_mode_opt failovermodedefault;
 		ConnectionCheckType *checktypedefault;
-		EventNotificationList *notificationlistdefault;
 	} defval;
 	int				minval;
 	int				strmaxlen;
