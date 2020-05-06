@@ -76,6 +76,7 @@
 
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 
+
 /* conninfo params for the node we're operating on */
 t_conninfo_param_list source_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
@@ -1073,12 +1074,11 @@ main(int argc, char **argv)
 	 * clone'), however if available we'll parse it anyway for options like
 	 * 'log_level', 'use_replication_slots' etc.
 	 */
-	load_config(runtime_options.config_file,
-				runtime_options.verbose,
-				runtime_options.terse,
-				&config_file_options,
-				argv[0]);
-
+	load_config2(runtime_options.config_file,
+				 runtime_options.verbose,
+				 runtime_options.terse,
+				 argv[0]);
+	exit(0);
 	check_cli_parameters(action);
 
 	/*

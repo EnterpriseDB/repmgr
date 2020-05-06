@@ -40,11 +40,11 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
-static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
 
-static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
 
-static bool ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
 
 static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
@@ -101,19 +101,26 @@ STRING			\'([^'\\\n]|\\.|\'\')*\'
 extern bool
 ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
-	return ProcessConfigFile(base_dir, config_file, NULL, true, NULL, options, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, true, NULL, options, NULL, error_list, warning_list);
 }
+
+extern bool
+ProcessRepmgrConfigFile2(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list)
+{
+	return ProcessConfigFile(base_dir, config_file, NULL, true, NULL, NULL, NULL, error_list, warning_list);
+}
+
 
 extern bool
 ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
 {
 	printf("ProcessPostgresConfigFile(): base: %s file: %s\n", base_dir, config_file);
 
-	return ProcessConfigFile(base_dir, config_file, NULL, true, contents, NULL, error_list, warning_list);
+	return ProcessConfigFile(base_dir, config_file, NULL, true, contents, NULL, NULL, error_list, warning_list);
 }
 
 static bool
-ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *abs_path;
 	bool		success = true;
@@ -152,7 +159,7 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 	}
 	else
 	{
-		success = ProcessConfigFp(fp, abs_path, calling_file, base_dir, contents, options, error_list, warning_list);
+		success = ProcessConfigFp(fp, abs_path, calling_file, base_dir, contents, options, options2, error_list, warning_list);
 	}
 
 	free(abs_path);
@@ -161,7 +168,7 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 }
 
 static bool
-ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
 {
 	volatile bool OK = true;
 	volatile YY_BUFFER_STATE lex_buffer = NULL;
@@ -245,7 +252,7 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 			 * processed immediately.
 			 */
 			if (!ProcessConfigDirectory(base_dir, opt_value, config_file,
-										contents, options,
+										contents, options, options2,
 									    error_list, warning_list))
 				OK = false;
 			yy_switch_to_buffer(lex_buffer);
@@ -255,7 +262,7 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 		else if (base_dir != NULL && strcasecmp(opt_name, "include_if_exists") == 0)
 		{
 			if (!ProcessConfigFile(base_dir, opt_value, config_file,
-								   false, contents, options,
+								   false, contents, options, options2,
 								   error_list, warning_list))
 				OK = false;
 
@@ -266,7 +273,7 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 		else if (base_dir != NULL && strcasecmp(opt_name, "include") == 0)
 		{
 			if (!ProcessConfigFile(base_dir, opt_value, config_file,
-								   true, contents, options,
+								   true, contents, options, options2,
 								   error_list, warning_list))
 				OK = false;
 
@@ -292,6 +299,15 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 										 opt_name,
 										 opt_value);
 			}
+
+			if (1)
+			{
+				parse_configuration_item2(error_list,
+										 warning_list,
+										 opt_name,
+										 opt_value);
+			}
+
 		}
 
 
@@ -360,7 +376,7 @@ cleanup:
  * See ProcessConfigFp for further details.
  */
 static bool
-ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *directory;
 	DIR		   *d;
@@ -461,7 +477,7 @@ ProcessConfigDirectory(const char *base_dir, const char *includedir, const char 
 		for (i = 0; i < num_filenames; i++)
 		{
 			if (!ProcessConfigFile(base_dir, filenames[i], calling_file,
-								   true, contents, options,
+								   true, contents, options, options2,
 								   error_list, warning_list))
 			{
 				status = false;

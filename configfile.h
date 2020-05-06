@@ -78,6 +78,42 @@ typedef struct TablespaceList
 } TablespaceList;
 
 
+typedef enum
+{
+	CONFIG_BOOL,
+	CONFIG_INT,
+	CONFIG_STRING,
+	CONFIG_FAILOVER_MODE,
+	CONFIG_CONNECTION_CHECK_TYPE,
+	CONFIG_EVENT_NOTIFICATION_LIST
+} ConfigItemType;
+
+
+typedef struct ConfigFileOption
+{
+	const char	   *name;
+	ConfigItemType  type;
+    union
+    {
+        int		   *intptr;
+        char	   *strptr;
+		bool	   *boolptr;
+		failover_mode_opt *failovermodeptr;
+		ConnectionCheckType *checktypeptr;
+		EventNotificationList *notificationlistptr;
+	} val;
+	union {
+		int			intdefault;
+		const char *strdefault;
+		bool		booldefault;
+		failover_mode_opt failovermodedefault;
+		ConnectionCheckType *checktypedefault;
+		EventNotificationList *notificationlistdefault;
+	} defval;
+	int				minval;
+	int				strmaxlen;
+} ConfigFileOption;
+
 typedef struct
 {
 	/* node information */
@@ -251,8 +287,9 @@ extern t_configuration_options config_file_options;
 		 "", "", \
 		/* undocumented test settings */ \
 		0 \
- }
+}
 
+extern t_configuration_options config_file_options;
 
 
 typedef struct
@@ -320,9 +357,12 @@ void		set_progname(const char *argv0);
 const char *progname(void);
 
 void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
+void		load_config2(const char *config_file, bool verbose, bool terse, char *argv0);
+
 bool		reload_config(t_server_type server_type);
 
 void		parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
+void		parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
@@ -346,12 +386,16 @@ const char *format_failover_mode(failover_mode_opt failover);
 
 /* called by repmgr-client and repmgrd */
 void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
+
 void		print_item_list(ItemList *item_list);
 const char *print_connection_check_type(ConnectionCheckType type);
+char 	   *print_event_notification_list(EventNotificationList *list);
 
 extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
 
 extern bool ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+
+extern bool ProcessRepmgrConfigFile2(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list);
 
 extern bool ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list);
 

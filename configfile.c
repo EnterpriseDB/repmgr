@@ -35,12 +35,98 @@ static bool config_file_provided = false;
 bool		config_file_found = false;
 t_configuration_options config_file_options;
 
+
+t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
+
+struct ConfigFileOption config_file_options2[] =
+{
+
+	/* ================
+	 * node information
+	 * ================
+	 */
+	/* node_id */
+	{
+		"node_id",
+		CONFIG_INT,
+		{ .intptr = &config_file_options.node_id },
+		{ .intdefault = UNKNOWN_NODE_ID },
+		MIN_NODE_ID,
+		-1
+	},
+	/* node_name */
+	{
+		"node_name",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.node_name },
+		{ .strdefault = NULL },
+		-1,
+		sizeof(config_file_options.node_name)
+	},
+
+	/* ======================
+	 * standby clone settings
+	 * ======================
+	 */
+	/* use_replication_slots */
+	{
+		"use_replication_slots",
+		CONFIG_BOOL,
+		{ .boolptr = &config_file_options.use_replication_slots },
+		{ .booldefault = false },
+		-1,
+		-1
+	},
+	/* ================
+	 * repmgrd settings
+	 * ================
+	 */
+	/* failover */
+	{
+		"failover",
+		CONFIG_FAILOVER_MODE,
+		{ .failovermodeptr = &config_file_options.failover },
+		{ .failovermodedefault = FAILOVER_MANUAL },
+		-1,
+		-1
+	},
+	/* connection_check_type */
+	{
+		"connection_check_type",
+		CONFIG_CONNECTION_CHECK_TYPE,
+		{ .checktypeptr = &config_file_options.connection_check_type },
+		{ .checktypedefault = CHECK_PING },
+		-1,
+		-1
+	},
+	/* ===========================
+	 * event notification settings
+	 * ===========================
+	 */
+	{
+		"event_notifications",
+		CONFIG_EVENT_NOTIFICATION_LIST,
+		{ .notificationlistptr = &config_file_options.event_notifications },
+		{ .notificationlistdefault = NULL },
+		-1,
+		-1
+	},
+	/* End-of-list marker */
+	{
+		NULL, CONFIG_INT, {}, {}, -1, -1
+	}
+};
+
+
 static void parse_config(bool terse);
+static void parse_config2(bool terse);
+
 static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static void _parse_config2(ItemList *error_list, ItemList *warning_list);
 
 static void _parse_line(char *buf, char *name, char *value);
-static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
-static void clear_event_notification_list(t_configuration_options *options);
+static void parse_event_notifications_list(EventNotificationList *event_notifications, const char *arg);
+static void clear_event_notification_list(EventNotificationList *event_notifications);
 
 static void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
 
@@ -245,6 +331,186 @@ end_search:
 	return;
 }
 
+void
+load_config2(const char *config_file, bool verbose, bool terse, char *argv0)
+{
+	struct stat stat_config;
+
+	/*
+	 * If a configuration file was provided, check it exists, otherwise emit
+	 * an error and terminate. We assume that if a user explicitly provides a
+	 * configuration file, they'll want to make sure it's used and not fall
+	 * back to any of the defaults.
+	 */
+	if (config_file != NULL && config_file[0] != '\0')
+	{
+		strncpy(config_file_path, config_file, MAXPGPATH);
+		canonicalize_path(config_file_path);
+
+		/* relative path supplied - convert to absolute path */
+		if (config_file_path[0] != '/')
+		{
+			PQExpBufferData fullpath;
+			char *pwd = NULL;
+
+			initPQExpBuffer(&fullpath);
+
+			/*
+			 * we'll attempt to use $PWD to derive the effective path; getcwd()
+			 * will likely resolve symlinks, which may result in a path which
+			 * isn't permanent (e.g. if filesystem mountpoints change).
+			 */
+			pwd = getenv("PWD");
+
+			if (pwd != NULL)
+			{
+				appendPQExpBufferStr(&fullpath, pwd);
+			}
+			else
+			{
+				/* $PWD not available - fall back to getcwd() */
+				char cwd[MAXPGPATH] = "";
+
+				if (getcwd(cwd, MAXPGPATH) == NULL)
+				{
+					log_error(_("unable to execute getcwd()"));
+					log_detail("%s", strerror(errno));
+
+					termPQExpBuffer(&fullpath);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				appendPQExpBufferStr(&fullpath, cwd);
+			}
+
+			appendPQExpBuffer(&fullpath,
+							  "/%s", config_file_path);
+
+			log_debug("relative configuration file converted to:\n  \"%s\"",
+					  fullpath.data);
+
+			strncpy(config_file_path, fullpath.data, MAXPGPATH);
+
+			termPQExpBuffer(&fullpath);
+
+			canonicalize_path(config_file_path);
+		}
+
+
+		if (stat(config_file_path, &stat_config) != 0)
+		{
+			log_error(_("provided configuration file \"%s\" not found"),
+					  config_file);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+
+		if (verbose == true)
+		{
+			log_notice(_("using provided configuration file \"%s\""), config_file);
+		}
+
+		config_file_provided = true;
+		config_file_found = true;
+	}
+
+
+	/*-----------
+	 * If no configuration file was provided, attempt to find a default file
+	 * in this order:
+	 *  - location provided by packager
+	 *  - current directory
+	 *  - /etc/repmgr.conf
+	 *  - default sysconfdir
+	 *
+	 * here we just check for the existence of the file; parse_config() will
+	 * handle read errors etc.
+	 *
+	 *-----------
+	 */
+	if (config_file_provided == false)
+	{
+		/* packagers: if feasible, patch configuration file path into "package_conf_file" */
+		char		package_conf_file[MAXPGPATH] = "";
+		char		my_exec_path[MAXPGPATH] = "";
+		char		sysconf_etc_path[MAXPGPATH] = "";
+
+		/* 1. location provided by packager */
+		if (package_conf_file[0] != '\0')
+		{
+			if (verbose == true)
+				fprintf(stdout, _("INFO: checking for package configuration file \"%s\"\n"), package_conf_file);
+
+			if (stat(package_conf_file, &stat_config) == 0)
+			{
+				strncpy(config_file_path, package_conf_file, MAXPGPATH);
+				config_file_found = true;
+				goto end_search;
+			}
+		}
+
+		/* 2 "./repmgr.conf" */
+		log_verbose(LOG_INFO, _("looking for configuration file in current directory\n"));
+
+		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
+		canonicalize_path(config_file_path);
+
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 3. "/etc/repmgr.conf" */
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in /etc\n"));
+
+		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 4. default sysconfdir */
+		if (find_my_exec(argv0, my_exec_path) < 0)
+		{
+			fprintf(stderr, _("ERROR: %s: could not find own program executable\n"), argv0);
+			exit(EXIT_FAILURE);
+		}
+
+		get_etc_path(my_exec_path, sysconf_etc_path);
+
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in \"%s\"\n"), sysconf_etc_path);
+
+		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+end_search:
+		if (verbose == true)
+		{
+			if (config_file_found == true)
+			{
+				fprintf(stdout, _("INFO: configuration file found at: \"%s\"\n"), config_file_path);
+			}
+			else
+			{
+				fprintf(stdout, _("INFO: no configuration file provided or found\n"));
+			}
+		}
+	}
+
+	parse_config2(terse);
+
+	return;
+}
+
 
 static void
 parse_config(bool terse)
@@ -271,6 +537,255 @@ parse_config(bool terse)
 	return;
 }
 
+
+
+static void
+parse_config2(bool terse)
+{
+	/* Collate configuration file errors here for friendlier reporting */
+	static ItemList config_errors = {NULL, NULL};
+	static ItemList config_warnings = {NULL, NULL};
+
+	_parse_config2(&config_errors, &config_warnings);
+
+	/* errors found - exit after printing details, and any warnings */
+	if (config_errors.head != NULL)
+	{
+		exit_with_config_file_errors(&config_errors, &config_warnings, terse);
+	}
+
+	if (terse == false && config_warnings.head != NULL)
+	{
+		log_warning(_("the following problems were found in the configuration file:"));
+
+		print_item_list(&config_warnings);
+	}
+
+	return;
+}
+
+
+static void
+_parse_config2(ItemList *error_list, ItemList *warning_list)
+{
+	FILE	   *fp;
+	char		base_directory[MAXPGPATH];
+
+
+	/*
+	 * If no configuration file available (user didn't specify and none found
+	 * in the default locations), return with default values
+	 */
+	if (config_file_found == false)
+	{
+		log_verbose(LOG_NOTICE,
+					_("no configuration file provided and no default file found - "
+					  "continuing with default values"));
+		return;
+	}
+
+	/*
+	 * A configuration file has been found, either provided by the user or
+	 * found in one of the default locations. Sanity check whether we
+	 * can open it, and fail with an error about the nature of the file
+	 * (provided or default) if not. We do this here rather than having
+	 * to teach the configuration file parser the difference.
+	 */
+
+	fp = fopen(config_file_path, "r");
+
+	if (fp == NULL)
+	{
+		if (config_file_provided)
+		{
+			log_error(_("unable to open provided configuration file \"%s\"; terminating"),
+					  config_file_path);
+		}
+		else
+		{
+			log_error(_("unable to open default configuration file \"%s\"; terminating"),
+					  config_file_path);
+		}
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	fclose(fp);
+
+	strncpy(base_directory, config_file_path, MAXPGPATH);
+	canonicalize_path(base_directory);
+	get_parent_directory(base_directory);
+
+	// XXX fail here if processing issue found
+	(void) ProcessRepmgrConfigFile2(config_file_path, base_directory, error_list, warning_list);
+
+	/* check required parameters */
+	// ...
+
+	{
+		ConfigFileOption *option = &config_file_options2[0];
+		int i = 0;
+
+		do {
+			switch (option->type)
+			{
+				case CONFIG_INT:
+					printf(" %s: %i\n", option->name, *option->val.intptr);
+					break;
+				case CONFIG_STRING:
+					printf(" %s: %s\n", option->name, option->val.strptr);
+					break;
+				case CONFIG_BOOL:
+					printf(" %s: %s\n", option->name, format_bool(*option->val.boolptr));
+					break;
+				case CONFIG_FAILOVER_MODE:
+					printf(" %s: %s\n", option->name, format_failover_mode(*option->val.failovermodeptr));
+					break;
+				case CONFIG_CONNECTION_CHECK_TYPE:
+					printf(" %s: %s\n", option->name, print_connection_check_type(*option->val.checktypeptr));
+					break;
+				case CONFIG_EVENT_NOTIFICATION_LIST:
+				{
+					char *list_str = print_event_notification_list(option->val.notificationlistptr);
+					printf(" %s: %s\n", option->name, list_str);
+					pfree(list_str);
+					break;
+				}
+			}
+			i++;
+			option = &config_file_options2[i];
+		} while (option->name != NULL);
+	}
+}
+
+
+void
+parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
+{
+	ConfigFileOption *option = &config_file_options2[0];
+	int i = 0;
+
+	do {
+		if (strcmp(name, option->name) == 0)
+		{
+			//printf("%s = '%s'\n", name, value);
+
+			switch (option->type)
+			{
+				case CONFIG_INT:
+					*(int *)option->val.intptr = repmgr_atoi(value, name, error_list, option->minval);
+					break;
+				case CONFIG_STRING:
+					strncpy((char *)option->val.strptr, value, option->strmaxlen);
+					break;
+				case CONFIG_BOOL:
+					*(bool *)option->val.boolptr = parse_bool(value, name, error_list);
+					break;
+				case CONFIG_FAILOVER_MODE:
+				{
+					if (strcmp(value, "manual") == 0)
+					{
+						*(failover_mode_opt *)option->val.failovermodeptr = FAILOVER_MANUAL;
+					}
+					else if (strcmp(value, "automatic") == 0)
+					{
+						*(failover_mode_opt *)option->val.failovermodeptr = FAILOVER_AUTOMATIC;
+					}
+					else
+					{
+						item_list_append_format(error_list,
+												_("value for \"%s\" must be \"automatic\" or \"manual\"\n"),
+												name);
+					}
+					break;
+				}
+				case CONFIG_CONNECTION_CHECK_TYPE:
+				{
+					if (strcasecmp(value, "ping") == 0)
+					{
+						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_PING;
+					}
+					else if (strcasecmp(value, "connection") == 0)
+					{
+						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_CONNECTION;
+					}
+					else if (strcasecmp(value, "query") == 0)
+					{
+						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_QUERY;
+					}
+					else
+					{
+						item_list_append_format(error_list,
+												_("value for \"%s\" must be \"ping\", \"connection\" or \"query\"\n"),
+												name);
+					}
+					break;
+				}
+				case CONFIG_EVENT_NOTIFICATION_LIST:
+				{
+					parse_event_notifications_list((EventNotificationList *)&option->val.notificationlistptr, value);
+				}
+				default:
+					log_error("encountered unknown configuration type %i when processing \"%s\"",
+							  (int)option->type,
+							  option->name);
+			}
+
+		}
+		i++;
+		option = &config_file_options2[i];
+	} while (option->name);
+
+
+	/* If we reach here, the configuration item is either deprecated or unknown */
+	if (strcmp(name, "cluster") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"cluster\" is deprecated and will be ignored"));
+	}
+	else if (strcmp(name, "node") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"node\" has been renamed to \"node_id\""));
+	}
+	else if (strcmp(name, "upstream_node") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"upstream_node\" has been removed; use \"--upstream-node-id\" when cloning a standby"));
+	}
+	else if (strcmp(name, "loglevel") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"loglevel\" has been renamed to \"log_level\""));
+	}
+	else if (strcmp(name, "logfacility") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"logfacility\" has been renamed to \"log_facility\""));
+	}
+	else if (strcmp(name, "logfile") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"logfile\" has been renamed to \"log_file\""));
+	}
+	else if (strcmp(name, "master_reponse_timeout") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
+	}
+	else if (strcmp(name, "retry_promote_interval_secs") == 0)
+	{
+		item_list_append(warning_list,
+						 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));
+	}
+	else
+	{
+		// why not just append to the warning list?
+		//log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
+	}
+
+}
+
 /*
  * This creates a parsed representation of the configuration file in a location provided
  * by the caller.
@@ -285,7 +800,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 * Clear lists pointing to allocated memory
 	 */
 
-	clear_event_notification_list(options);
+	clear_event_notification_list(&options->event_notifications);
 	tablespace_list_free(options);
 
 	/* Initialize configuration options with sensible defaults */
@@ -830,7 +1345,7 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	{
 		/* store unparsed value for comparison when reloading config */
 		strncpy(options->event_notifications_orig, value, sizeof(options->event_notifications_orig));
-		parse_event_notifications_list(options, value);
+		parse_event_notifications_list(&options->event_notifications, value);
 	}
 
 	/* barman settings */
@@ -1820,7 +2335,7 @@ copy_config_file_options(t_configuration_options *original, t_configuration_opti
 	if (original->event_notifications.head != NULL)
 	{
 		/* For the event notifications, we can just reparse the string */
-		parse_event_notifications_list(copy, original->event_notifications_orig);
+		parse_event_notifications_list(&copy->event_notifications, original->event_notifications_orig);
 	}
 
 	if (original->tablespace_mapping.head != NULL)
@@ -2081,7 +2596,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
  */
 
 static void
-parse_event_notifications_list(t_configuration_options *options, const char *arg)
+parse_event_notifications_list(EventNotificationList *event_notifications, const char *arg)
 {
 	const char *arg_ptr = NULL;
 	char		event_type_buf[MAXLEN] = "";
@@ -2113,16 +2628,16 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 
 			strncpy(cell->event_type, event_type_buf, MAXLEN);
 
-			if (options->event_notifications.tail)
+			if (event_notifications->tail)
 			{
-				options->event_notifications.tail->next = cell;
+				event_notifications->tail->next = cell;
 			}
 			else
 			{
-				options->event_notifications.head = cell;
+				event_notifications->head = cell;
 			}
 
-			options->event_notifications.tail = cell;
+			event_notifications->tail = cell;
 
 			memset(event_type_buf, 0, MAXLEN);
 			dst_ptr = event_type_buf;
@@ -2141,14 +2656,14 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 
 
 static void
-clear_event_notification_list(t_configuration_options *options)
+clear_event_notification_list(EventNotificationList *event_notifications)
 {
-	if (options->event_notifications.head != NULL)
+	if (event_notifications->head != NULL)
 	{
 		EventNotificationListCell *cell;
 		EventNotificationListCell *next_cell;
 
-		cell = options->event_notifications.head;
+		cell = event_notifications->head;
 
 		while (cell != NULL)
 		{
@@ -2363,6 +2878,35 @@ print_connection_check_type(ConnectionCheckType type)
 	return "UNKNOWN";
 }
 
+
+
+char *
+print_event_notification_list(EventNotificationList *list)
+{
+	PQExpBufferData buf;
+	char *ptr;
+	EventNotificationListCell *cell;
+
+	initPQExpBuffer(&buf);
+	cell = list->head;
+
+	while (cell != NULL)
+	{
+		appendPQExpBufferStr(&buf, cell->event_type);
+
+		if (cell->next)
+			appendPQExpBufferStr(&buf, ", ");
+
+		cell = cell->next;
+	}
+
+	ptr = palloc0(strlen(buf.data) + 1);
+	strncpy(ptr, buf.data, strlen(buf.data));
+
+	termPQExpBuffer(&buf);
+
+	return ptr;
+}
 
 
 
