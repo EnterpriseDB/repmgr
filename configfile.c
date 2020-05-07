@@ -1,5 +1,5 @@
 /*
- * config.c - parse repmgr.conf and other configuration-related functionality
+ * configfile.c - parse repmgr.conf and other configuration-related functionality
  *
  * Copyright (c) 2ndQuadrant, 2010-2020
  *
