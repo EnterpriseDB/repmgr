@@ -40,11 +40,11 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
-static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list);
 
-static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list);
 
-static bool ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list);
+static bool ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list);
 
 static char *AbsoluteConfigLocation(const char *base_dir, const char *location, const char *calling_file);
 
@@ -120,7 +120,7 @@ ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValu
 }
 
 static bool
-ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFile(const char *base_dir, const char *config_file, const char *calling_file, bool strict, KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *abs_path;
 	bool		success = true;
@@ -168,7 +168,7 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 }
 
 static bool
-ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
+ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, const char *base_dir, KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list)
 {
 	volatile bool OK = true;
 	volatile YY_BUFFER_STATE lex_buffer = NULL;
@@ -376,7 +376,7 @@ cleanup:
  * See ProcessConfigFp for further details.
  */
 static bool
-ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileOption *options2, ItemList *error_list, ItemList *warning_list)
+ProcessConfigDirectory(const char *base_dir, const char *includedir, const char *calling_file,  KeyValueList *contents, t_configuration_options *options, ConfigFileSetting *options2, ItemList *error_list, ItemList *warning_list)
 {
 	char	   *directory;
 	DIR		   *d;

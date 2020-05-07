@@ -106,8 +106,11 @@
 #define DEFAULT_RECONNECTION_ATTEMPTS        6	 /* seconds */
 #define DEFAULT_RECONNECTION_INTERVAL        10  /* seconds */
 #define DEFAULT_MONITORING_INTERVAL          2	 /* seconds */
+#define DEFAULT_DEGRADED_MONITORING_TIMEOUT  -1  /* seconds */
 #define DEFAULT_ASYNC_QUERY_TIMEOUT          60  /* seconds */
 #define DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT 60  /* seconds */
+#define DEFAULT_REPMGRD_STANDBY_STARTUP_TIMEOUT -1 /*seconds */
+#define DEFAULT_CONNECTION_CHECK_TYPE        CHECK_PING
 #define DEFAULT_PRIMARY_FOLLOW_TIMEOUT       60  /* seconds */
 #define DEFAULT_STANDBY_FOLLOW_TIMEOUT       30  /* seconds */
 #define DEFAULT_ARCHIVE_READY_WARNING        16  /* WAL files */

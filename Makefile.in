@@ -59,8 +59,11 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 REPMGR_CLIENT_OBJS = repmgr-client.o \
 	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-witness.o \
 	repmgr-action-cluster.o repmgr-action-node.o repmgr-action-service.o repmgr-action-daemon.o \
-	configfile.o configfile-scan.o log.o strutil.o controldata.o dirutil.o compat.o dbutils.o sysutils.o
-REPMGRD_OBJS = repmgrd.o repmgrd-physical.o configfile.o configfile-scan.o log.o dbutils.o strutil.o controldata.o compat.o sysutils.o
+	configdata.o configfile.o configfile-scan.o log.o strutil.o controldata.o dirutil.o compat.o \
+	dbutils.o sysutils.o
+REPMGRD_OBJS = repmgrd.o repmgrd-physical.o configdata.o configfile.o configfile-scan.o log.o \
+	dbutils.o strutil.o controldata.o compat.o sysutils.o
+
 DATE=$(shell date "+%Y-%m-%d")
 
 repmgr_version.h: repmgr_version.h.in

@@ -90,7 +90,7 @@ typedef enum
 } ConfigItemType;
 
 
-typedef struct ConfigFileOption
+typedef struct ConfigFileSetting
 {
 	const char	   *name;
 	ConfigItemType  type;
@@ -111,9 +111,21 @@ typedef struct ConfigFileOption
 		failover_mode_opt failovermodedefault;
 		ConnectionCheckType *checktypedefault;
 	} defval;
-	int				minval;
-	int				strmaxlen;
-} ConfigFileOption;
+	union {
+		int				intminval;
+	} minval;
+	union {
+		int				strmaxlen;
+	} maxval;
+	struct {
+		void (*process_func)(const char *, const char *, char *, ItemList *errors);
+		void (*postprocess_func)(const char *, const char *, char *, ItemList *errors);
+		bool	   *providedptr;
+	} process;
+} ConfigFileSetting;
+
+/* Declare the main configfile structure for client applications */
+extern ConfigFileSetting config_file_settings[];
 
 typedef struct
 {
@@ -375,6 +387,9 @@ int repmgr_atoi(const char *s,
 			const char *config_item,
 			ItemList *error_list,
 			int minval);
+
+void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
+void repmgr_canonicalize_path(const char *name, const char *value, char *config_item, ItemList *errors);
 
 bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 							t_basebackup_options *backup_options,

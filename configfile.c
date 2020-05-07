@@ -33,98 +33,6 @@ const static char *_progname = NULL;
 char		config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
 bool		config_file_found = false;
-t_configuration_options config_file_options;
-
-
-t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
-
-struct ConfigFileOption config_file_options2[] =
-{
-
-	/* ================
-	 * node information
-	 * ================
-	 */
-	/* node_id */
-	{
-		"node_id",
-		CONFIG_INT,
-		{ .intptr = &config_file_options.node_id },
-		{ .intdefault = UNKNOWN_NODE_ID },
-		MIN_NODE_ID,
-		-1
-	},
-	/* node_name */
-	{
-		"node_name",
-		CONFIG_STRING,
-		{ .strptr = config_file_options.node_name },
-		{ .strdefault = NULL },
-		-1,
-		sizeof(config_file_options.node_name)
-	},
-
-	/* ======================
-	 * standby clone settings
-	 * ======================
-	 */
-	/* use_replication_slots */
-	{
-		"use_replication_slots",
-		CONFIG_BOOL,
-		{ .boolptr = &config_file_options.use_replication_slots },
-		{ .booldefault = false },
-		-1,
-		-1
-	},
-	/* tablespace_mapping */
-	{
-		"tablespace_mapping",
-		CONFIG_TABLESPACE_MAPPING,
-		{ .tablespacemappingptr = &config_file_options.tablespace_mapping },
-		{},
-		-1,
-		-1
-	},
-	/* ================
-	 * repmgrd settings
-	 * ================
-	 */
-	/* failover */
-	{
-		"failover",
-		CONFIG_FAILOVER_MODE,
-		{ .failovermodeptr = &config_file_options.failover },
-		{ .failovermodedefault = FAILOVER_MANUAL },
-		-1,
-		-1
-	},
-	/* connection_check_type */
-	{
-		"connection_check_type",
-		CONFIG_CONNECTION_CHECK_TYPE,
-		{ .checktypeptr = &config_file_options.connection_check_type },
-		{ .checktypedefault = CHECK_PING },
-		-1,
-		-1
-	},
-	/* ===========================
-	 * event notification settings
-	 * ===========================
-	 */
-	{
-		"event_notifications",
-		CONFIG_EVENT_NOTIFICATION_LIST,
-		{ .notificationlistptr = &config_file_options.event_notifications },
-		{},
-		-1,
-		-1
-	},
-	/* End-of-list marker */
-	{
-		NULL, CONFIG_INT, {}, {}, -1, -1
-	}
-};
 
 
 static void parse_config(bool terse);
@@ -136,8 +44,6 @@ static void _parse_config2(ItemList *error_list, ItemList *warning_list);
 static void _parse_line(char *buf, char *name, char *value);
 static void parse_event_notifications_list(EventNotificationList *event_notifications, const char *arg);
 static void clear_event_notification_list(EventNotificationList *event_notifications);
-
-static void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
 
 static void copy_config_file_options(t_configuration_options *original, t_configuration_options *copy);
 
@@ -632,41 +538,41 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 	// ...
 
 	{
-		ConfigFileOption *option = &config_file_options2[0];
+		ConfigFileSetting *setting = &config_file_settings[0];
 		int i = 0;
 
 		do {
-			switch (option->type)
+			switch (setting->type)
 			{
 				case CONFIG_INT:
-					printf(" %s: %i\n", option->name, *option->val.intptr);
+					printf(" %s: %i\n", setting->name, *setting->val.intptr);
 					break;
 				case CONFIG_STRING:
-					printf(" %s: %s\n", option->name, option->val.strptr);
+					printf(" %s: %s\n", setting->name, setting->val.strptr);
 					break;
 				case CONFIG_BOOL:
-					printf(" %s: %s\n", option->name, format_bool(*option->val.boolptr));
+					printf(" %s: %s\n", setting->name, format_bool(*setting->val.boolptr));
 					break;
 				case CONFIG_FAILOVER_MODE:
-					printf(" %s: %s\n", option->name, format_failover_mode(*option->val.failovermodeptr));
+					printf(" %s: %s\n", setting->name, format_failover_mode(*setting->val.failovermodeptr));
 					break;
 				case CONFIG_CONNECTION_CHECK_TYPE:
-					printf(" %s: %s\n", option->name, print_connection_check_type(*option->val.checktypeptr));
+					printf(" %s: %s\n", setting->name, print_connection_check_type(*setting->val.checktypeptr));
 					break;
 				case CONFIG_EVENT_NOTIFICATION_LIST:
 				{
-					char *list_str = print_event_notification_list(option->val.notificationlistptr);
-					printf(" %s: %s\n", option->name, list_str);
+					char *list_str = print_event_notification_list(setting->val.notificationlistptr);
+					printf(" %s: %s\n", setting->name, list_str);
 					pfree(list_str);
 					break;
 				}
 				case CONFIG_TABLESPACE_MAPPING:
 				{
 					TablespaceListCell *cell;
-					for (cell = option->val.tablespacemappingptr->head; cell; cell = cell->next)
+					for (cell = setting->val.tablespacemappingptr->head; cell; cell = cell->next)
 					{
 						printf(" %s: %s=%s\n",
-							   option->name,
+							   setting->name,
 							   cell->old_dir,
 							   cell->new_dir);
 					}
@@ -674,8 +580,8 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 				}
 			}
 			i++;
-			option = &config_file_options2[i];
-		} while (option->name != NULL);
+			setting = &config_file_settings[i];
+		} while (setting->name != NULL);
 	}
 }
 
@@ -683,34 +589,73 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 void
 parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
 {
-	ConfigFileOption *option = &config_file_options2[0];
+	ConfigFileSetting *setting = &config_file_settings[0];
 	int i = 0;
 
 	do {
-		if (strcmp(name, option->name) == 0)
+		if (strcmp(name, setting->name) == 0)
 		{
-			//printf("%s = '%s'\n", name, value);
-
-			switch (option->type)
+			switch (setting->type)
 			{
-				case CONFIG_INT:
-					*(int *)option->val.intptr = repmgr_atoi(value, name, error_list, option->minval);
-					break;
-				case CONFIG_STRING:
-					strncpy((char *)option->val.strptr, value, option->strmaxlen);
-					break;
+				/* Generic types */
 				case CONFIG_BOOL:
-					*(bool *)option->val.boolptr = parse_bool(value, name, error_list);
+				{
+					*(bool *)setting->val.boolptr = parse_bool(value, name, error_list);
 					break;
+				}
+				case CONFIG_INT:
+				{
+					*(int *)setting->val.intptr = repmgr_atoi(value, name, error_list, setting->minval.intminval);
+					break;
+				}
+				case CONFIG_STRING:
+				{
+					if (strlen(value) > setting->maxval.strmaxlen)
+					{
+						item_list_append_format(error_list,
+												_("value for \"%s\" must contain fewer than %i characters (current length: %i)"),
+												name,
+												setting->maxval.strmaxlen,
+												(int)strlen(value));
+					}
+					else
+					{
+						/* custom function for processing this string value */
+						if (setting->process.process_func != NULL)
+						{
+							(*setting->process.process_func)(name, value, (char *)setting->val.strptr, error_list);
+						}
+						/* otherwise copy as-is */
+						else
+						{
+							strncpy((char *)setting->val.strptr, value, setting->maxval.strmaxlen);
+						}
+
+						/* post-processing, e.g. path canonicalisation */
+						if (setting->process.postprocess_func != NULL)
+						{
+							(*setting->process.postprocess_func)(name, value, (char *)setting->val.strptr, error_list);
+						}
+
+						if (setting->process.providedptr != NULL)
+						{
+							*(bool *)setting->process.providedptr = true;
+						}
+					}
+					break;
+				}
+
+
+				/* repmgr types */
 				case CONFIG_FAILOVER_MODE:
 				{
 					if (strcmp(value, "manual") == 0)
 					{
-						*(failover_mode_opt *)option->val.failovermodeptr = FAILOVER_MANUAL;
+						*(failover_mode_opt *)setting->val.failovermodeptr = FAILOVER_MANUAL;
 					}
 					else if (strcmp(value, "automatic") == 0)
 					{
-						*(failover_mode_opt *)option->val.failovermodeptr = FAILOVER_AUTOMATIC;
+						*(failover_mode_opt *)setting->val.failovermodeptr = FAILOVER_AUTOMATIC;
 					}
 					else
 					{
@@ -724,15 +669,15 @@ parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const ch
 				{
 					if (strcasecmp(value, "ping") == 0)
 					{
-						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_PING;
+						*(ConnectionCheckType *)setting->val.checktypeptr = CHECK_PING;
 					}
 					else if (strcasecmp(value, "connection") == 0)
 					{
-						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_CONNECTION;
+						*(ConnectionCheckType *)setting->val.checktypeptr = CHECK_CONNECTION;
 					}
 					else if (strcasecmp(value, "query") == 0)
 					{
-						*(ConnectionCheckType *)option->val.checktypeptr = CHECK_QUERY;
+						*(ConnectionCheckType *)setting->val.checktypeptr = CHECK_QUERY;
 					}
 					else
 					{
@@ -744,28 +689,31 @@ parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const ch
 				}
 				case CONFIG_EVENT_NOTIFICATION_LIST:
 				{
-					parse_event_notifications_list((EventNotificationList *)&option->val.notificationlistptr,
+					parse_event_notifications_list((EventNotificationList *)&setting->val.notificationlistptr,
 												   value);
 					break;
 				}
 				case CONFIG_TABLESPACE_MAPPING:
 				{
-					tablespace_list_append((TablespaceList *)option->val.tablespacemappingptr, value);
+					tablespace_list_append((TablespaceList *)setting->val.tablespacemappingptr, value);
 					break;
 				}
 				default:
+					/* this should never happen */
 					log_error("encountered unknown configuration type %i when processing \"%s\"",
-							  (int)option->type,
-							  option->name);
+							  (int)setting->type,
+							  setting->name);
 			}
 
+			/* Configuration item found - we can stop processing here */
+			return;
 		}
 		i++;
-		option = &config_file_options2[i];
-	} while (option->name);
-
+		setting = &config_file_settings[i];
+	} while (setting->name);
 
 	/* If we reach here, the configuration item is either deprecated or unknown */
+
 	if (strcmp(name, "cluster") == 0)
 	{
 		item_list_append(warning_list,
@@ -808,10 +756,9 @@ parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const ch
 	}
 	else
 	{
-		// why not just append to the warning list?
-		//log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
+		item_list_append_format(warning_list,
+								_("%s='%s': unknown name/value pair provided; ignoring"), name, value);
 	}
-
 }
 
 /*
@@ -1157,6 +1104,15 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	{
 		strncpy(options->conninfo, value, MAXLEN);
 	}
+	else if (strcmp(name, "replication_user") == 0)
+	{
+		if (strlen(value) < sizeof(options->replication_user))
+			strncpy(options->replication_user, value, sizeof(options->replication_user));
+		else
+			item_list_append_format(error_list,
+									_("value for \"replication_user\" must contain fewer than %lu characters"),
+									sizeof(options->replication_user));
+	}
 	else if (strcmp(name, "data_directory") == 0)
 	{
 		strncpy(options->data_directory, value, MAXPGPATH);
@@ -1167,15 +1123,7 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 		strncpy(options->config_directory, value, MAXPGPATH);
 		canonicalize_path(options->config_directory);
 	}
-	else if (strcmp(name, "replication_user") == 0)
-	{
-		if (strlen(value) < sizeof(options->replication_user))
-			strncpy(options->replication_user, value, sizeof(options->replication_user));
-		else
-			item_list_append_format(error_list,
-									_("value for \"replication_user\" must contain fewer than %lu characters"),
-									sizeof(options->replication_user));
-	}
+
 	else if (strcmp(name, "pg_bindir") == 0)
 		strncpy(options->pg_bindir, value, MAXPGPATH);
 	else if (strcmp(name, "repmgr_bindir") == 0)
@@ -1190,12 +1138,12 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	}
 
 	/* log settings */
-	else if (strcmp(name, "log_file") == 0)
-		strncpy(options->log_file, value, MAXLEN);
 	else if (strcmp(name, "log_level") == 0)
 		strncpy(options->log_level, value, MAXLEN);
 	else if (strcmp(name, "log_facility") == 0)
 		strncpy(options->log_facility, value, MAXLEN);
+	else if (strcmp(name, "log_file") == 0)
+		strncpy(options->log_file, value, MAXLEN);
 	else if (strcmp(name, "log_status_interval") == 0)
 		options->log_status_interval = repmgr_atoi(value, name, error_list, 0);
 
@@ -1204,10 +1152,11 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 		options->use_replication_slots = parse_bool(value, name, error_list);
 	else if (strcmp(name, "pg_basebackup_options") == 0)
 		strncpy(options->pg_basebackup_options, value, MAXLEN);
-	else if (strcmp(name, "tablespace_mapping") == 0)
-		tablespace_list_append(&options->tablespace_mapping, value);
 	else if (strcmp(name, "restore_command") == 0)
 		strncpy(options->restore_command, value, MAXLEN);
+	else if (strcmp(name, "tablespace_mapping") == 0)
+		tablespace_list_append(&options->tablespace_mapping, value);
+
 	else if (strcmp(name, "recovery_min_apply_delay") == 0)
 	{
 		parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
@@ -1272,10 +1221,10 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 							 _("value for \"failover\" must be \"automatic\" or \"manual\"\n"));
 		}
 	}
-	else if (strcmp(name, "priority") == 0)
-		options->priority = repmgr_atoi(value, name, error_list, 0);
 	else if (strcmp(name, "location") == 0)
 		strncpy(options->location, value, sizeof(options->location));
+	else if (strcmp(name, "priority") == 0)
+		options->priority = repmgr_atoi(value, name, error_list, 0);
 	else if (strcmp(name, "promote_command") == 0)
 		strncpy(options->promote_command, value, sizeof(options->promote_command));
 	else if (strcmp(name, "follow_command") == 0)
@@ -1330,8 +1279,6 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 		options->election_rerun_interval = repmgr_atoi(value, name, error_list, 0);
 	else if (strcmp(name, "child_nodes_check_interval") == 0)
 		options->child_nodes_check_interval = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "child_nodes_disconnect_command") == 0)
-		snprintf(options->child_nodes_disconnect_command, sizeof(options->child_nodes_disconnect_command), "%s", value);
 	else if (strcmp(name, "child_nodes_disconnect_min_count") == 0)
 		options->child_nodes_disconnect_min_count = repmgr_atoi(value, name, error_list, -1);
 	else if (strcmp(name, "child_nodes_connected_min_count") == 0)
@@ -1340,6 +1287,8 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 		options->child_nodes_connected_include_witness = parse_bool(value, name, error_list);
 	else if (strcmp(name, "child_nodes_disconnect_timeout") == 0)
 		options->child_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+	else if (strcmp(name, "child_nodes_disconnect_command") == 0)
+		snprintf(options->child_nodes_disconnect_command, sizeof(options->child_nodes_disconnect_command), "%s", value);
 
 	/* witness settings */
 	else if (strcmp(name, "witness_sync_interval") == 0)
@@ -1599,7 +1548,7 @@ _parse_line(char *buf, char *name, char *value)
 }
 
 
-static void
+void
 parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors)
 {
 	char	   *ptr = NULL;
@@ -1610,7 +1559,8 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 		if (errors != NULL)
 		{
 			item_list_append_format(errors,
-									_("invalid value provided for \"%s\""),
+									_("invalid value \"%s\" provided for \"%s\""),
+									value,
 									name);
 		}
 		return;
@@ -1626,8 +1576,9 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 			{
 				item_list_append_format(
 										errors,
-										_("value provided for \"%s\" must be one of ms/s/min/h/d"),
-										name);
+										_("value for \"%s\" must be one of ms/s/min/h/d (provided: \"%s\")"),
+										name,
+										value);
 				return;
 			}
 		}
@@ -2283,6 +2234,13 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
 
 	termPQExpBuffer(&errors);
 	return (int32) longval;
+}
+
+void
+repmgr_canonicalize_path(const char *name, const char *value, char *config_item, ItemList *errors)
+{
+	// XXX check for errors?
+	canonicalize_path(config_item);
 }
 
 
