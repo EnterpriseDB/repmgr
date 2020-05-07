@@ -35,11 +35,11 @@ static bool config_file_provided = false;
 bool		config_file_found = false;
 
 
+static void parse_config_old(bool terse);
 static void parse_config(bool terse);
-static void parse_config2(bool terse);
 
-static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
-static void _parse_config2(ItemList *error_list, ItemList *warning_list);
+static void _parse_config_old(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static void _parse_config(ItemList *error_list, ItemList *warning_list);
 
 static void _parse_line(char *buf, char *name, char *value);
 static void parse_event_notifications_list(EventNotificationList *event_notifications, const char *arg);
@@ -67,7 +67,187 @@ progname(void)
 }
 
 void
-load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0)
+load_config_old(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0)
+{
+	struct stat stat_config;
+
+	/*
+	 * If a configuration file was provided, check it exists, otherwise emit
+	 * an error and terminate. We assume that if a user explicitly provides a
+	 * configuration file, they'll want to make sure it's used and not fall
+	 * back to any of the defaults.
+	 */
+	if (config_file != NULL && config_file[0] != '\0')
+	{
+		strncpy(config_file_path, config_file, MAXPGPATH);
+		canonicalize_path(config_file_path);
+
+		/* relative path supplied - convert to absolute path */
+		if (config_file_path[0] != '/')
+		{
+			PQExpBufferData fullpath;
+			char *pwd = NULL;
+
+			initPQExpBuffer(&fullpath);
+
+			/*
+			 * we'll attempt to use $PWD to derive the effective path; getcwd()
+			 * will likely resolve symlinks, which may result in a path which
+			 * isn't permanent (e.g. if filesystem mountpoints change).
+			 */
+			pwd = getenv("PWD");
+
+			if (pwd != NULL)
+			{
+				appendPQExpBufferStr(&fullpath, pwd);
+			}
+			else
+			{
+				/* $PWD not available - fall back to getcwd() */
+				char cwd[MAXPGPATH] = "";
+
+				if (getcwd(cwd, MAXPGPATH) == NULL)
+				{
+					log_error(_("unable to execute getcwd()"));
+					log_detail("%s", strerror(errno));
+
+					termPQExpBuffer(&fullpath);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				appendPQExpBufferStr(&fullpath, cwd);
+			}
+
+			appendPQExpBuffer(&fullpath,
+							  "/%s", config_file_path);
+
+			log_debug("relative configuration file converted to:\n  \"%s\"",
+					  fullpath.data);
+
+			strncpy(config_file_path, fullpath.data, MAXPGPATH);
+
+			termPQExpBuffer(&fullpath);
+
+			canonicalize_path(config_file_path);
+		}
+
+
+		if (stat(config_file_path, &stat_config) != 0)
+		{
+			log_error(_("provided configuration file \"%s\" not found"),
+					  config_file);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+
+		if (verbose == true)
+		{
+			log_notice(_("using provided configuration file \"%s\""), config_file);
+		}
+
+		config_file_provided = true;
+		config_file_found = true;
+	}
+
+
+	/*-----------
+	 * If no configuration file was provided, attempt to find a default file
+	 * in this order:
+	 *  - location provided by packager
+	 *  - current directory
+	 *  - /etc/repmgr.conf
+	 *  - default sysconfdir
+	 *
+	 * here we just check for the existence of the file; parse_config() will
+	 * handle read errors etc.
+	 *
+	 *-----------
+	 */
+	if (config_file_provided == false)
+	{
+		/* packagers: if feasible, patch configuration file path into "package_conf_file" */
+		char		package_conf_file[MAXPGPATH] = "";
+		char		my_exec_path[MAXPGPATH] = "";
+		char		sysconf_etc_path[MAXPGPATH] = "";
+
+		/* 1. location provided by packager */
+		if (package_conf_file[0] != '\0')
+		{
+			if (verbose == true)
+				fprintf(stdout, _("INFO: checking for package configuration file \"%s\"\n"), package_conf_file);
+
+			if (stat(package_conf_file, &stat_config) == 0)
+			{
+				strncpy(config_file_path, package_conf_file, MAXPGPATH);
+				config_file_found = true;
+				goto end_search;
+			}
+		}
+
+		/* 2 "./repmgr.conf" */
+		log_verbose(LOG_INFO, _("looking for configuration file in current directory\n"));
+
+		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
+		canonicalize_path(config_file_path);
+
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 3. "/etc/repmgr.conf" */
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in /etc\n"));
+
+		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 4. default sysconfdir */
+		if (find_my_exec(argv0, my_exec_path) < 0)
+		{
+			fprintf(stderr, _("ERROR: %s: could not find own program executable\n"), argv0);
+			exit(EXIT_FAILURE);
+		}
+
+		get_etc_path(my_exec_path, sysconf_etc_path);
+
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in \"%s\"\n"), sysconf_etc_path);
+
+		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+end_search:
+		if (verbose == true)
+		{
+			if (config_file_found == true)
+			{
+				fprintf(stdout, _("INFO: configuration file found at: \"%s\"\n"), config_file_path);
+			}
+			else
+			{
+				fprintf(stdout, _("INFO: no configuration file provided or found\n"));
+			}
+		}
+	}
+
+	parse_config_old(terse);
+
+	return;
+}
+
+void
+load_config(const char *config_file, bool verbose, bool terse, char *argv0)
 {
 	struct stat stat_config;
 
@@ -246,185 +426,32 @@ end_search:
 	return;
 }
 
-void
-load_config2(const char *config_file, bool verbose, bool terse, char *argv0)
+
+static void
+parse_config_old(bool terse)
 {
-	struct stat stat_config;
+	/* Collate configuration file errors here for friendlier reporting */
+	static ItemList config_errors = {NULL, NULL};
+	static ItemList config_warnings = {NULL, NULL};
 
-	/*
-	 * If a configuration file was provided, check it exists, otherwise emit
-	 * an error and terminate. We assume that if a user explicitly provides a
-	 * configuration file, they'll want to make sure it's used and not fall
-	 * back to any of the defaults.
-	 */
-	if (config_file != NULL && config_file[0] != '\0')
+	_parse_config_old(&config_file_options, &config_errors, &config_warnings);
+
+	/* errors found - exit after printing details, and any warnings */
+	if (config_errors.head != NULL)
 	{
-		strncpy(config_file_path, config_file, MAXPGPATH);
-		canonicalize_path(config_file_path);
-
-		/* relative path supplied - convert to absolute path */
-		if (config_file_path[0] != '/')
-		{
-			PQExpBufferData fullpath;
-			char *pwd = NULL;
-
-			initPQExpBuffer(&fullpath);
-
-			/*
-			 * we'll attempt to use $PWD to derive the effective path; getcwd()
-			 * will likely resolve symlinks, which may result in a path which
-			 * isn't permanent (e.g. if filesystem mountpoints change).
-			 */
-			pwd = getenv("PWD");
-
-			if (pwd != NULL)
-			{
-				appendPQExpBufferStr(&fullpath, pwd);
-			}
-			else
-			{
-				/* $PWD not available - fall back to getcwd() */
-				char cwd[MAXPGPATH] = "";
-
-				if (getcwd(cwd, MAXPGPATH) == NULL)
-				{
-					log_error(_("unable to execute getcwd()"));
-					log_detail("%s", strerror(errno));
-
-					termPQExpBuffer(&fullpath);
-					exit(ERR_BAD_CONFIG);
-				}
-
-				appendPQExpBufferStr(&fullpath, cwd);
-			}
-
-			appendPQExpBuffer(&fullpath,
-							  "/%s", config_file_path);
-
-			log_debug("relative configuration file converted to:\n  \"%s\"",
-					  fullpath.data);
-
-			strncpy(config_file_path, fullpath.data, MAXPGPATH);
-
-			termPQExpBuffer(&fullpath);
-
-			canonicalize_path(config_file_path);
-		}
-
-
-		if (stat(config_file_path, &stat_config) != 0)
-		{
-			log_error(_("provided configuration file \"%s\" not found"),
-					  config_file);
-			log_detail("%s", strerror(errno));
-			exit(ERR_BAD_CONFIG);
-		}
-
-
-		if (verbose == true)
-		{
-			log_notice(_("using provided configuration file \"%s\""), config_file);
-		}
-
-		config_file_provided = true;
-		config_file_found = true;
+		exit_with_config_file_errors(&config_errors, &config_warnings, terse);
 	}
 
-
-	/*-----------
-	 * If no configuration file was provided, attempt to find a default file
-	 * in this order:
-	 *  - location provided by packager
-	 *  - current directory
-	 *  - /etc/repmgr.conf
-	 *  - default sysconfdir
-	 *
-	 * here we just check for the existence of the file; parse_config() will
-	 * handle read errors etc.
-	 *
-	 *-----------
-	 */
-	if (config_file_provided == false)
+	if (terse == false && config_warnings.head != NULL)
 	{
-		/* packagers: if feasible, patch configuration file path into "package_conf_file" */
-		char		package_conf_file[MAXPGPATH] = "";
-		char		my_exec_path[MAXPGPATH] = "";
-		char		sysconf_etc_path[MAXPGPATH] = "";
+		log_warning(_("the following problems were found in the configuration file:"));
 
-		/* 1. location provided by packager */
-		if (package_conf_file[0] != '\0')
-		{
-			if (verbose == true)
-				fprintf(stdout, _("INFO: checking for package configuration file \"%s\"\n"), package_conf_file);
-
-			if (stat(package_conf_file, &stat_config) == 0)
-			{
-				strncpy(config_file_path, package_conf_file, MAXPGPATH);
-				config_file_found = true;
-				goto end_search;
-			}
-		}
-
-		/* 2 "./repmgr.conf" */
-		log_verbose(LOG_INFO, _("looking for configuration file in current directory\n"));
-
-		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
-		canonicalize_path(config_file_path);
-
-		if (stat(config_file_path, &stat_config) == 0)
-		{
-			config_file_found = true;
-			goto end_search;
-		}
-
-		/* 3. "/etc/repmgr.conf" */
-		if (verbose == true)
-			fprintf(stdout, _("INFO: looking for configuration file in /etc\n"));
-
-		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
-		if (stat(config_file_path, &stat_config) == 0)
-		{
-			config_file_found = true;
-			goto end_search;
-		}
-
-		/* 4. default sysconfdir */
-		if (find_my_exec(argv0, my_exec_path) < 0)
-		{
-			fprintf(stderr, _("ERROR: %s: could not find own program executable\n"), argv0);
-			exit(EXIT_FAILURE);
-		}
-
-		get_etc_path(my_exec_path, sysconf_etc_path);
-
-		if (verbose == true)
-			fprintf(stdout, _("INFO: looking for configuration file in \"%s\"\n"), sysconf_etc_path);
-
-		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
-		if (stat(config_file_path, &stat_config) == 0)
-		{
-			config_file_found = true;
-			goto end_search;
-		}
-
-end_search:
-		if (verbose == true)
-		{
-			if (config_file_found == true)
-			{
-				fprintf(stdout, _("INFO: configuration file found at: \"%s\"\n"), config_file_path);
-			}
-			else
-			{
-				fprintf(stdout, _("INFO: no configuration file provided or found\n"));
-			}
-		}
+		print_item_list(&config_warnings);
 	}
-
-	parse_config2(terse);
 
 	return;
 }
+
 
 
 static void
@@ -434,34 +461,7 @@ parse_config(bool terse)
 	static ItemList config_errors = {NULL, NULL};
 	static ItemList config_warnings = {NULL, NULL};
 
-	_parse_config(&config_file_options, &config_errors, &config_warnings);
-
-	/* errors found - exit after printing details, and any warnings */
-	if (config_errors.head != NULL)
-	{
-		exit_with_config_file_errors(&config_errors, &config_warnings, terse);
-	}
-
-	if (terse == false && config_warnings.head != NULL)
-	{
-		log_warning(_("the following problems were found in the configuration file:"));
-
-		print_item_list(&config_warnings);
-	}
-
-	return;
-}
-
-
-
-static void
-parse_config2(bool terse)
-{
-	/* Collate configuration file errors here for friendlier reporting */
-	static ItemList config_errors = {NULL, NULL};
-	static ItemList config_warnings = {NULL, NULL};
-
-	_parse_config2(&config_errors, &config_warnings);
+	_parse_config(&config_errors, &config_warnings);
 
 	/* errors found - exit after printing details, and any warnings */
 	if (config_errors.head != NULL)
@@ -481,7 +481,7 @@ parse_config2(bool terse)
 
 
 static void
-_parse_config2(ItemList *error_list, ItemList *warning_list)
+_parse_config(ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
 	char		base_directory[MAXPGPATH];
@@ -532,7 +532,8 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 	get_parent_directory(base_directory);
 
 	// XXX fail here if processing issue found
-	(void) ProcessRepmgrConfigFile2(config_file_path, base_directory, error_list, warning_list);
+	(void) ProcessRepmgrConfigFile(config_file_path, base_directory, error_list, warning_list);
+
 
 	/* check required parameters */
 	// ...
@@ -587,11 +588,10 @@ _parse_config2(ItemList *error_list, ItemList *warning_list)
 
 
 void
-parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
+parse_configuration_item(ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
 {
 	ConfigFileSetting *setting = &config_file_settings[0];
 	int i = 0;
-
 	do {
 		if (strcmp(name, setting->name) == 0)
 		{
@@ -766,7 +766,7 @@ parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const ch
  * by the caller.
  */
 static void
-_parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+_parse_config_old(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
 	char		base_directory[MAXPGPATH];
@@ -994,8 +994,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	get_parent_directory(base_directory);
 
 	// XXX fail here if processing issue found
-	(void) ProcessRepmgrConfigFile(config_file_path, base_directory, options, error_list, warning_list);
-
+	(void) ProcessRepmgrConfigFileOld(config_file_path, base_directory, options, error_list, warning_list);
 
 	/* check required parameters */
 	if (options->node_id == UNKNOWN_NODE_ID)
@@ -1085,7 +1084,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 
 void
-parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
+parse_configuration_item_old(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
 {
 	if (strcmp(name, "node_id") == 0)
 	{
@@ -1669,7 +1668,7 @@ reload_config(t_server_type server_type)
 	 * checks here. We do still need to check for repmgrd-specific
 	 * requirements.
 	 */
-	_parse_config(&config_file_options, &config_errors, &config_warnings);
+	_parse_config(&config_errors, &config_warnings);
 
 	if (config_file_options.failover == FAILOVER_AUTOMATIC
 		&& (server_type == PRIMARY || server_type == STANDBY))

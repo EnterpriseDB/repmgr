@@ -252,7 +252,7 @@ main(int argc, char **argv)
 	 * locations). If no conifguration file is available, or it can't be parsed
 	 * parse_config() will abort anyway, with an appropriate message.
 	 */
-	load_config(config_file, verbose, false, &config_file_options, argv[0]);
+	load_config(config_file, verbose, false, argv[0]);
 
 	/* Determine pid file location, unless --no-pid-file supplied */
 

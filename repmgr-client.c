@@ -1074,11 +1074,12 @@ main(int argc, char **argv)
 	 * clone'), however if available we'll parse it anyway for options like
 	 * 'log_level', 'use_replication_slots' etc.
 	 */
-	load_config2(runtime_options.config_file,
-				 runtime_options.verbose,
-				 runtime_options.terse,
-				 argv[0]);
-	exit(0);
+	load_config(runtime_options.config_file,
+				runtime_options.verbose,
+				runtime_options.terse,
+				argv[0]);
+
+	//exit(0);
 	check_cli_parameters(action);
 
 	/*

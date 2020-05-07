@@ -369,13 +369,13 @@ typedef struct
 void		set_progname(const char *argv0);
 const char *progname(void);
 
-void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
-void		load_config2(const char *config_file, bool verbose, bool terse, char *argv0);
+void		load_config_old(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
+void		load_config(const char *config_file, bool verbose, bool terse, char *argv0);
 
 bool		reload_config(t_server_type server_type);
 
-void		parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
-void		parse_configuration_item2(ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
+void		parse_configuration_item_old(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
+void		parse_configuration_item(ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
@@ -409,9 +409,9 @@ char 	   *print_event_notification_list(EventNotificationList *list);
 
 extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
 
-extern bool ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+extern bool ProcessRepmgrConfigFileOld(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
-extern bool ProcessRepmgrConfigFile2(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list);
+extern bool ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list);
 
 extern bool ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list);
 
