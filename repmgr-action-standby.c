@@ -6440,7 +6440,7 @@ initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_no
 	{
 		if (source_server_version_num < 90400)
 		{
-			log_error(_("tablespace mapping not supported in PostgreSQL 9.3, ignoring"));
+			log_warning(_("tablespace mapping not supported in PostgreSQL 9.3, ignoring"));
 		}
 		else
 		{
