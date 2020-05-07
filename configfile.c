@@ -2411,8 +2411,8 @@ tablespace_list_copy(t_configuration_options *original, t_configuration_options 
 	{
 		TablespaceListCell *copy_cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
 
-		strncpy(copy_cell->old_dir, orig_cell->old_dir, sizeof(orig_cell->old_dir));
-		strncpy(copy_cell->new_dir, orig_cell->new_dir, sizeof(orig_cell->new_dir));
+		strncpy(copy_cell->old_dir, orig_cell->old_dir, sizeof(copy_cell->old_dir));
+		strncpy(copy_cell->new_dir, orig_cell->new_dir, sizeof(copy_cell->new_dir));
 
 		if (copy->tablespace_mapping.tail)
 			copy->tablespace_mapping.tail->next = copy_cell;
