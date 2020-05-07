@@ -181,7 +181,7 @@ struct ConfigFileSetting config_file_settings[] =
 		"use_replication_slots",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.use_replication_slots },
-		{ .booldefault = false },
+		{ .booldefault = DEFAULT_USE_REPLICATION_SLOTS },
 		{},
 		{},
 		{}
@@ -246,13 +246,12 @@ struct ConfigFileSetting config_file_settings[] =
 		"use_primary_conninfo_password",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.use_primary_conninfo_password },
-		{ .booldefault = false },
+		{ .booldefault = DEFAULT_USE_PRIMARY_CONNINFO_PASSWORD },
 		{},
 		{},
 		{}
 	},
 	/* passfile */
-	// XXX canonicalize path?
 	{
 		"passfile",
 		CONFIG_STRING,
@@ -512,7 +511,7 @@ struct ConfigFileSetting config_file_settings[] =
 		"monitoring_history",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.monitoring_history },
-		{ .booldefault = false },
+		{ .booldefault = DEFAULT_MONITORING_HISTORY },
 		{},
 		{},
 		{}
@@ -572,7 +571,7 @@ struct ConfigFileSetting config_file_settings[] =
 		"standby_disconnect_on_failover",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.standby_disconnect_on_failover },
-		{ .booldefault = false },
+		{ .booldefault = DEFAULT_STANDBY_DISCONNECT_ON_FAILOVER },
 		{},
 		{},
 		{}
@@ -602,8 +601,7 @@ struct ConfigFileSetting config_file_settings[] =
 		"primary_visibility_consensus",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.primary_visibility_consensus },
-		// XXX constant
-		{ .booldefault = false },
+		{ .booldefault =  DEFAULT_PRIMARY_VISIBILITY_CONSENSUS },
 		{},
 		{},
 		{}
@@ -853,7 +851,7 @@ struct ConfigFileSetting config_file_settings[] =
 		"ssh_options",
 		CONFIG_STRING,
 		{ .strptr = config_file_options.ssh_options },
-		{ .strdefault = "" },
+		{ .strdefault = DEFAULT_SSH_OPTIONS },
 		{},
 		{ .strmaxlen = sizeof(config_file_options.ssh_options) },
 		{}

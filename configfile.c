@@ -939,7 +939,7 @@ _parse_config_old(t_configuration_options *options, ItemList *error_list, ItemLi
 	 */
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
-	strncpy(options->ssh_options, "-q -o ConnectTimeout=10", sizeof(options->ssh_options));
+	strncpy(options->ssh_options, DEFAULT_SSH_OPTIONS, sizeof(options->ssh_options));
 
 	/*---------------------------
 	 * undocumented test settings

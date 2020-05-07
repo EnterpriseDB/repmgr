@@ -1079,7 +1079,6 @@ main(int argc, char **argv)
 				runtime_options.terse,
 				argv[0]);
 
-	//exit(0);
 	check_cli_parameters(action);
 
 	/*
