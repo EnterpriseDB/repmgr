@@ -43,7 +43,7 @@ static void _do_node_restore_config(void);
 
 static void do_node_check_replication_connection(void);
 static CheckStatus do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
-static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
@@ -797,6 +797,7 @@ do_node_check(void)
 	{
 		return_code = do_node_check_downstream(conn,
 											   runtime_options.output_mode,
+											   &node_info,
 											   NULL);
 		PQfinish(conn);
 		exit(return_code);
@@ -888,7 +889,7 @@ do_node_check(void)
 	if (do_node_check_upstream(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
-	if (do_node_check_downstream(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
+	if (do_node_check_downstream(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
 	if (do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
@@ -1183,7 +1184,7 @@ do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list
 
 
 static CheckStatus
-do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+do_node_check_downstream(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
 {
 	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
@@ -1234,7 +1235,13 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 		}
 	}
 
-	if (missing_nodes_count == 0)
+	if (node_info->type == WITNESS)
+	{
+		/* witness is not connecting to any upstream */
+		appendPQExpBufferStr(&details,
+							 _("N/A - node is a witness"));
+	}
+	else if (missing_nodes_count == 0)
 	{
 		if (expected_nodes_count == 0)
 			appendPQExpBufferStr(&details,
@@ -1367,7 +1374,13 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 
 	initPQExpBuffer(&details);
 
-	if (get_node_record(conn, node_info->upstream_node_id, &upstream_node_info) != RECORD_FOUND)
+	if (node_info->type == WITNESS)
+	{
+		/* witness is not connecting to any upstream */
+		appendPQExpBufferStr(&details,
+							 _("N/A - node is a witness"));
+	}
+	else if (get_node_record(conn, node_info->upstream_node_id, &upstream_node_info) != RECORD_FOUND)
 	{
 		if (get_recovery_type(conn) == RECTYPE_STANDBY)
 		{
