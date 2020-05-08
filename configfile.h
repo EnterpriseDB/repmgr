@@ -109,7 +109,7 @@ typedef struct ConfigFileSetting
 		const char *strdefault;
 		bool		booldefault;
 		failover_mode_opt failovermodedefault;
-		ConnectionCheckType *checktypedefault;
+		ConnectionCheckType checktypedefault;
 	} defval;
 	union {
 		int				intminval;

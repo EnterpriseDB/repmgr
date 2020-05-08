@@ -485,7 +485,55 @@ _parse_config(ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
 	char		base_directory[MAXPGPATH];
+	bool		config_ok;
+	ConfigFileSetting *setting;
+	int i = 0;
 
+	/*
+	 * Clear lists pointing to allocated memory
+	 */
+
+	clear_event_notification_list(&config_file_options.event_notifications);
+	tablespace_list_free(&config_file_options);
+
+	/*
+	 * Initialise with default values
+	 */
+	setting = &config_file_settings[0];
+
+	do {
+		switch (setting->type)
+		{
+			case CONFIG_INT:
+				*setting->val.intptr = setting->defval.intdefault;
+				break;
+			case CONFIG_BOOL:
+				*setting->val.boolptr = setting->defval.booldefault;
+				break;
+			case CONFIG_STRING:
+			{
+				memset((char *)setting->val.strptr, 0, setting->maxval.strmaxlen);
+				strncpy((char *)setting->val.strptr, setting->defval.strdefault, setting->maxval.strmaxlen);
+				break;
+			}
+			case CONFIG_FAILOVER_MODE:
+				*setting->val.failovermodeptr = setting->defval.failovermodedefault;
+				break;
+			case CONFIG_CONNECTION_CHECK_TYPE:
+				*setting->val.checktypeptr = setting->defval.checktypedefault;
+				break;
+			case CONFIG_EVENT_NOTIFICATION_LIST:
+			case CONFIG_TABLESPACE_MAPPING:
+				/* no default for these types; lists cleared above */
+				break;
+			default:
+				/* this should never happen */
+				log_error("unhandled setting type %i", (int)setting->type);
+		}
+
+		i++;
+		setting = &config_file_settings[i];
+	} while (setting->name != NULL);
 
 	/*
 	 * If no configuration file available (user didn't specify and none found
@@ -531,58 +579,99 @@ _parse_config(ItemList *error_list, ItemList *warning_list)
 	canonicalize_path(base_directory);
 	get_parent_directory(base_directory);
 
-	// XXX fail here if processing issue found
-	(void) ProcessRepmgrConfigFile(config_file_path, base_directory, error_list, warning_list);
+	config_ok = ProcessRepmgrConfigFile(config_file_path, base_directory, error_list, warning_list);
 
 
-	/* check required parameters */
-	// ...
-
+	/*
+	 * Perform some more complex checks which the file processing step can't do,
+	 * including checking for required parameters and sanity-checking parameters
+	 * with dependencies on other parameters.
+	 */
+	if (config_ok == true)
 	{
-		ConfigFileSetting *setting = &config_file_settings[0];
-		int i = 0;
+		/* check required parameters */
+		if (config_file_options.node_id == UNKNOWN_NODE_ID)
+		{
+			item_list_append(error_list, _("\"node_id\": required parameter was not found"));
+		}
 
-		do {
-			switch (setting->type)
+		if (!strlen(config_file_options.node_name))
+		{
+			item_list_append(error_list, _("\"node_name\": required parameter was not found"));
+		}
+
+		if (!strlen(config_file_options.data_directory))
+		{
+			item_list_append(error_list, _("\"data_directory\": required parameter was not found"));
+		}
+
+		if (!strlen(config_file_options.conninfo))
+		{
+			item_list_append(error_list, _("\"conninfo\": required parameter was not found"));
+		}
+		else
+		{
+			/*
+			 * Basic sanity check of provided conninfo string; this will catch any
+			 * invalid parameters (but not values).
+			 */
+			char	   *conninfo_errmsg = NULL;
+
+			if (validate_conninfo_string(config_file_options.conninfo, &conninfo_errmsg) == false)
 			{
-				case CONFIG_INT:
-					printf(" %s: %i\n", setting->name, *setting->val.intptr);
-					break;
-				case CONFIG_STRING:
-					printf(" %s: %s\n", setting->name, setting->val.strptr);
-					break;
-				case CONFIG_BOOL:
-					printf(" %s: %s\n", setting->name, format_bool(*setting->val.boolptr));
-					break;
-				case CONFIG_FAILOVER_MODE:
-					printf(" %s: %s\n", setting->name, format_failover_mode(*setting->val.failovermodeptr));
-					break;
-				case CONFIG_CONNECTION_CHECK_TYPE:
-					printf(" %s: %s\n", setting->name, print_connection_check_type(*setting->val.checktypeptr));
-					break;
-				case CONFIG_EVENT_NOTIFICATION_LIST:
-				{
-					char *list_str = print_event_notification_list(setting->val.notificationlistptr);
-					printf(" %s: %s\n", setting->name, list_str);
-					pfree(list_str);
-					break;
-				}
-				case CONFIG_TABLESPACE_MAPPING:
-				{
-					TablespaceListCell *cell;
-					for (cell = setting->val.tablespacemappingptr->head; cell; cell = cell->next)
-					{
-						printf(" %s: %s=%s\n",
-							   setting->name,
-							   cell->old_dir,
-							   cell->new_dir);
-					}
-					break;
-				}
+				PQExpBufferData error_message_buf;
+				initPQExpBuffer(&error_message_buf);
+
+				appendPQExpBuffer(&error_message_buf,
+								  _("\"conninfo\": %s	(provided: \"%s\")"),
+								  conninfo_errmsg,
+								  config_file_options.conninfo);
+
+				item_list_append(error_list, error_message_buf.data);
+				termPQExpBuffer(&error_message_buf);
 			}
-			i++;
-			setting = &config_file_settings[i];
-		} while (setting->name != NULL);
+		}
+
+		/* set values for parameters which default to other parameters */
+
+		/*
+		 * From 4.1, "repmgrd_standby_startup_timeout" replaces "standby_reconnect_timeout"
+		 * in repmgrd; fall back to "standby_reconnect_timeout" if no value explicitly provided
+		 */
+		if (config_file_options.repmgrd_standby_startup_timeout == -1)
+		{
+			config_file_options.repmgrd_standby_startup_timeout = config_file_options.standby_reconnect_timeout;
+		}
+
+		/* add warning about changed "barman_" parameter meanings */
+		if ((config_file_options.barman_host[0] == '\0' && config_file_options.barman_server[0] != '\0') ||
+			(config_file_options.barman_host[0] != '\0' && config_file_options.barman_server[0] == '\0'))
+		{
+			item_list_append(error_list,
+							 _("use \"barman_host\" for the hostname of the Barman server"));
+			item_list_append(error_list,
+							 _("use \"barman_server\" for the name of the [server] section in the Barman configuration file"));
+		}
+
+		/* other sanity checks */
+
+		if (config_file_options.archive_ready_warning >= config_file_options.archive_ready_critical)
+		{
+			item_list_append(error_list,
+							 _("\"archive_ready_critical\" must be greater than  \"archive_ready_warning\""));
+		}
+
+		if (config_file_options.replication_lag_warning >= config_file_options.replication_lag_critical)
+		{
+			item_list_append(error_list,
+							 _("\"replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
+		}
+
+		if (config_file_options.standby_reconnect_timeout < config_file_options.node_rejoin_timeout)
+		{
+			item_list_append(error_list,
+							 _("\"standby_reconnect_timeout\" must be equal to or greater than \"node_rejoin_timeout\""));
+		}
 	}
 }
 
