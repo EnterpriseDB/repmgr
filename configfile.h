@@ -244,67 +244,6 @@ typedef struct
 /* Declare the main configfile structure for client applications */
 extern t_configuration_options config_file_options;
 
-
-/*
- * The following will initialize the structure with a minimal set of options;
- * actual defaults are set in parse_config() before parsing the configuration file
- */
-
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { \
-		/* node information */ \
-		UNKNOWN_NODE_ID, "", "", "", "", "", "", "", REPLICATION_TYPE_PHYSICAL,	\
-		/* log settings */ \
-		"", "", "", DEFAULT_LOG_STATUS_INTERVAL, \
-		/* standby clone settings */ \
-		false, "", "", { NULL, NULL }, "", false, "", false, "", \
-		/* standby promote settings */ \
-		DEFAULT_PROMOTE_CHECK_TIMEOUT, DEFAULT_PROMOTE_CHECK_INTERVAL, \
-		/* standby follow settings */ \
-		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
-		DEFAULT_STANDBY_FOLLOW_TIMEOUT,	\
-		/* standby switchover settings */ \
-		DEFAULT_SHUTDOWN_CHECK_TIMEOUT, \
-		DEFAULT_STANDBY_RECONNECT_TIMEOUT, \
-		DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT, \
-		/* node rejoin settings */ \
-		DEFAULT_NODE_REJOIN_TIMEOUT, \
-		/* node check settings */ \
-		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
-		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
-		/* witness settings */ \
-		DEFAULT_WITNESS_SYNC_INTERVAL, \
-		/* repmgrd settings */ \
-		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
-		DEFAULT_MONITORING_INTERVAL, \
-		DEFAULT_RECONNECTION_ATTEMPTS, \
-        DEFAULT_RECONNECTION_INTERVAL, \
-        false, -1, \
-		DEFAULT_ASYNC_QUERY_TIMEOUT, \
-		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT, \
-		-1, "", false, DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT, \
-		CHECK_PING, true, "", DEFAULT_ELECTION_RERUN_INTERVAL, \
-		DEFAULT_CHILD_NODES_CHECK_INTERVAL, \
-		DEFAULT_CHILD_NODES_DISCONNECT_MIN_COUNT, \
-		DEFAULT_CHILD_NODES_CONNECTED_MIN_COUNT, \
-		DEFAULT_CHILD_NODES_CONNECTED_INCLUDE_WITNESS, \
-		DEFAULT_CHILD_NODES_DISCONNECT_TIMEOUT, "", \
-		/* service settings */ \
-		"", "", "", "", "", "", \
-		/* repmgrd service settings */ \
-		"", "",  \
-		/* event notification settings */ \
-		"", "", { NULL, NULL }, \
-		/* barman settings */ \
-		"", "", "",	 \
-		/* rsync/ssh settings */ \
-		 "", "", \
-		/* undocumented test settings */ \
-		0 \
-}
-
-extern t_configuration_options config_file_options;
-
-
 typedef struct
 {
 	char		slot[MAXLEN];
@@ -369,12 +308,8 @@ typedef struct
 void		set_progname(const char *argv0);
 const char *progname(void);
 
-void		load_config_old(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
 void		load_config(const char *config_file, bool verbose, bool terse, char *argv0);
-
 bool		reload_config(t_server_type server_type);
-
-void		parse_configuration_item_old(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 void		parse_configuration_item(ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
@@ -408,8 +343,6 @@ const char *print_connection_check_type(ConnectionCheckType type);
 char 	   *print_event_notification_list(EventNotificationList *list);
 
 extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
-
-extern bool ProcessRepmgrConfigFileOld(const char *config_file, const char *base_dir, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 extern bool ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list);
 

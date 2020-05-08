@@ -23,7 +23,7 @@
 /*
  * Parsed configuration settings are stored here
  */
-t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
+t_configuration_options config_file_options;
 
 
 /*
@@ -132,7 +132,12 @@ struct ConfigFileSetting config_file_settings[] =
 	 * logging settings
 	 * ================
 	 */
-	/* log_level */
+
+	/*
+	 * log_level
+	 * NOTE: the default for "log_level" is set in log.c and does not need
+	 * to be initialised here
+	 */
 	{
 		"log_level",
 		CONFIG_STRING,
@@ -491,7 +496,7 @@ struct ConfigFileSetting config_file_settings[] =
 		CONFIG_INT,
 		{ .intptr = &config_file_options.reconnect_attempts },
 		{ .intdefault = DEFAULT_RECONNECTION_ATTEMPTS },
-		{ .intminval = 1 },
+		{ .intminval = 0 },
 		{},
 		{}
 	},
@@ -501,7 +506,7 @@ struct ConfigFileSetting config_file_settings[] =
 		CONFIG_INT,
 		{ .intptr = &config_file_options.reconnect_interval },
 		{ .intdefault = DEFAULT_RECONNECTION_INTERVAL },
-		{ .intminval = 1 },
+		{ .intminval = 0 },
 		{},
 		{}
 	},
@@ -522,7 +527,7 @@ struct ConfigFileSetting config_file_settings[] =
 		CONFIG_INT,
 		{ .intptr = &config_file_options.degraded_monitoring_timeout },
 		{ .intdefault = DEFAULT_DEGRADED_MONITORING_TIMEOUT },
-		{ .intminval = 1 },
+		{ .intminval = -1 },
 		{},
 		{}
 	},
