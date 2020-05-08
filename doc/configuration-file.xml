@@ -183,6 +183,14 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
   </para>
 
   <para>
+    In examples provided in this documentation, it is assumed the configuration file is located
+    at <filename>/etc/repmgr.conf</filename>. If &repmgr; is installed from a package, the
+    configuration file will probably be located at another location specified by the packager;
+    see appendix <xref linkend="appendix-packages"/> for configuration file locations in
+    different packaging systems.
+  </para>
+
+  <para>
    Note that if a file is explicitly specified with <literal>-f/--config-file</literal>,
    an error will be raised if it is not found or not readable, and no attempt will be made to
    check default locations; this is to prevent <application>repmgr</application> unexpectedly
