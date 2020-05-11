@@ -2522,7 +2522,10 @@ resume_wal_replay(PGconn *conn)
 /* Node record functions */
 /* ===================== */
 
-
+/*
+ * Note: init_defaults may only be false when the caller is refreshing a previously
+ * populated record.
+ */
 static RecordStatus
 _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults)
 {
@@ -2553,6 +2556,10 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init
 }
 
 
+/*
+ * Note: init_defaults may only be false when the caller is refreshing a previously
+ * populated record.
+ */
 static void
 _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_defaults)
 {
