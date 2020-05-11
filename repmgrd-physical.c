@@ -1328,6 +1328,7 @@ monitor_streaming_standby(void)
 	 */
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
+		close_connection(&upstream_conn);
 		log_error(_("unable connect to upstream node (ID: %i), terminating"),
 				  local_node_info.upstream_node_id);
 		log_hint(_("upstream node must be running before repmgrd can start"));
@@ -1339,8 +1340,8 @@ monitor_streaming_standby(void)
 
 	if (upstream_node_info.node_id == local_node_info.node_id)
 	{
-		PQfinish(upstream_conn);
-		upstream_conn = NULL;
+		close_connection(&upstream_conn);
+
 		return;
 	}
 
@@ -1364,6 +1365,8 @@ monitor_streaming_standby(void)
 
 		if (PQstatus(primary_conn) != CONNECTION_OK)
 		{
+			close_connection(&primary_conn);
+
 			log_error(_("unable to connect to primary node"));
 			log_hint(_("ensure the primary node is reachable from this node"));
 
@@ -1706,7 +1709,12 @@ monitor_streaming_standby(void)
 					}
 					else
 					{
-						if (primary_conn == NULL || PQstatus(primary_conn) != CONNECTION_OK)
+						if (primary_conn != NULL && PQstatus(primary_conn) != CONNECTION_OK)
+						{
+							close_connection(&primary_conn);
+						}
+
+						if (primary_conn == NULL)
 						{
 							primary_conn = establish_primary_db_connection(upstream_conn, false);
 						}
@@ -1852,6 +1860,7 @@ monitor_streaming_standby(void)
 
 							if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 							{
+								close_connection(&cell->node_info->conn);
 								log_debug("unable to connect to %i ... ", cell->node_info->node_id);
 								close_connection(&cell->node_info->conn);
 								continue;
@@ -2470,6 +2479,7 @@ monitor_streaming_witness(void)
 
 						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 						{
+							close_connection(&cell->node_info->conn);
 							log_debug("unable to connect to %i ... ", cell->node_info->node_id);
 							close_connection(&cell->node_info->conn);
 							continue;
@@ -2724,26 +2734,32 @@ do_primary_failover(void)
 			{
 				for (cell = check_sibling_nodes.head; cell; cell = cell->next)
 				{
-					pid_t sibling_wal_receiver_pid;
-
 					if (cell->node_info->conn == NULL)
 						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
-					sibling_wal_receiver_pid = (pid_t)get_wal_receiver_pid(cell->node_info->conn);
-
-					if (sibling_wal_receiver_pid == UNKNOWN_PID)
+					if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 					{
 						log_warning(_("unable to query WAL receiver PID on node \"%s\" (ID: %i)"),
 									cell->node_info->node_name,
 									cell->node_info->node_id);
+						close_connection(&cell->node_info->conn);
 					}
-					else if (sibling_wal_receiver_pid > 0)
+					else
 					{
-						log_info(_("WAL receiver PID on node node \"%s\" (ID: %i) is %i"),
-								 cell->node_info->node_name,
-								 cell->node_info->node_id,
-								 (int)sibling_wal_receiver_pid);
-						sibling_node_wal_receiver_connected = true;
+						pid_t sibling_wal_receiver_pid = (pid_t)get_wal_receiver_pid(cell->node_info->conn);
+
+						if (sibling_wal_receiver_pid == UNKNOWN_PID)
+						{
+							log_warning(_("unable to query WAL receiver PID on node %i"),
+										cell->node_info->node_id);
+						}
+						else if (sibling_wal_receiver_pid > 0)
+						{
+							log_info(_("WAL receiver PID on node %i is %i"),
+									 cell->node_info->node_id,
+									 sibling_wal_receiver_pid);
+							sibling_node_wal_receiver_connected = true;
+						}
 					}
 				}
 
@@ -3302,6 +3318,8 @@ do_upstream_standby_failover(void)
 		if (PQstatus(local_conn) == CONNECTION_OK)
 			break;
 
+		close_connection(&local_conn);
+
 		log_debug("sleeping 1 second; %i of %i (\"repmgrd_standby_startup_timeout\") attempts to reconnect to local node",
 				  i + 1,
 				  config_file_options.repmgrd_standby_startup_timeout);
@@ -3461,6 +3479,8 @@ promote_self(void)
 		log_warning(_("local database connection not available"));
 		log_detail("\n%s", PQerrorMessage(local_conn));
 
+		close_connection(&local_conn);
+
 		local_conn = establish_db_connection(local_node_info.conninfo, true);
 
 		/* assume node failed */
@@ -3468,6 +3488,9 @@ promote_self(void)
 		{
 			log_error(_("unable to reconnect to local node"));
 			log_detail("\n%s", PQerrorMessage(local_conn));
+
+			close_connection(&local_conn);
+
 			/* XXX handle this */
 			return FAILOVER_STATE_LOCAL_NODE_FAILURE;
 		}
@@ -3486,7 +3509,11 @@ promote_self(void)
 											   &primary_node_id,
 											   NULL);
 
-		if (PQstatus(upstream_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
+		if (PQstatus(upstream_conn) != CONNECTION_OK)
+		{
+			close_connection(&upstream_conn);
+		}
+		else if (primary_node_id == failed_primary.node_id)
 		{
 			PQExpBufferData event_details;
 
@@ -3824,13 +3851,15 @@ follow_new_primary(int new_primary_id)
 		if (PQstatus(local_conn) == CONNECTION_OK)
 			break;
 
+		close_connection(&local_conn);
+
 		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
 				  i + 1,
 				  config_file_options.repmgrd_standby_startup_timeout);
 		sleep(1);
 	}
 
-	if (PQstatus(local_conn) != CONNECTION_OK)
+	if (local_conn == NULL || PQstatus(local_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to reconnect to local node \"%s\" (ID: %i)"),
 				  local_node_info.node_name,
@@ -4195,6 +4224,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
 			close_connection(&cell->node_info->conn);
+
 			continue;
 		}
 
@@ -4879,6 +4909,8 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 	if (PQstatus(follow_target_repl_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to establish a replication connection to the follow target node"));
+
+		PQfinish(follow_target_repl_conn);
 		return false;
 	}
 
