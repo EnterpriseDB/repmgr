@@ -3513,8 +3513,6 @@ promote_self(void)
 			return FAILOVER_STATE_PRIMARY_REAPPEARED;
 		}
 
-		log_warning(_("promotion "));
-
 		create_event_notification(NULL,
 								  &config_file_options,
 								  local_node_info.node_id,
