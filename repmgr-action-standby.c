@@ -5627,6 +5627,7 @@ check_source_server()
 					{
 						uint64		test_system_identifier = system_identifier(cell->node_info->conn);
 						PQfinish(cell->node_info->conn);
+						cell->node_info->conn = NULL;
 
 						if (test_system_identifier != UNKNOWN_SYSTEM_IDENTIFIER)
 						{
@@ -5650,6 +5651,7 @@ check_source_server()
 					else
 					{
 						PQfinish(cell->node_info->conn);
+						cell->node_info->conn = NULL;
 					}
 				}
 				clear_node_info_list(&all_nodes);
