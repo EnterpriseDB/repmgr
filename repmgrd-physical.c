@@ -1852,6 +1852,7 @@ monitor_streaming_standby(void)
 							if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 							{
 								log_debug("unable to connect to %i ... ", cell->node_info->node_id);
+								close_connection(&cell->node_info->conn);
 								continue;
 							}
 
@@ -2464,6 +2465,7 @@ monitor_streaming_witness(void)
 						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 						{
 							log_debug("unable to connect to %i ... ", cell->node_info->node_id);
+							close_connection(&cell->node_info->conn);
 							continue;
 						}
 
@@ -3572,6 +3574,8 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 					 cell->node_info->node_name,
 					 cell->node_info->node_id);
 
+			close_connection(&cell->node_info->conn);
+
 			cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 		}
 
@@ -3582,6 +3586,7 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 						cell->node_info->node_id);
 			log_detail("\n%s", PQerrorMessage(cell->node_info->conn));
 
+			close_connection(&cell->node_info->conn);
 			continue;
 		}
 
@@ -4171,6 +4176,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
+			close_connection(&cell->node_info->conn);
 			continue;
 		}
 
