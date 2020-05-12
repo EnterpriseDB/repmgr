@@ -1560,8 +1560,9 @@ monitor_streaming_standby(void)
 
 							log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 									   upstream_node_info.node_name, upstream_node_info.node_id);
-							PQfinish(upstream_conn);
-							upstream_conn = NULL;
+
+							close_connection(&upstream_conn);
+
 							local_node_info.upstream_node_id = UNKNOWN_NODE_ID;
 
 							/* check local connection */
@@ -1571,7 +1572,7 @@ monitor_streaming_standby(void)
 							{
 								int i;
 
-								PQfinish(local_conn);
+								close_connection(&local_conn);
 
 								for (i = 0; i < config_file_options.repmgrd_standby_startup_timeout; i++)
 								{
@@ -1579,6 +1580,8 @@ monitor_streaming_standby(void)
 
 									if (PQstatus(local_conn) == CONNECTION_OK)
 										break;
+
+									close_connection(&local_conn);
 
 									log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
 											  i + 1,
@@ -2088,8 +2091,8 @@ loop:
 				{
 					log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 							   upstream_node_info.node_name, upstream_node_info.node_id);
-					PQfinish(primary_conn);
-					primary_conn = NULL;
+
+					close_connection(&primary_conn);
 
 					local_node_info.upstream_node_id = UNKNOWN_NODE_ID;
 					return;
@@ -2349,8 +2352,9 @@ monitor_streaming_witness(void)
 					{
 						log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 								   upstream_node_info.node_name, upstream_node_info.node_id);
-						PQfinish(primary_conn);
-						primary_conn = NULL;
+
+						close_connection(&primary_conn);
+
 						termPQExpBuffer(&event_details);
 						return;
 					}
@@ -2424,8 +2428,9 @@ monitor_streaming_witness(void)
 						log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 								   upstream_node_info.node_name,
 								   upstream_node_info.node_id);
-						PQfinish(primary_conn);
-						primary_conn = NULL;
+
+						close_connection(&primary_conn);
+
 						termPQExpBuffer(&event_details);
 						return;
 					}
@@ -2623,8 +2628,9 @@ loop:
 				{
 					log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 							   upstream_node_info.node_name, upstream_node_info.node_id);
-					PQfinish(primary_conn);
-					primary_conn = NULL;
+
+					close_connection(&primary_conn);
+
 					return;
 				}
 
@@ -4658,8 +4664,8 @@ check_connection(t_node_info *node_info, PGconn **conn)
 					node_info->node_name,
 					node_info->node_id);
 		log_detail("\n%s", PQerrorMessage(*conn));
-		PQfinish(*conn);
-		*conn = NULL;
+
+		close_connection(conn);
 	}
 
 	if (PQstatus(*conn) != CONNECTION_OK)
@@ -4668,13 +4674,14 @@ check_connection(t_node_info *node_info, PGconn **conn)
 				 node_info->node_name,
 				 node_info->node_id);
 
-		PQfinish(*conn);
+		close_connection(conn);
+
 		*conn = establish_db_connection(node_info->conninfo, false);
 
 		if (PQstatus(*conn) != CONNECTION_OK)
 		{
-			PQfinish(*conn);
-			*conn = NULL;
+			close_connection(conn);
+
 			log_warning(_("reconnection to node \"%s\" (ID: %i) failed"),
 						node_info->node_name,
 						node_info->node_id);
@@ -4748,7 +4755,8 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 
 	if (reload_config(&config_file_options, server_type))
 	{
-		PQfinish(*conn);
+		close_connection(conn);
+
 		*conn = establish_db_connection(config_file_options.conninfo, true);
 	}
 
@@ -5041,7 +5049,6 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 	if (follow_target_history)
 		pfree(follow_target_history);
-
 
 	return can_follow;
 }
