@@ -5223,11 +5223,8 @@ parse_child_nodes_disconnect_command(char *parsed_command, char *template, int r
 int
 try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 {
-	PGconn	   *our_conn;
 	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
-
 	int			i;
-
 	int			max_attempts = config_file_options.reconnect_attempts;
 
 	initialize_conninfo_params(&conninfo_params, false);
@@ -5248,6 +5245,8 @@ try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 
 		if (is_server_available_params(&conninfo_params) == true)
 		{
+			PGconn	   *our_conn;
+
 			log_notice(_("node \"%s\" (ID: %i) has recovered, reconnecting"),
 					   node_info->node_name,
 					   node_info->node_id);
@@ -5322,6 +5321,8 @@ try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 					{
 						log_notice(_("received notification that new primary is node %i"), new_primary_node_id);
 					}
+
+					free_conninfo_params(&conninfo_params);
 					return new_primary_node_id;
 				}
 				sleep(1);
