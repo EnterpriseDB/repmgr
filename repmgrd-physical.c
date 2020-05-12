@@ -3523,7 +3523,8 @@ promote_self(void)
 		{
 			PQExpBufferData event_details;
 
-			log_notice(_("original primary (ID: %i) reappeared before this standby was promoted - no action taken"),
+			log_notice(_("original primary \"%s\" (ID: %i) reappeared before this standby was promoted - no action taken"),
+					   failed_primary.node_name,
 					   failed_primary.node_id);
 
 			initPQExpBuffer(&event_details);
