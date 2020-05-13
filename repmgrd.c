@@ -817,32 +817,65 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
 
-	if (config_file_options.connection_check_type == CHECK_PING)
-		return is_server_available(conninfo);
 
-	if (config_file_options.connection_check_type == CHECK_CONNECTION)
+	log_debug("connection check type is \"%s\"",
+			  print_connection_check_type(config_file_options.connection_check_type));
+	/*
+	 * For the check types which do not involve using the existing database
+	 * connection, we'll perform the actual check, then as an additional
+	 * safeguard verify that the connection is still valid (as it might have
+	 * gone away during a brief outage between checks).
+	 */
+	if (config_file_options.connection_check_type != CHECK_QUERY)
 	{
 		bool success = true;
-		PGconn *test_conn = PQconnectdb(conninfo);
 
-		log_debug("check_upstream_connection(): attempting to connect to \"%s\"", conninfo);
-
-		if (PQstatus(test_conn) != CONNECTION_OK)
+		if (config_file_options.connection_check_type == CHECK_PING)
 		{
-			log_warning(_("unable to connect to \"%s\""), conninfo);
-			log_detail("\n%s", PQerrorMessage(test_conn));
-			success = false;
+			success = is_server_available(conninfo);
 		}
-		PQfinish(test_conn);
+		else if (config_file_options.connection_check_type == CHECK_CONNECTION)
+		{
+			PGconn *test_conn = PQconnectdb(conninfo);
 
-		return success;
+			log_debug("check_upstream_connection(): attempting to connect to \"%s\"", conninfo);
+
+			if (PQstatus(test_conn) != CONNECTION_OK)
+			{
+				log_warning(_("unable to connect to \"%s\""), conninfo);
+				log_detail("\n%s", PQerrorMessage(test_conn));
+				success = false;
+			}
+			PQfinish(test_conn);
+		}
+
+		if (success == false)
+			return false;
+
+		if (PQstatus(*conn) == CONNECTION_OK)
+			return true;
+
+		/*
+		 * Checks have succeeded, but the open connection to the primary has gone away,
+		 * possibly due to a brief outage between monitoring intervals - attempt to
+		 * reset it.
+		 */
+		log_notice(_("upstream is available but upstream connection has gone away, resetting"));
+
+		PQfinish(*conn);
+		*conn = PQconnectdb(conninfo);
+
+		if (PQstatus(*conn) == CONNECTION_OK)
+			return true;
+
+		return false;
 	}
 
 	for (;;)
 	{
 		if (PQstatus(*conn) != CONNECTION_OK)
 		{
-			log_debug("check_upstream_connection(): connection not OK");
+			log_debug("check_upstream_connection(): upstream connection has gone away, resetting");
 			if (twice)
 				return false;
 			/* reconnect */
@@ -877,6 +910,7 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 				return false;
 
 			/* reconnect */
+			log_debug("check_upstream_connection(): upstream connection not available, resetting");
 			PQfinish(*conn);
 			*conn = PQconnectdb(conninfo);
 			twice = true;
