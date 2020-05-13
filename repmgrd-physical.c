@@ -1443,6 +1443,7 @@ monitor_streaming_standby(void)
 	while (true)
 	{
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
+
 		if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == true)
 		{
 			set_upstream_last_seen(local_conn, upstream_node_info.node_id);
@@ -3086,8 +3087,6 @@ do_primary_failover(void)
 
 	return final_result;
 }
-
-
 
 
 static void
