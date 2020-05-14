@@ -1486,7 +1486,7 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
 void
 repmgr_canonicalize_path(const char *name, const char *value, char *config_item, ItemList *errors)
 {
-	// XXX check for errors?
+	/* NOTE: canonicalize_path does not produce any errors */
 	canonicalize_path(config_item);
 }
 
@@ -1710,19 +1710,6 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	initPQExpBuffer(&auto_conf);
 	appendPQExpBuffer(&auto_conf, "%s/%s",
 					  data_dir, PG_AUTOCONF_FILENAME);
-
-	// XXX do we need this?
-	fp = fopen(auto_conf.data, "r");
-
-	if (fp == NULL)
-	{
-		fprintf(stderr, "unable to open \"%s\": %s\n",
-				auto_conf.data,
-				strerror(errno));
-		termPQExpBuffer(&auto_conf);
-		return false;
-	}
-	fclose(fp);
 
 	success = ProcessPostgresConfigFile(auto_conf.data, NULL, &config, NULL, NULL);
 
