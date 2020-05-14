@@ -132,7 +132,15 @@ ProcessConfigFile(const char *base_dir, const char *config_file, const char *cal
 
 	abs_path = AbsoluteConfigLocation(base_dir, config_file, calling_file);
 
-	// XXX reject direct recursion.
+	/* Reject direct recursion */
+	if (calling_file && strcmp(abs_path, calling_file) == 0)
+	{
+		item_list_append_format(error_list,
+								_("configuration file recursion in \"%s\""),
+								calling_file);
+		pfree(abs_path);
+		return false;
+	}
 
 	fp = fopen(abs_path, "r");
 	if (!fp)
@@ -188,7 +196,8 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, con
 		OK = false;
 		goto cleanup;
 	}
-	printf("ProcessConfigFp(): base: '%s' file: '%s'; calling: '%s'\n", base_dir, config_file, calling_file);
+
+	//printf("ProcessConfigFp(): base: '%s' file: '%s'; calling: '%s'\n", base_dir, config_file, calling_file);
 	/*
 	 * Parse
 	 */
