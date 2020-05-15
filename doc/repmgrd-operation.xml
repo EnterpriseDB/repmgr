@@ -137,7 +137,7 @@ NOTICE: node 3 (node3) paused</programlisting>
       If the primary becomes available again (e.g. following a software upgrade), &repmgrd;
       will automatically reconnect, e.g.:
       <programlisting>
-[2019-08-28 12:25:41] [NOTICE] reconnected to upstream node 1 after 8 seconds, resuming monitoring</programlisting>
+[2019-08-28 12:25:41] [NOTICE] reconnected to upstream node "node1" (ID: 1) after 8 seconds, resuming monitoring</programlisting>
     </para>
 
     <para>
@@ -295,7 +295,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
     [2017-08-29 10:59:37] [HINT] use "repmgr standby promote" to manually promote this node
     [2017-08-29 10:59:37] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state (automatic failover disabled)
     [2017-08-29 10:59:53] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state (automatic failover disabled)
-    [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node 1 after 68 seconds, resuming monitoring
+    [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node "node1" (ID: 1) after 68 seconds, resuming monitoring
     [2017-08-29 11:00:57] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in normal state (automatic failover disabled)</programlisting>
 
  </para>
