@@ -2035,6 +2035,9 @@ do_standby_register(void)
 				if (node_record_on_standby.priority != node_record_on_primary.priority)
 					records_match = false;
 
+				if (strcmp(node_record_on_standby.location, node_record_on_primary.location) != 0)
+					records_match = false;
+
 				if (node_record_on_standby.active != node_record_on_primary.active)
 					records_match = false;
 
