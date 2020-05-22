@@ -808,11 +808,10 @@ show_help(void)
 
 
 bool
-check_upstream_connection(PGconn **conn, const char *conninfo)
+check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_conn)
 {
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
-
 
 	log_debug("connection check type is \"%s\"",
 			  print_connection_check_type(config_file_options.connection_check_type));
@@ -862,7 +861,15 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 		*conn = PQconnectdb(conninfo);
 
 		if (PQstatus(*conn) == CONNECTION_OK)
+		{
+			if (paired_conn != NULL)
+			{
+				log_debug("resetting paired connection");
+				*paired_conn = *conn;
+			}
+
 			return true;
+		}
 
 		return false;
 	}
@@ -911,6 +918,12 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 			*conn = PQconnectdb(conninfo);
 			twice = true;
 		}
+	}
+
+	if (paired_conn != NULL)
+	{
+		log_debug("resetting paired connection");
+		*paired_conn = *conn;
 	}
 
 	return true;

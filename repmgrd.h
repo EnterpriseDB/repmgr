@@ -22,7 +22,7 @@ extern PGconn *local_conn;
 extern bool startup_event_logged;
 extern char pid_file[MAXPGPATH];
 
-bool		check_upstream_connection(PGconn **conn, const char *conninfo);
+bool		check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_conn);
 void		try_reconnect(PGconn **conn, t_node_info *node_info);
 
 int			calculate_elapsed(instr_time start_time);

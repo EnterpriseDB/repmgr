@@ -1442,9 +1442,20 @@ monitor_streaming_standby(void)
 
 	while (true)
 	{
+		bool upstream_check_result;
+
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
 
-		if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == true)
+		if (upstream_node_info.type == PRIMARY)
+		{
+			upstream_check_result = check_upstream_connection(&upstream_conn, upstream_node_info.conninfo, &primary_conn);
+		}
+		else
+		{
+			upstream_check_result = check_upstream_connection(&upstream_conn, upstream_node_info.conninfo, NULL);
+		}
+
+		if (upstream_check_result == true)
 		{
 			set_upstream_last_seen(local_conn, upstream_node_info.node_id);
 		}
@@ -1655,6 +1666,7 @@ monitor_streaming_standby(void)
 		if (monitoring_state == MS_DEGRADED)
 		{
 			int			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+			bool		upstream_check_result;
 
 			if (config_file_options.degraded_monitoring_timeout > 0
 				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
@@ -1684,7 +1696,17 @@ monitor_streaming_standby(void)
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
 
-			if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == true)
+
+			if (upstream_node_info.type == PRIMARY)
+			{
+				upstream_check_result = check_upstream_connection(&upstream_conn, upstream_node_info.conninfo, &primary_conn);
+			}
+			else
+			{
+				upstream_check_result = check_upstream_connection(&upstream_conn, upstream_node_info.conninfo, NULL);
+			}
+
+			if (upstream_check_result == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
 					upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
@@ -2301,7 +2323,7 @@ monitor_streaming_witness(void)
 
 	while (true)
 	{
-		if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo) == true)
+		if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo, NULL) == true)
 		{
 			set_upstream_last_seen(local_conn, upstream_node_info.node_id);
 		}
@@ -2401,7 +2423,7 @@ monitor_streaming_witness(void)
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
 
-			if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo) == true)
+			if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo, NULL) == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
 					primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
