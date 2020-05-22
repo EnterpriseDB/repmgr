@@ -3250,6 +3250,7 @@ do_upstream_standby_failover(void)
 	if (config_file_options.failover == FAILOVER_MANUAL)
 	{
 		log_notice(_("this node is not configured for automatic failover"));
+		log_detail(_("parameter \"failover\" is set to \"manual\""));
 		return false;
 	}
 
