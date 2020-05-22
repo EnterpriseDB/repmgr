@@ -884,6 +884,12 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 			/* reconnect */
 			PQfinish(*conn);
 			*conn = PQconnectdb(conninfo);
+
+			if (paired_conn != NULL)
+			{
+				log_debug("resetting paired connection");
+				*paired_conn = *conn;
+			}
 			twice = true;
 		}
 		else
@@ -916,14 +922,14 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 			log_debug("check_upstream_connection(): upstream connection not available, resetting");
 			PQfinish(*conn);
 			*conn = PQconnectdb(conninfo);
+
+			if (paired_conn != NULL)
+			{
+				log_debug("resetting paired connection");
+				*paired_conn = *conn;
+			}
 			twice = true;
 		}
-	}
-
-	if (paired_conn != NULL)
-	{
-		log_debug("resetting paired connection");
-		*paired_conn = *conn;
 	}
 
 	return true;
