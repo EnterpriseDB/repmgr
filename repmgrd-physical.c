@@ -109,7 +109,7 @@ static bool do_primary_failover(void);
 static bool do_upstream_standby_failover(void);
 static bool do_witness_failover(void);
 
-static void update_monitoring_history(void);
+static bool update_monitoring_history(void);
 
 static void handle_sighup(PGconn **conn, t_server_type server_type);
 
@@ -1984,7 +1984,17 @@ loop:
 
 		if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
 		{
-			update_monitoring_history();
+			bool success = update_monitoring_history();
+
+			if (success == false && PQstatus(primary_conn) != CONNECTION_OK && upstream_node_info.type == STANDBY)
+			{
+				primary_conn = establish_primary_db_connection(local_conn, false);
+
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					(void)update_monitoring_history();
+				}
+			}
 		}
 		else
 		{
@@ -3111,7 +3121,7 @@ do_primary_failover(void)
 }
 
 
-static void
+static bool
 update_monitoring_history(void)
 {
 	ReplInfo	replication_info;
@@ -3124,13 +3134,13 @@ update_monitoring_history(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_warning(_("primary connection is not available, unable to update monitoring history"));
-		return;
+		return false;
 	}
 
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
 		log_warning(_("local connection is not available, unable to update monitoring history"));
-		return;
+		return false;
 	}
 
 	init_replication_info(&replication_info);
@@ -3138,7 +3148,7 @@ update_monitoring_history(void)
 	if (get_replication_info(local_conn, STANDBY, &replication_info) == false)
 	{
 		log_warning(_("unable to retrieve replication status information, unable to update monitoring history"));
-		return;
+		return false;
 	}
 
 	/*
@@ -3157,7 +3167,7 @@ update_monitoring_history(void)
 	if (primary_last_wal_location == InvalidXLogRecPtr)
 	{
 		log_warning(_("unable to retrieve primary's current LSN"));
-		return;
+		return false;
 	}
 
 	/* calculate apply lag in bytes */
@@ -3201,6 +3211,8 @@ update_monitoring_history(void)
 						  apply_lag_bytes);
 
 	INSTR_TIME_SET_CURRENT(last_monitoring_update);
+
+	return true;
 }
 
 
