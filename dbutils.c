@@ -153,6 +153,9 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	if (param_get(&conninfo_params, "replication") != NULL)
 		is_replication_connection = true;
 
+	/* use a secure search_path */
+	param_set(&conninfo_params, "options", "-csearch_path=");
+
 	connection_string = param_list_to_string(&conninfo_params);
 
 	log_debug(_("connecting to: \"%s\""), connection_string);
@@ -302,6 +305,9 @@ establish_db_connection_by_params(t_conninfo_param_list *param_list,
 	/* set some default values if not explicitly provided */
 	param_set_ine(param_list, "connect_timeout", "2");
 	param_set_ine(param_list, "fallback_application_name", "repmgr");
+
+	/* use a secure search_path */
+	param_set(param_list, "options", "-csearch_path=");
 
 	/* Connect to the database using the provided parameters */
 	conn = PQconnectdbParams((const char **) param_list->keywords, (const char **) param_list->values, true);

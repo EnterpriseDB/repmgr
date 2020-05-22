@@ -831,6 +831,9 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 		}
 		else if (config_file_options.connection_check_type == CHECK_CONNECTION)
 		{
+			/*
+			 * This connection is thrown away, and we never execute a query on it.
+			 */
 			PGconn *test_conn = PQconnectdb(conninfo);
 
 			log_debug("check_upstream_connection(): attempting to connect to \"%s\"", conninfo);
@@ -858,7 +861,7 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 		log_notice(_("upstream is available but upstream connection has gone away, resetting"));
 
 		PQfinish(*conn);
-		*conn = PQconnectdb(conninfo);
+		*conn = establish_db_connection_quiet(conninfo);
 
 		if (PQstatus(*conn) == CONNECTION_OK)
 		{
@@ -881,9 +884,10 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 			log_debug("check_upstream_connection(): upstream connection has gone away, resetting");
 			if (twice)
 				return false;
+
 			/* reconnect */
 			PQfinish(*conn);
-			*conn = PQconnectdb(conninfo);
+			*conn = establish_db_connection_quiet(conninfo);
 
 			if (paired_conn != NULL)
 			{
@@ -901,7 +905,7 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 				goto failed;
 
 			/* execute a simple query to verify connection availability */
-			if (PQsendQuery(*conn, "SELECT 1") == 0)
+			if (PQsendQuery(*conn, config_file_options.connection_check_query) == 0)
 			{
 				log_warning(_("unable to send query to upstream"));
 				log_detail("%s", PQerrorMessage(*conn));
@@ -920,8 +924,9 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 
 			/* reconnect */
 			log_debug("check_upstream_connection(): upstream connection not available, resetting");
+
 			PQfinish(*conn);
-			*conn = PQconnectdb(conninfo);
+			*conn = establish_db_connection_quiet(conninfo);
 
 			if (paired_conn != NULL)
 			{

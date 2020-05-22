@@ -3212,6 +3212,8 @@ update_monitoring_history(void)
 
 	INSTR_TIME_SET_CURRENT(last_monitoring_update);
 
+	log_verbose(LOG_DEBUG, "update_monitoring_history(): monitoring history update sent");
+
 	return true;
 }
 

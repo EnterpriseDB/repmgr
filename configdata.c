@@ -875,6 +875,15 @@ struct ConfigFileSetting config_file_settings[] =
 		{},
 		{}
 	},
+	{
+		"connection_check_query",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.connection_check_query },
+		{ .strdefault = "SELECT 1" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.connection_check_query) },
+		{}
+	},
 	/* End-of-list marker */
 	{
 		NULL, CONFIG_INT, {}, {}, {}, {}, {}

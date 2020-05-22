@@ -238,6 +238,7 @@ typedef struct
 
 	/* undocumented test settings */
 	int			promote_delay;
+	char		connection_check_query[MAXLEN];
 } t_configuration_options;
 
 
