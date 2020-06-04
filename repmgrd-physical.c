@@ -52,6 +52,12 @@ typedef enum
 	ELECTION_RERUN
 } ElectionResult;
 
+typedef struct election_stats
+{
+	int visible_nodes;
+	int shared_upstream_nodes;
+	int all_nodes;
+} election_stats;
 
 typedef struct t_child_node_info
 {
@@ -114,8 +120,8 @@ static bool update_monitoring_history(void);
 static void handle_sighup(PGconn **conn, t_server_type server_type);
 
 static const char *format_failover_state(FailoverState failover_state);
-static ElectionResult execute_failover_validation_command(t_node_info *node_info);
-static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
+static ElectionResult execute_failover_validation_command(t_node_info *node_info, election_stats *stats);
+static void parse_failover_validation_command(const char *template, t_node_info *node_info, election_stats *stats, PQExpBufferData *out);
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
 static void check_witness_attached(t_node_info *node_info, bool startup);
 
@@ -4086,13 +4092,10 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 {
 	int			electoral_term = -1;
 
-	/* we're visible */
-	int			visible_nodes = 1;
-	int			total_nodes = 0;
-
 	NodeInfoListCell *cell = NULL;
 
 	t_node_info *candidate_node = NULL;
+	election_stats stats;
 
 	ReplInfo	local_replication_info;
 
@@ -4112,6 +4115,11 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 
 	int			nodes_with_primary_still_visible = 0;
+
+	/* we're visible */
+	stats.visible_nodes = 1;
+	stats.shared_upstream_nodes = 0;
+	stats.all_nodes = 0;
 
 	electoral_term = get_current_term(local_conn);
 
@@ -4150,7 +4158,11 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 	log_info(_("%i active sibling nodes registered"), sibling_nodes->node_count);
 
-	total_nodes = sibling_nodes->node_count + 1;
+	stats.shared_upstream_nodes = sibling_nodes->node_count + 1;
+
+	get_all_nodes_count(local_conn, &stats.all_nodes);
+
+	log_info(_("%i total nodes registered"), stats.all_nodes);
 
 	if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) != 0)
 	{
@@ -4177,7 +4189,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		{
 			if (config_file_options.failover_validation_command[0] != '\0')
 			{
-				return execute_failover_validation_command(&local_node_info);
+				return execute_failover_validation_command(&local_node_info, &stats);
 			}
 
 			log_info(_("no other sibling nodes - we win by default"));
@@ -4273,7 +4285,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 		cell->node_info->node_status = NODE_STATUS_UP;
 
-		visible_nodes++;
+		stats.visible_nodes++;
 
 		/*
 		 * see if the node is in the primary's location (but skip the check if
@@ -4555,11 +4567,11 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 	termPQExpBuffer(&nodes_with_primary_visible);
 
 	log_info(_("visible nodes: %i; total nodes: %i; no nodes have seen the primary within the last %i seconds"),
-			  visible_nodes,
-			 total_nodes,
+			 stats.visible_nodes,
+			 stats.shared_upstream_nodes,
 			 (config_file_options.monitor_interval_secs * 2));
 
-	if (visible_nodes <= (total_nodes / 2.0))
+	if (stats.visible_nodes <= (stats.shared_upstream_nodes / 2.0))
 	{
 		log_notice(_("unable to reach a qualified majority of nodes"));
 		log_detail(_("node will enter degraded monitoring state waiting for reconnect"));
@@ -4585,7 +4597,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 		if (config_file_options.failover_validation_command[0] != '\0')
 		{
-			return execute_failover_validation_command(candidate_node);
+			return execute_failover_validation_command(candidate_node, &stats);
 		}
 
 		return ELECTION_WON;
@@ -4815,7 +4827,7 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 }
 
 static ElectionResult
-execute_failover_validation_command(t_node_info *node_info)
+execute_failover_validation_command(t_node_info *node_info, election_stats *stats)
 {
 	PQExpBufferData failover_validation_command;
 	PQExpBufferData command_output;
@@ -4826,6 +4838,7 @@ execute_failover_validation_command(t_node_info *node_info)
 
 	parse_failover_validation_command(config_file_options.failover_validation_command,
 									  node_info,
+									  stats,
 									  &failover_validation_command);
 
 	log_notice(_("executing \"failover_validation_command\""));
@@ -4864,7 +4877,7 @@ execute_failover_validation_command(t_node_info *node_info)
 
 
 static void
-parse_failover_validation_command(const char *template, t_node_info *node_info, PQExpBufferData *out)
+parse_failover_validation_command(const char *template, t_node_info *node_info, election_stats *stats, PQExpBufferData *out)
 {
 	const char *src_ptr;
 
@@ -4888,6 +4901,21 @@ parse_failover_validation_command(const char *template, t_node_info *node_info, 
 					/* %a: node name */
 					src_ptr++;
 					appendPQExpBufferStr(out, node_info->node_name);
+					break;
+				case 'v':
+					/* %v: visible nodes count */
+					src_ptr++;
+					appendPQExpBuffer(out, "%i", stats->visible_nodes);
+					break;
+				case 'u':
+					/* %u: shared upstream nodes count */
+					src_ptr++;
+					appendPQExpBuffer(out, "%i", stats->shared_upstream_nodes);
+					break;
+				case 't':
+					/* %t: total nodes count */
+					src_ptr++;
+					appendPQExpBuffer(out, "%i", stats->all_nodes);
 					break;
 
 				default:

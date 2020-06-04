@@ -2896,6 +2896,37 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 	return success;
 }
 
+bool
+get_all_nodes_count(PGconn *conn, int *count)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool success = true;
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 "  SELECT count(*) "
+						 "    FROM repmgr.nodes n ");
+
+	log_verbose(LOG_DEBUG, "get_all_nodes_count():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_all_nodes_count(): unable to execute query"));
+		success = false;
+	}
+	else
+	{
+		*count = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+	termPQExpBuffer(&query);
+
+	return success;
+}
 
 void
 get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)

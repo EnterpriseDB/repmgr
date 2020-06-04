@@ -491,6 +491,7 @@ bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
 
 bool		get_all_node_records(PGconn *conn, NodeInfoList *node_list);
+bool		get_all_nodes_count(PGconn *conn, int *count);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 bool		get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list);
