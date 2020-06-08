@@ -6855,6 +6855,11 @@ run_basebackup(t_node_info *node_record)
 }
 
 
+/*
+ * Perform a filesystem backup using rsync.
+ *
+ * From repmgr 4 this is only used for Barman backups.
+ */
 static int
 run_file_backup(t_node_info *local_node_record)
 {
@@ -6885,10 +6890,11 @@ run_file_backup(t_node_info *local_node_record)
 		/*
 		 * Read the list of backup files into a local file. In the process:
 		 *
-		 * - determine the backup ID; - check, and remove, the prefix; -
-		 * detect tablespaces; - filter files in one list per tablespace;
+		 * - determine the backup ID
+		 * - check, and remove, the prefix
+		 * - detect tablespaces
+		 * - filter files in one list per tablespace
 		 */
-
 		{
 			FILE	   *fi;		/* input stream */
 			FILE	   *fd;		/* output for data.txt */
