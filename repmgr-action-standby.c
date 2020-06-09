@@ -7026,11 +7026,13 @@ run_file_backup(t_node_info *local_node_record)
 
 		if (mode == barman)
 		{
-			create_pg_dir(cell_t->location, false);
+			create_pg_dir(tblspc_dir_dest, false);
 
 			if (cell_t->f != NULL)	/* cell_t->f == NULL iff the tablespace is
 									 * empty */
 			{
+				fclose(cell_t->f);
+
 				maxlen_snprintf(command,
 								"rsync --progress -a --files-from=%s/%s.txt %s:%s/%s/%s %s",
 								local_repmgr_tmp_directory,
@@ -7043,7 +7045,6 @@ run_file_backup(t_node_info *local_node_record)
 				(void) local_command(
 									 command,
 									 NULL);
-				fclose(cell_t->f);
 				maxlen_snprintf(filename,
 								"%s/%s.txt",
 								local_repmgr_tmp_directory,
@@ -7160,7 +7161,10 @@ stop_backup:
 
 	if (mode == barman)
 	{
-		/* In Barman mode, remove local_repmgr_directory */
+		/*
+		 * In Barman mode, remove local_repmgr_tmp_directory,
+		 * which contains various temporary files containing Barman metadata.
+		 */
 		rmtree(local_repmgr_tmp_directory, true);
 	}
 
