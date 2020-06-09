@@ -36,8 +36,8 @@ typedef struct TablespaceDataListCell
 	char	   *name;
 	char	   *oid;
 	char	   *location;
-	/* optional payload */
-	FILE	   *f;
+	/* Optional pointer to a file containing a list of tablespace files to copy from Barman */
+	FILE	   *fptr;
 } TablespaceDataListCell;
 
 typedef struct TablespaceDataList
@@ -7027,17 +7027,17 @@ run_file_backup(t_node_info *local_node_record)
 				{
 					if ((q = string_skip_prefix(cell_t->oid, p)) != NULL && *q == '/')
 					{
-						if (cell_t->f == NULL)
+						if (cell_t->fptr == NULL)
 						{
 							maxlen_snprintf(filename, "%s/%s.txt", local_repmgr_tmp_directory, cell_t->oid);
-							cell_t->f = fopen(filename, "w");
-							if (cell_t->f == NULL)
+							cell_t->fptr = fopen(filename, "w");
+							if (cell_t->fptr == NULL)
 							{
 								log_error("cannot open file: %s", filename);
 								exit(ERR_INTERNAL);
 							}
 						}
-						fputs(q + 1, cell_t->f);
+						fputs(q + 1, cell_t->fptr);
 						break;
 					}
 				}
@@ -7179,10 +7179,11 @@ run_file_backup(t_node_info *local_node_record)
 		{
 			create_pg_dir(tblspc_dir_dest, false);
 
-			if (cell_t->f != NULL)	/* cell_t->f == NULL iff the tablespace is
-									 * empty */
+			if (cell_t->fptr != NULL)	/* cell_t->fptr == NULL iff the tablespace is
+										 * empty */
 			{
-				fclose(cell_t->f);
+				/* close the file to ensure the contents are flushed to disk */
+				fclose(cell_t->fptr);
 
 				maxlen_snprintf(command,
 								"rsync --progress -a --files-from=%s/%s.txt %s:%s/%s/%s %s",
@@ -7193,8 +7194,7 @@ run_file_backup(t_node_info *local_node_record)
 								backup_id,
 								cell_t->oid,
 								tblspc_dir_dest);
-				(void) local_command(
-									 command,
+				(void) local_command(command,
 									 NULL);
 				maxlen_snprintf(filename,
 								"%s/%s.txt",
