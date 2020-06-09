@@ -6871,8 +6871,6 @@ run_file_backup(t_node_info *local_node_record)
 	char		buf[MAXLEN] = "";
 	char		basebackups_directory[MAXLEN] = "";
 	char		backup_id[MAXLEN] = "";
-	char	   *p = NULL,
-			   *q = NULL;
 	TablespaceDataList tablespace_list = {NULL, NULL};
 	TablespaceDataListCell *cell_t = NULL;
 
@@ -6901,6 +6899,8 @@ run_file_backup(t_node_info *local_node_record)
 			char		prefix[MAXLEN] = "";
 			char		output[MAXLEN] = "";
 			int			n = 0;
+			char	   *p = NULL,
+					   *q = NULL;
 
 			maxlen_snprintf(command, "%s list-files --target=data %s latest",
 							make_barman_ssh_command(barman_command_buf),
@@ -7306,6 +7306,9 @@ run_file_backup(t_node_info *local_node_record)
 		}
 
 		fclose(tablespace_map_file);
+
+		termPQExpBuffer(&tablespace_map_filename);
+		termPQExpBuffer(&tablespace_map);
 	}
 
 stop_backup:
