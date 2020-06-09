@@ -15,8 +15,12 @@
   </para>
   <para>
     &repmgrd; can be configured to provide failover
-    capability in case the primary upstream node becomes unreachable, and/or
+    capability in case the primary or upstream node becomes unreachable, and/or
     provide monitoring data to the &repmgr; metadatabase.
+  </para>
+  <para>
+    From &repmgr; 4.4, when running on the primary node, &repmgrd; can also monitor
+    standby disconnections/reconnections (see <xref linkend="repmgrd-primary-child-disconnection"/>).
   </para>
 
   <sect1 id="repmgrd-basic-configuration">
@@ -565,7 +569,8 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         the option <option>monitor_interval_secs</option> (see above).
       </para>
       <para>
-        For more details on monitoring, see <xref linkend="repmgrd-monitoring"/>.
+        For more details on monitoring, see <xref linkend="repmgrd-monitoring"/>. For information on
+        monitoring standby disconnections, see <xref linkend="repmgrd-primary-child-disconnection"/>.
       </para>
     </sect2>
 
