@@ -6877,6 +6877,9 @@ run_file_backup(t_node_info *local_node_record)
 	PQExpBufferData tablespace_map;
 	bool		tablespace_map_rewrite = false;
 
+	/* For the foreseeable future, no other modes are supported */
+	Assert(mode == barman);
+
 	if (mode == barman)
 	{
 		/*
