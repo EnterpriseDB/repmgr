@@ -7206,7 +7206,7 @@ run_file_backup(t_node_info *local_node_record)
 
 
 		/*
-		 * If a valid mapping was provide for this tablespace, arrange for it
+		 * If a valid mapping was provided for this tablespace, arrange for it
 		 * to be remapped (if no tablespace mapping was provided, the link
 		 * will be copied as-is by pg_basebackup and no action is required)
 		 */
