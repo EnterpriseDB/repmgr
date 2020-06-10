@@ -141,7 +141,7 @@ typedef struct
 
 	/* following options for internal use */
 	char		config_archive_dir[MAXPGPATH];
-	OutputMode	output_mode;
+	OutputMode	output_mode; /* set through provision of --csv, --nagios or --optformat */
 	bool		disable_wal_receiver;
 	bool		enable_wal_receiver;
 } t_runtime_options;
