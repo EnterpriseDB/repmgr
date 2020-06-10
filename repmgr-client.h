@@ -104,10 +104,8 @@
 #define OPT_DISABLE_WAL_RECEIVER		   2002
 #define OPT_ENABLE_WAL_RECEIVER			   2003
 
-
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
-#define OPT_NODE						    998
 
 
 static struct option long_options[] =
@@ -221,9 +219,6 @@ static struct option long_options[] =
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	/* previously used by "standby switchover" */
 	{"remote-config-file", required_argument, NULL, 'C'},
-	/* replaced by --node-id */
-	{"node", required_argument, NULL, OPT_NODE},
-
 	{NULL, 0, NULL, 0}
 };
 
