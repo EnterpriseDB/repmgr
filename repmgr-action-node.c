@@ -2612,7 +2612,7 @@ do_node_rejoin(void)
 		log_hint(_("check the local node is registered with the current primary \"%s\" (ID: %i)"),
 				 primary_node_record.node_name,
 				 primary_node_record.node_id);
-		PQfinish(upstream_conn);
+
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
