@@ -7105,16 +7105,27 @@ run_file_backup(t_node_info *local_node_record)
 				"pg_commit_ts",
 				/* Only from 9.4 */
 				"pg_dynshmem", "pg_logical", "pg_logical/snapshots", "pg_logical/mappings", "pg_replslot",
-				/* Already in 9.3 */
+				/* Present in all versions from  9.3 */
 				"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp",
-				"pg_subtrans", "pg_tblspc", "pg_twophase", "pg_xlog", 0
+				"pg_subtrans", "pg_tblspc", "pg_twophase",
+				/* Present from at least 9.3, but removed in 10 */
+				"pg_xlog",
+				/* Array delimiter */
+				0
 			};
+
+			/*
+			 * This array determines the major version each of the above directories
+			 * first appears in; or if the value is negative, which from major version
+			 * the directory does not appear in.
+			 */
 			const int	vers[] = {
 				100000,
 				90500,
 				90400, 90400, 90400, 90400, 90400,
 				0, 0, 0, 0, 0,
-				0, 0, 0, -100000
+				0, 0, 0,
+				-100000
 			};
 
 			for (i = 0; dirs[i]; i++)
