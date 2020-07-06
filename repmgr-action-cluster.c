@@ -55,10 +55,8 @@ typedef enum
 struct ColHeader headers_show[SHOW_HEADER_COUNT];
 struct ColHeader headers_event[EVENT_HEADER_COUNT];
 
-
-
-static int	build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, ItemList *warnings, int *error_code);
-static int	build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length, ItemList *warnings, int *error_code);
+static int	build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, ItemList *warnings, int *error_code);
+static int	build_cluster_crosscheck(t_node_status_cube ***cube_dest, ItemList *warnings, int *error_code);
 static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, int matrix_node_id, int connection_node_id, int connection_status);
 
 /*
@@ -538,9 +536,6 @@ do_cluster_crosscheck(void)
 {
 	int			i = 0,
 				n = 0;
-	char		c;
-	const char *node_header = "Name";
-	int			name_length = strlen(node_header);
 
 	t_node_status_cube **cube;
 
@@ -548,7 +543,7 @@ do_cluster_crosscheck(void)
 	int			error_code = SUCCESS;
 	ItemList	warnings = {NULL, NULL};
 
-	n = build_cluster_crosscheck(&cube, &name_length, &warnings, &error_code);
+	n = build_cluster_crosscheck(&cube, &warnings, &error_code);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -582,30 +577,64 @@ do_cluster_crosscheck(void)
 	}
 	else
 	{
-		printf("%*s | Id ", name_length, node_header);
-		for (i = 0; i < n; i++)
-			printf("| %2d ", cube[i]->node_id);
-		printf("\n");
+		/* output header contains node name, node ID and one column for each node in the cluster */
+		struct ColHeader *headers_crosscheck = NULL;
 
-		for (i = 0; i < name_length; i++)
-			printf("-");
-		printf("-+----");
+		int header_count = n + 2;
+		int header_id = 2;
+
+		headers_crosscheck = palloc0(sizeof(ColHeader) * header_count);
+
+		/* Initialize column headers  */
+		strncpy(headers_crosscheck[0].title, _("Name"), MAXLEN);
+		strncpy(headers_crosscheck[1].title, _("ID"), MAXLEN);
+
 		for (i = 0; i < n; i++)
-			printf("+----");
-		printf("\n");
+		{
+			maxlen_snprintf(headers_crosscheck[header_id].title, "%i", cube[i]->node_id);
+			header_id++;
+		}
+
+		/* Initialize column max values */
+		for (i = 0; i < header_count; i++)
+		{
+			headers_crosscheck[i].display = true;
+			headers_crosscheck[i].max_length = strlen(headers_crosscheck[i].title);
+			headers_crosscheck[i].cur_length = headers_crosscheck[i].max_length;
+
+			/* We can derive the maximum node ID length for the ID column from
+			 * the generated matrix node ID headers
+			 */
+			if (i >= 2 && headers_crosscheck[i].max_length > headers_crosscheck[1].max_length)
+				headers_crosscheck[1].max_length = headers_crosscheck[i].max_length;
+		}
+
+		for (i = 0; i < n; i++)
+		{
+			if (strlen(cube[i]->node_name) > headers_crosscheck[0].max_length)
+			{
+				headers_crosscheck[0].max_length = strlen(cube[i]->node_name);
+			}
+		}
+
+		print_status_header(header_count, headers_crosscheck);
 
 		for (i = 0; i < n; i++)
 		{
 			int			column_node_ix;
 
-			printf("%*s | %2d ", name_length,
+			printf(" %-*s | %-*i ",
+				   headers_crosscheck[0].max_length,
 				   cube[i]->node_name,
+				   headers_crosscheck[1].max_length,
 				   cube[i]->node_id);
 
 			for (column_node_ix = 0; column_node_ix < n; column_node_ix++)
 			{
 				int			max_node_status = -2;
 				int			node_ix = 0;
+
+				char		c;
 
 				/*
 				 * The value of entry (i,j) is equal to the maximum value of all
@@ -646,7 +675,7 @@ do_cluster_crosscheck(void)
 						exit(ERR_INTERNAL);
 				}
 
-				printf("|  %c ", c);
+				printf("| %-*c ", headers_crosscheck[column_node_ix + 2].max_length, c);
 			}
 
 			printf("\n");
@@ -708,16 +737,13 @@ do_cluster_matrix()
 				j = 0,
 				n = 0;
 
-	const char *node_header = "Name";
-	int			name_length = strlen(node_header);
-
 	t_node_matrix_rec **matrix_rec_list;
 
 	bool		connection_error_found = false;
 	int			error_code = SUCCESS;
 	ItemList	warnings = {NULL, NULL};
 
-	n = build_cluster_matrix(&matrix_rec_list, &name_length, &warnings, &error_code);
+	n = build_cluster_matrix(&matrix_rec_list, &warnings, &error_code);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -740,27 +766,60 @@ do_cluster_matrix()
 	}
 	else
 	{
-		char		c;
+		/* output header contains node name, node ID and one column for each node in the cluster */
+		struct ColHeader *headers_matrix = NULL;
 
-		printf("%*s | Id ", name_length, node_header);
-		for (i = 0; i < n; i++)
-			printf("| %2d ", matrix_rec_list[i]->node_id);
-		printf("\n");
+		int header_count = n + 2;
+		int header_id = 2;
 
-		for (i = 0; i < name_length; i++)
-			printf("-");
-		printf("-+----");
-		for (i = 0; i < n; i++)
-			printf("+----");
-		printf("\n");
+		headers_matrix = palloc0(sizeof(ColHeader) * header_count);
+
+		/* Initialize column headers  */
+		strncpy(headers_matrix[0].title, _("Name"), MAXLEN);
+		strncpy(headers_matrix[1].title, _("ID"), MAXLEN);
 
 		for (i = 0; i < n; i++)
 		{
-			printf("%*s | %2d ", name_length,
+			maxlen_snprintf(headers_matrix[header_id].title, "%i", matrix_rec_list[i]->node_id);
+			header_id++;
+		}
+
+		/* Initialize column max values */
+		for (i = 0; i < header_count; i++)
+		{
+			headers_matrix[i].display = true;
+			headers_matrix[i].max_length = strlen(headers_matrix[i].title);
+			headers_matrix[i].cur_length = headers_matrix[i].max_length;
+
+			/* We can derive the maximum node ID length for the ID column from
+			 * the generated matrix node ID headers
+			 */
+			if (i >= 2 && headers_matrix[i].max_length > headers_matrix[1].max_length)
+				headers_matrix[1].max_length = headers_matrix[i].max_length;
+		}
+
+
+		for (i = 0; i < n; i++)
+		{
+			if (strlen(matrix_rec_list[i]->node_name) > headers_matrix[0].max_length)
+			{
+				headers_matrix[0].max_length = strlen(matrix_rec_list[i]->node_name);
+			}
+		}
+
+		print_status_header(header_count, headers_matrix);
+
+		for (i = 0; i < n; i++)
+		{
+			printf(" %-*s | %-*i ",
+				   headers_matrix[0].max_length,
 				   matrix_rec_list[i]->node_name,
+				   headers_matrix[1].max_length,
 				   matrix_rec_list[i]->node_id);
 			for (j = 0; j < n; j++)
 			{
+				char		c;
+
 				switch (matrix_rec_list[i]->node_status_list[j]->node_status)
 				{
 					case -2:
@@ -778,7 +837,7 @@ do_cluster_matrix()
 						exit(ERR_INTERNAL);
 				}
 
-				printf("|  %c ", c);
+				printf("| %-*c ", headers_matrix[j + 2].max_length, c);
 			}
 			printf("\n");
 		}
@@ -838,7 +897,7 @@ matrix_set_node_status(t_node_matrix_rec **matrix_rec_list, int n, int node_id, 
 
 
 static int
-build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, ItemList *warnings, int *error_code)
+build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, ItemList *warnings, int *error_code)
 {
 	PGconn	   *conn = NULL;
 	int			i = 0,
@@ -896,7 +955,6 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 	/* Initialise matrix structure for each node */
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int			name_length_cur;
 		NodeInfoListCell *cell_j;
 
 		matrix_rec_list[i] = (t_node_matrix_rec *) pg_malloc0(sizeof(t_node_matrix_rec));
@@ -905,13 +963,6 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 		strncpy(matrix_rec_list[i]->node_name,
 				cell->node_info->node_name,
 				sizeof(matrix_rec_list[i]->node_name));
-
-		/*
-		 * Find the maximum length of a node name
-		 */
-		name_length_cur = strlen(matrix_rec_list[i]->node_name);
-		if (name_length_cur > *name_length)
-			*name_length = name_length_cur;
 
 		matrix_rec_list[i]->node_status_list = (t_node_status_rec **) pg_malloc0(sizeof(t_node_status_rec) * nodes.node_count);
 
@@ -1077,7 +1128,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 
 
 static int
-build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, ItemList *warnings, int *error_code)
+build_cluster_crosscheck(t_node_status_cube ***dest_cube, ItemList *warnings, int *error_code)
 {
 	PGconn	   *conn = NULL;
 	int			h,
@@ -1126,19 +1177,11 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, Item
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int			name_length_cur = 0;
 		NodeInfoListCell *cell_i = NULL;
 
 		cube[h] = (t_node_status_cube *) pg_malloc(sizeof(t_node_status_cube));
 		cube[h]->node_id = cell->node_info->node_id;
 		strncpy(cube[h]->node_name, cell->node_info->node_name, sizeof(cube[h]->node_name));
-
-		/*
-		 * Find the maximum length of a node name
-		 */
-		name_length_cur = strlen(cube[h]->node_name);
-		if (name_length_cur > *name_length)
-			*name_length = name_length_cur;
 
 		cube[h]->matrix_list_rec = (t_node_matrix_rec **) pg_malloc(sizeof(t_node_matrix_rec) * nodes.node_count);
 
