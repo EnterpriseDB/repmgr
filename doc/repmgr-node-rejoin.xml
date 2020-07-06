@@ -43,7 +43,12 @@
       <programlisting>
       repmgr node rejoin -d '$conninfo'</programlisting>
 
-      where <literal>$conninfo</literal> is the conninfo string of any reachable node in the cluster.
+      where <literal>$conninfo</literal> is the PostgreSQL <literal>conninfo</literal> string of the
+      <emphasis>current</emphasis> primary node (or that of any reachable node in the cluster, but
+      <emphasis>not</emphasis> the local node). This is so that &repmgr; can fetch up-to-date information
+      about the current state of the cluster.
+    </para>
+    <para>
       <filename>repmgr.conf</filename> for the stopped node *must* be supplied explicitly if not
       otherwise available.
     </para>
