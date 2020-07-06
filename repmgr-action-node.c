@@ -208,7 +208,16 @@ do_node_status(void)
 
 		if (enabled == false && recovery_type == RECTYPE_STANDBY)
 		{
-			appendPQExpBufferStr(&archiving_status, " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
+			if (PQserverVersion(conn) >= 90500)
+			{
+				appendPQExpBufferStr(&archiving_status,
+									 " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
+			}
+			else
+			{
+				appendPQExpBufferStr(&archiving_status,
+									 " (\"archive_mode\" has no effect on standbys)");
+			}
 		}
 
 		key_value_list_set(&node_status,
