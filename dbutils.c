@@ -760,8 +760,7 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 	for (option = connOptions; option && option->keyword; option++)
 	{
 		/* Ignore non-set or blank parameter values */
-		if ((option->val == NULL) ||
-			(option->val != NULL && option->val[0] == '\0'))
+		if (option->val == NULL || option->val[0] == '\0')
 			continue;
 
 		/* Ignore settings specific to the upstream node */
@@ -806,8 +805,7 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 	for (option = connOptions; option && option->keyword; option++)
 	{
 		/* Ignore non-set or blank parameter values */
-		if ((option->val == NULL) ||
-			(option->val != NULL && option->val[0] == '\0'))
+		if (option->val == NULL || option->val[0] == '\0')
 			continue;
 
 		/* Ignore "password" */
