@@ -209,7 +209,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# managing WAL archives (see: https://www.pgbarman.org )
 
 #recovery_min_apply_delay=		# If provided, "recovery_min_apply_delay" will be set to
-					# this value (PostgreSQL 9.4 and later).
+					# this value (PostgreSQL 9.4 and later). Value can be
+                                        # an integer representing milliseconds, or a string
+                                        # representing a period of time (e.g. '5 min').
 
 
 #------------------------------------------------------------------------------
