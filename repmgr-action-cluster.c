@@ -681,6 +681,8 @@ do_cluster_crosscheck(void)
 			printf("\n");
 		}
 
+		pfree(headers_crosscheck);
+
 		if (warnings.head != NULL && runtime_options.terse == false)
 		{
 			log_warning(_("following problems detected:"));
@@ -841,6 +843,8 @@ do_cluster_matrix()
 			}
 			printf("\n");
 		}
+
+		pfree(headers_matrix);
 
 		if (warnings.head != NULL && runtime_options.terse == false)
 		{
