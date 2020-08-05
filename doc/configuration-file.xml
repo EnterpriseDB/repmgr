@@ -211,5 +211,29 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
     </para>
    </note>
 
+   <note>
+     <para>
+       When upgrading the PostgreSQL cluster to a new major version, updating the &repmgr; configuration file
+       may be needed. In particular, if default package locations for <option>pg_bindir</option> and
+       <option>data_directory</option> are used, both these options in <filename>repmgr.conf</filename>
+       will need to be updated accordingly.
+       </para>
+   </note>
+
+   <note>
+     <para>
+       If the location of the configuration file changed after a PostgreSQL major upgrade, the
+       <option>config_file</option> field from the <structname>repmgr.nodes</structname> table will
+       need to reflect this change. This can be accomplished by forcing all nodes to register
+       again with the new configuration file. This will effectively update the <option>config_file</option>
+       field in <structname>repmgr.nodes</structname>. To accomplished this, just
+       execute <link linkend="repmgr-primary-register">
+       <command>repmgr primary register --force -f /path/to/repmgr.conf</command></link>
+       on the primary node, and then <link linkend="repmgr-standby-register">
+       <command>repmgr standby register --force -f /path/to/repmgr.conf</command></link>
+       on all the standby nodes (don't forget the witness, if there is one).
+     </para>
+   </note>
+
    </sect2>
  </sect1>
