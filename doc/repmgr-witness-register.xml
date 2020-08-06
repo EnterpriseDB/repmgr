@@ -63,6 +63,34 @@
   </refsect1>
 
 
+
+  <refsect1>
+
+    <title>Options</title>
+   <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually register the witness
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+       <term><option>-F</option>/<option>--force</option></term>
+        <listitem>
+          <para>
+            Overwrite an existing node record
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
+
   <refsect1 id="repmgr-witness-register-events">
     <title>Event notifications</title>
     <para>
