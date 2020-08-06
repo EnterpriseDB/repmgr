@@ -210,30 +210,61 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
       <filename>/path/to/repmgr.conf</filename>).
     </para>
    </note>
+  </sect2>
 
-   <note>
-     <para>
-       When upgrading the PostgreSQL cluster to a new major version, updating the &repmgr; configuration file
-       may be needed. In particular, if default package locations for <option>pg_bindir</option> and
-       <option>data_directory</option> are used, both these options in <filename>repmgr.conf</filename>
-       will need to be updated accordingly.
-       </para>
-   </note>
+  <sect2 id="configuration-file-postgresql-major-upgrades" xreflabel="configuration file and PostgreSQL major version upgrades">
+    <title>Configuration file and PostgreSQL major version upgrades</title>
 
-   <note>
+    <indexterm>
+      <primary>repmgr.conf</primary>
+      <secondary>ostgreSQL major version upgrades</secondary>
+    </indexterm>
+
+    <para>
+      When upgrading the PostgreSQL cluster to a new major version, <filename>repmgr.conf</filename>
+      will probably needed to be updated.
+    </para>
+    <para>
+      Usually <option>pg_bindir</option> and <option>data_directory</option> will need to be modified,
+      particularly if the default package locations are used, as these usually change.
+    </para>
+
      <para>
-       If the location of the configuration file changed after a PostgreSQL major upgrade, the
-       <option>config_file</option> field from the <structname>repmgr.nodes</structname> table will
-       need to reflect this change. This can be accomplished by forcing all nodes to register
-       again with the new configuration file. This will effectively update the <option>config_file</option>
-       field in <structname>repmgr.nodes</structname>. To accomplished this, just
-       execute <link linkend="repmgr-primary-register">
-       <command>repmgr primary register --force -f /path/to/repmgr.conf</command></link>
-       on the primary node, and then <link linkend="repmgr-standby-register">
-       <command>repmgr standby register --force -f /path/to/repmgr.conf</command></link>
-       on all the standby nodes (don't forget the witness, if there is one).
+       It's also possible the location of <filename>repmgr.conf</filename> itself will change
+       (e.g. from <filename>/etc/repmgr/11/repmgr.conf</filename> to <filename>/etc/repmgr/12/repmgr.conf</filename>).
+       This is stored as part of the &repmgr; metadata and is used by &repmgr; to execute &repmgr; remotely
+       (e.g. during a <link linkend="performing-switchover">switchover operation</link>).
      </para>
-   </note>
+     <para>
+       If the content and/or location of <filename>repmgr.conf</filename> has changed, the &repmgr; metadata
+       needs to be updated to reflect this. The &repmgr; metadata can be updated on each node with:
+       <itemizedlist spacing="compact" mark="bullet">
+         <listitem>
+           <simpara>
+             <link linkend="repmgr-primary-register">
+               <command>repmgr primary register --force -f /path/to/repmgr.conf</command>
+             </link>
+           </simpara>
+         </listitem>
+
+         <listitem>
+           <simpara>
+             <link linkend="repmgr-standby-register">
+               <command>repmgr standby register --force -f /path/to/repmgr.conf</command>
+             </link>
+           </simpara>
+         </listitem>
+
+
+         <listitem>
+           <simpara>
+             <link linkend="repmgr-witness-register">
+               <command>repmgr witness register --force -f /path/to/repmgr.conf -h primary_host</command>
+             </link>
+           </simpara>
+         </listitem>
+       </itemizedlist>
+     </para>
 
    </sect2>
  </sect1>
