@@ -201,9 +201,13 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 	</para>
 	<tip>
 	  <para>
-		If the &repmgr; upgrade requires a PostgreSQL restart, combine the &repmgr; upgrade
-		with a PostgreSQL minor version upgrade, which will require a restart in any case.
-		New PostgreSQL minor version are usually released every couple of months.
+        If the &repmgr; upgrade requires a PostgreSQL restart, combine the &repmgr; upgrade
+        with a PostgreSQL minor version upgrade, which will require a restart in any case.
+      </para>
+      <para>
+		New PostgreSQL minor versions are usually released every couple of months;
+        see the <ulink url="https://www.postgresql.org/developer/roadmap/">Roadmap</ulink>
+        for the current schedule.
 	  </para>
 	</tip>
   </sect2>
