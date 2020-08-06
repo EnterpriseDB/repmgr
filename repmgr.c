@@ -157,8 +157,6 @@ PG_FUNCTION_INFO_V1(get_wal_receiver_pid);
 void
 _PG_init(void)
 {
-	elog(DEBUG1, "repmgr init");
-
 	if (!process_shared_preload_libraries_in_progress)
 		return;
 
@@ -175,7 +173,6 @@ _PG_init(void)
 	 */
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = repmgr_shmem_startup;
-
 }
 
 
