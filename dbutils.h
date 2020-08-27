@@ -119,9 +119,14 @@ typedef enum
 
 typedef enum
 {
+	/* unable to query "pg_stat_replication" or other error */
 	NODE_ATTACHED_UNKNOWN = -1,
-	NODE_DETACHED,
-	NODE_ATTACHED
+	/* node has record in "pg_stat_replication" and state is not "streaming" */
+	NODE_ATTACHED,
+	/* node has record in "pg_stat_replication" but state is not "streaming" */
+	NODE_NOT_ATTACHED,
+	/* node has no record in "pg_stat_replication" */
+	NODE_DETACHED
 } NodeAttached;
 
 typedef enum
@@ -589,7 +594,7 @@ bool		get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *repl
 int			get_replication_lag_seconds(PGconn *conn);
 TimeLineID	get_node_timeline(PGconn *conn, char *timeline_id_str);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
-NodeAttached is_downstream_node_attached(PGconn *conn, char *node_name);
+NodeAttached is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state);
 void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
 int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 
