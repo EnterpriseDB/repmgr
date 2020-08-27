@@ -2354,6 +2354,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 			 * connected to the upstream
 			 */
 			NodeAttached attached_to_upstream = NODE_ATTACHED_UNKNOWN;
+			char *replication_state = NULL;
 			t_node_info upstream_node_rec = T_NODE_INFO_INITIALIZER;
 			RecordStatus upstream_node_rec_found = get_node_record(node_info->conn,
 																   node_info->upstream_node_id,
@@ -2381,7 +2382,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 				}
 				else
 				{
-					attached_to_upstream = is_downstream_node_attached(upstream_conn, node_info->node_name);
+					attached_to_upstream = is_downstream_node_attached(upstream_conn, node_info->node_name, &replication_state);
 				}
 
 				PQfinish(upstream_conn);
@@ -2397,6 +2398,18 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 										upstream_node_rec.node_name,
 										upstream_node_rec.node_id);
 			}
+			if (attached_to_upstream == NODE_NOT_ATTACHED)
+			{
+				appendPQExpBufferStr(upstream, "? ");
+				item_list_append_format(warnings,
+										"node \"%s\" (ID: %i) attached to its upstream node \"%s\" (ID: %i) in state \"%s\"",
+										node_info->node_name,
+										node_info->node_id,
+										upstream_node_rec.node_name,
+										upstream_node_rec.node_id,
+										replication_state);
+			}
+
 			else if (attached_to_upstream == NODE_DETACHED)
 			{
 				appendPQExpBufferStr(upstream, "! ");
@@ -3991,8 +4004,10 @@ check_standby_join(PGconn *upstream_conn, t_node_info *upstream_node_record, t_n
 
 	 for (; i < config_file_options.node_rejoin_timeout; i++)
 	 {
+		 char *node_state = NULL;
 		 NodeAttached node_attached = is_downstream_node_attached(upstream_conn,
-																  standby_node_record->node_name);
+																  standby_node_record->node_name,
+																  &node_state);
 		 if (node_attached == NODE_ATTACHED)
 		 {
 			 log_verbose(LOG_INFO, _("node \"%s\" (ID: %i) has attached to its upstream node"),
@@ -4009,9 +4024,19 @@ check_standby_join(PGconn *upstream_conn, t_node_info *upstream_node_record, t_n
 					  i + 1,
 					  config_file_options.node_rejoin_timeout);
 
-			 log_detail(_("checking for record in node \"%s\"'s \"pg_stat_replication\" table where \"application_name\" is \"%s\""),
-						upstream_node_record->node_name,
-						standby_node_record->node_name);
+			 if (node_attached == NODE_NOT_ATTACHED)
+			 {
+				 log_detail(_("node \"%s\" (ID: %i) is currrently attached to its upstream node in state \"%s\""),
+							upstream_node_record->node_name,
+							standby_node_record->node_id,
+							node_state);
+			 }
+			 else
+			 {
+				 log_detail(_("checking for record in node \"%s\"'s \"pg_stat_replication\" table where \"application_name\" is \"%s\""),
+							upstream_node_record->node_name,
+							standby_node_record->node_name);
+			 }
 		 }
 		 else
 		 {

@@ -5758,16 +5758,16 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 
 
 NodeAttached
-is_downstream_node_attached(PGconn *conn, char *node_name)
+is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
-	int			c = 0;
+	const char *state = NULL;
 
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT pg_catalog.count(*) "
+					  " SELECT pid, state "
 					  "   FROM pg_catalog.pg_stat_replication "
 					  "  WHERE application_name = '%s'",
 					  node_name);
@@ -5786,31 +5786,53 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 		return NODE_ATTACHED_UNKNOWN;
 	}
 
-	if (PQntuples(res) != 1)
-	{
-		log_verbose(LOG_WARNING, _("unexpected number of tuples (%i) returned"), PQntuples(res));
+	termPQExpBuffer(&query);
 
-		termPQExpBuffer(&query);
+	/*
+	 * If there's more than one entry in pg_stat_application, there's no
+	 * way we can reliably determine which one belongs to the node we're
+	 * checking, so there's nothing more we can do.
+	 */
+	if (PQntuples(res) > 1)
+	{
+		log_error(_("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
+				  node_name);
+		log_hint(_("verify that a unique node name is configured for each node"));
+
 		PQclear(res);
 
 		return NODE_ATTACHED_UNKNOWN;
 	}
 
-	c = atoi(PQgetvalue(res, 0, 0));
-
-	termPQExpBuffer(&query);
-	PQclear(res);
-
-	if (c == 0)
+	if (PQntuples(res) == 0)
 	{
-		log_verbose(LOG_WARNING, _("node \"%s\" not found in \"pg_stat_replication\""), node_name);
+		log_warning(_("node \"%s\" not found in \"pg_stat_replication\""), node_name);
+
+		PQclear(res);
 
 		return NODE_DETACHED;
 	}
 
-	if (c > 1)
-		log_verbose(LOG_WARNING, _("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
-					node_name);
+	state = PQgetvalue(res, 0, 1);
+
+	if (node_state != NULL)
+	{
+		*node_state = palloc0(strlen(state) + 1);
+		strncpy(*node_state, state, strlen(state));
+	}
+
+	if (strcmp(state, "streaming") != 0)
+	{
+		log_warning(_("node \"%s\" attached in state \"%s\""),
+					node_name,
+					state);
+
+		PQclear(res);
+
+		return NODE_NOT_ATTACHED;
+	}
+
+	PQclear(res);
 
 	return NODE_ATTACHED;
 }

@@ -307,7 +307,7 @@ do_node_status(void)
 				continue;
 			}
 
-			if (is_downstream_node_attached(conn, node_cell->node_info->node_name) != NODE_ATTACHED)
+			if (is_downstream_node_attached(conn, node_cell->node_info->node_name, NULL) != NODE_ATTACHED)
 			{
 				missing_nodes_count++;
 				item_list_append_format(&missing_nodes,
@@ -1302,7 +1302,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, t_node_info *node_info, 
 			continue;
 		}
 
-		if (is_downstream_node_attached(conn, cell->node_info->node_name) != NODE_ATTACHED)
+		if (is_downstream_node_attached(conn, cell->node_info->node_name, NULL) != NODE_ATTACHED)
 		{
 			missing_nodes_count++;
 			item_list_append_format(&missing_nodes,
@@ -1485,7 +1485,7 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 		upstream_conn = establish_db_connection(upstream_node_info.conninfo, true);
 
 		/* check our node is connected */
-		if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) != NODE_ATTACHED)
+		if (is_downstream_node_attached(upstream_conn, config_file_options.node_name, NULL) != NODE_ATTACHED)
 		{
 			appendPQExpBuffer(&details,
 							  _("node \"%s\" (ID: %i) is not attached to expected upstream node \"%s\" (ID: %i)"),
@@ -2940,7 +2940,7 @@ do_node_rejoin(void)
 						   config_file_options.node_rejoin_timeout);
 			}
 			else {
-				log_detail(_("no record for local node \"%s\" found in node \"%s\"'s \"pg_stat_replication\" table"),
+				log_detail(_("no active record for local node \"%s\" found in node \"%s\"'s \"pg_stat_replication\" table"),
 						   config_file_options.node_name,
 						   primary_node_record.node_name);
 			}
@@ -2952,7 +2952,7 @@ do_node_rejoin(void)
 	else
 	{
 		/* -W/--no-wait provided - check once */
-		NodeAttached node_attached = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+		NodeAttached node_attached = is_downstream_node_attached(primary_conn, config_file_options.node_name, NULL);
 		if (node_attached == NODE_ATTACHED)
 			success = true;
 	}
