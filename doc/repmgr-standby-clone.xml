@@ -175,7 +175,10 @@
     <programlisting>
       pg_basebackup_options='--wal-method=fetch'</programlisting>
 
-    and ensure that <literal>wal_keep_segments</literal> is set to an appropriately high value.
+    and ensure that <literal>wal_keep_segments</literal> (PostgreSQL 13 and later:
+    <literal>wal_keep_size</literal>) is set to an appropriately high value. Note
+    however that this is not a particularly reliable way of ensuring sufficient
+    WAL is retained and is not recommended.
     See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">
     pg_basebackup</ulink> documentation for details.
    </para>

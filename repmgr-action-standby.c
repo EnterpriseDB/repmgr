@@ -6068,7 +6068,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	}
 	/*
 	 * physical replication slots not available or not requested - check if
-	 * there are any circumstances where `wal_keep_segments` should be set
+	 * there are any circumstances where "wal_keep_segments" should be set
 	 */
 	else if (mode != barman)
 	{
@@ -6087,14 +6087,19 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 		if (check_wal_keep_segments == true)
 		{
+			const char *wal_keep_parameter_name = "wal_keep_size";
 
-			pg_setting_ok = get_pg_setting_int(conn, "wal_keep_segments", &i);
+			if (PQserverVersion(conn) < 130000)
+				wal_keep_parameter_name = "wal_keep_segments";
+
+			pg_setting_ok = get_pg_setting_int(conn, wal_keep_parameter_name, &i);
 
 			if (pg_setting_ok == false || i < 1)
 			{
 				if (pg_setting_ok == true)
 				{
-					log_error(_("parameter \"wal_keep_segments\" on the upstream server must be be set to a non-zero value"));
+					log_error(_("parameter \"%s\" on the upstream server must be be set to a non-zero value"),
+							  wal_keep_parameter_name);
 					log_hint(_("Choose a value sufficiently high enough to retain enough WAL "
 							   "until the standby has been cloned and started.\n "
 							   "Alternatively set up WAL archiving using e.g. PgBarman and configure "
@@ -6103,8 +6108,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 					if (server_version_num >= 90400)
 					{
 						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
-								   "do not require \"wal_keep_segments\" to be set "
-								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"));
+								   "do not require \"%s\" to be set "
+								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"),
+								   wal_keep_parameter_name);
 					}
 				}
 
@@ -6119,7 +6125,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 			if (pg_setting_ok == true && i > 0 && runtime_options.dry_run == true)
 			{
-				log_info(_("parameter \"wal_keep_segments\" set to %i"), i);
+				log_info(_("parameter \"%s\" set to %i"),
+						   wal_keep_parameter_name,
+						   i);
 			}
 		}
 	}

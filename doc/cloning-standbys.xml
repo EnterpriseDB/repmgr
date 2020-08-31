@@ -46,6 +46,7 @@
       <para>
        WAL management on the primary becomes much easier as there's no need
        to use replication slots, and <varname>wal_keep_segments</varname>
+       (PostgreSQL 13 and later: <varname>wal_keep_size</varname>)
        does not need to be set.
      </para>
     </listitem>
@@ -234,7 +235,8 @@ description = "Main cluster"
     that any standby connected to the primary using a replication slot will always
     be able to retrieve the required WAL files. This removes the need to manually
     manage WAL file retention by estimating the number of WAL files that need to
-    be maintained on the primary using <varname>wal_keep_segments</varname>.
+    be maintained on the primary using <varname>wal_keep_segments</varname>
+    (PostgreSQL 13 and later: <varname>wal_keep_size</varname>).
     Do however be aware that if a standby is disconnected, WAL will continue to
     accumulate on the primary until either the standby reconnects or the replication
     slot is dropped.

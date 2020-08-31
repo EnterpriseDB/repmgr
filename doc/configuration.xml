@@ -270,7 +270,7 @@
 
       <varlistentry>
 
-        <term><option>wal_keep_segments</option></term>
+        <term><option>wal_keep_segments</option> / <option>wal_keep_size</option></term>
 
         <listitem>
 
@@ -279,25 +279,36 @@
             <secondary>PostgreSQL configuration</secondary>
           </indexterm>
 
+
+          <indexterm>
+            <primary>wal_keep_size</primary>
+            <secondary>PostgreSQL configuration</secondary>
+          </indexterm>
+
           <para>
-            Normally there is no need to set <option>wal_keep_segments</option> (default: <literal>0</literal>), as it
-            is <emphasis>not</emphasis> a reliable way of ensuring that all required WAL segments are available to standbys.
-            Replication slots and/or an archiving solution such as Barman are recommended to ensure standbys have a reliable
+            Normally there is no need to set <option>wal_keep_segments</option>
+            (PostgreSQL 13 and later: <varname>wal_keep_size</varname>; default: <literal>0</literal>),
+            as it is <emphasis>not</emphasis> a reliable way of ensuring that all required WAL
+            segments are available to standbys. Replication slots and/or an archiving solution
+            such as Barman are recommended to ensure standbys have a reliable
             source of WAL segments at all times.
           </para>
           <para>
-            The only reason ever to set  <option>wal_keep_segments</option> is you have
-            you have configured <option>pg_basebackup_options</option>
+            The only reason ever to set  <option>wal_keep_segments</option> / <option>wal_keep_size</option>
+            is you have you have configured <option>pg_basebackup_options</option>
             in <filename>repmgr.conf</filename> to include the setting <literal>--wal-method=fetch</literal>
             (PostgreSQL 9.6 and earlier: <literal>--xlog-method=fetch</literal>)
             <emphasis>and</emphasis> you have <emphasis>not</emphasis> set <option>restore_command</option>
             in <filename>repmgr.conf</filename> to fetch WAL files from a reliable source such as Barman,
             in which case you'll need to set <option>wal_keep_segments</option>
             to a sufficiently high number to ensure that all WAL files required by the standby
-            are retained. However we do not recommend managing replication in this way.
+            are retained. However we do not recommend WAL retention in this way.
           </para>
           <para>
             PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-WAL-KEEP-SEGMENTS">wal_keep_segments</ulink>.
+            <!--
+             PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-WAL-KEEP-SIZE">wal_keep_size</ulink>.
+              -->
           </para>
         </listitem>
       </varlistentry>
