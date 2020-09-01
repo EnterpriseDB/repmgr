@@ -1903,6 +1903,62 @@ connection_has_pg_settings(PGconn *conn)
 }
 
 
+/*
+ * Determine if the user associated with the current connection is
+ * a member of the "pg_monitor" default role, or optionally one
+ * of its three constituent "subroles".
+ */
+bool
+connection_has_pg_monitor_role(PGconn *conn, const char *subrole)
+{
+	PQExpBufferData query;
+	PGresult   *res;
+	bool		has_pg_monitor_role = false;
+
+	/* superusers can read anything, no role check needed */
+	if (is_superuser_connection(conn, NULL) == true)
+		return true;
+
+	/* pg_monitor and associated "subroles" introduced in PostgreSQL 10 */
+	if (PQserverVersion(conn) < 100000)
+		return false;
+
+	initPQExpBuffer(&query);
+	appendPQExpBufferStr(&query,
+						 "  SELECT CASE "
+						 "           WHEN pg_catalog.pg_has_role('pg_monitor','MEMBER') "
+						 "             THEN TRUE ");
+
+	if (subrole != NULL)
+	{
+		appendPQExpBuffer(&query,
+						  "           WHEN pg_catalog.pg_has_role('%s','MEMBER') "
+						  "             THEN TRUE ",
+						  subrole);
+	}
+
+	appendPQExpBufferStr(&query,
+						 "           ELSE FALSE "
+						 "         END AS has_pg_monitor");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data,
+					 _("connection_has_pg_monitor_role(): unable to query user roles"));
+	}
+	else
+	{
+		has_pg_monitor_role = atobool(PQgetvalue(res, 0, 0));
+	}
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return has_pg_monitor_role;
+}
+
+
 bool
 is_replication_role(PGconn *conn, char *rolname)
 {
@@ -5772,7 +5828,6 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
-	const char *state = NULL;
 
 	initPQExpBuffer(&query);
 
@@ -5824,26 +5879,36 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 	}
 
 	/*
-	 * If the connec
+	 * If the connection is not a superuser or member of pg_read_all_stats, we
+	 * won't be able to retrieve the "state" column, so we'll assume
+	 * the node is attached.
 	 */
 
-	state = PQgetvalue(res, 0, 1);
-
-	if (node_state != NULL)
+	if (connection_has_pg_monitor_role(conn, "pg_read_all_stats"))
 	{
-		*node_state = palloc0(strlen(state) + 1);
-		strncpy(*node_state, state, strlen(state));
+		const char *state = PQgetvalue(res, 0, 1);
+
+		if (node_state != NULL)
+		{
+			*node_state = palloc0(strlen(state) + 1);
+			strncpy(*node_state, state, strlen(state));
+		}
+
+		if (strcmp(state, "streaming") != 0)
+		{
+			log_warning(_("node \"%s\" attached in state \"%s\""),
+						node_name,
+						state);
+
+			PQclear(res);
+
+			return NODE_NOT_ATTACHED;
+		}
 	}
-
-	if (strcmp(state, "streaming") != 0)
+	else if (node_state != NULL)
 	{
-		log_warning(_("node \"%s\" attached in state \"%s\""),
-					node_name,
-					state);
-
-		PQclear(res);
-
-		return NODE_NOT_ATTACHED;
+		*node_state = palloc0(1);
+		*node_state[0] = '\0';
 	}
 
 	PQclear(res);
