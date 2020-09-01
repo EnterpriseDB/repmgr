@@ -3638,7 +3638,7 @@ do_standby_switchover(void)
 	 * Check that the local replication configuration file is owned by the data
 	 * directory owner.
 	 *
-	 * For PostgreSQL 11 and earlier, if PostgreSQL is not able rename "recovery.conf",
+	 * For PostgreSQL 11 and earlier, if PostgreSQL is not able to rename "recovery.conf",
 	 * promotion will fail.
 	 *
 	 * For PostgreSQL 12 and later, promotion will not fail even if "postgresql.auto.conf"
