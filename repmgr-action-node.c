@@ -2834,7 +2834,7 @@ do_node_rejoin(void)
 						struct stat statbuf;
 						PQExpBufferData slotdir_ent_path;
 
-						if(strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
+						if (strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
 							continue;
 
 						initPQExpBuffer(&slotdir_ent_path);

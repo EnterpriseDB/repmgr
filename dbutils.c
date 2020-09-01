@@ -1830,7 +1830,7 @@ can_execute_pg_promote(PGconn *conn)
 	bool		has_pg_promote= false;
 
 	/* pg_promote() available from PostgreSQL 12 */
-	if(PQserverVersion(conn) < 120000)
+	if (PQserverVersion(conn) < 120000)
 		return false;
 
 	initPQExpBuffer(&query);
@@ -1869,7 +1869,7 @@ connection_has_pg_settings(PGconn *conn)
 		has_pg_settings = true;
 	}
 	/* from PostgreSQL 10, a non-superuser may have been granted access */
-	else if(PQserverVersion(conn) >= 100000)
+	else if (PQserverVersion(conn) >= 100000)
 	{
 		PQExpBufferData query;
 		PGresult   *res;
@@ -5822,6 +5822,10 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 
 		return NODE_DETACHED;
 	}
+
+	/*
+	 * If the connec
+	 */
 
 	state = PQgetvalue(res, 0, 1);
 

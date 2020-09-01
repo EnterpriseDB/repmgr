@@ -2293,7 +2293,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 									node_info->node_id);
 		}
 		/* mismatch between reported upstream and upstream in local node's metadata */
-		else if(node_info->upstream_node_id != remote_node_rec.upstream_node_id)
+		else if (node_info->upstream_node_id != remote_node_rec.upstream_node_id)
 		{
 			appendPQExpBufferStr(upstream, "! ");
 
