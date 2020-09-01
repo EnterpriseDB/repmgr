@@ -3552,11 +3552,21 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 		return false;
 	}
 
-	get_all_node_records(primary_conn, &nodes);
+	if (get_all_node_records(primary_conn, &nodes) == false)
+	{
+		rollback_transaction(witness_conn);
+
+		return false;
+	}
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		create_node_record(witness_conn, NULL, cell->node_info);
+		if (create_node_record(witness_conn, NULL, cell->node_info) == false)
+		{
+			rollback_transaction(witness_conn);
+
+			return false;
+		}
 	}
 
 	/* and done */

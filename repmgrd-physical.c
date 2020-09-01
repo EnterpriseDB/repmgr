@@ -2300,6 +2300,7 @@ monitor_streaming_witness(void)
 	{
 		log_warning(_("unable to connect to primary"));
 		log_detail("\n%s", PQerrorMessage(primary_conn));
+
 		/*
 		 * Here we're unable to connect to a primary despite having scanned all
 		 * known nodes, so we'll grab the record of the node we think is primary
@@ -2671,6 +2672,12 @@ loop:
 				witness_copy_node_records(primary_conn, local_conn);
 
 				INSTR_TIME_SET_CURRENT(witness_sync_interval_start);
+			}
+			else
+			{
+				log_debug("seconds since last node record sync: %i (sync interval: %i)",
+						  witness_sync_interval_elapsed,
+						  config_file_options.witness_sync_interval)
 			}
 		}
 
