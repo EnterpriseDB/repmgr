@@ -2045,7 +2045,7 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 	 * Check actual data directory matches that in repmgr.conf; note this requires
 	 * a superuser connection
 	 */
-	if (connection_has_pg_settings(conn) == true)
+	if (connection_has_pg_monitor_role(conn, "pg_read_all_settings") == true)
 	{
 		/* we expect to have a database connection */
 		if (get_pg_setting(conn, "data_directory", actual_data_directory) == false)

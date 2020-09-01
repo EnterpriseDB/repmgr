@@ -5784,7 +5784,7 @@ check_source_server()
 		 * This will check if the user is superuser or (from Pg10) is a member
 		 * of "pg_read_all_settings"/"pg_monitor"
 		 */
-		if (connection_has_pg_settings(source_conn))
+		if (connection_has_pg_monitor_role(source_conn, "pg_read_all_settings") == true)
 		{
 			SettingsUser = REPMGR_USER;
 		}
