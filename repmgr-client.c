@@ -81,9 +81,7 @@ t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_conninfo_param_list source_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 bool		config_file_required = true;
-char		pg_bindir[MAXLEN] = "";
-
-char		path_buf[MAXLEN] = "";
+char		pg_bindir[MAXPGPATH] = "";
 
 /*
  * if --node-id/--node-name provided, place that node's record here
@@ -3057,7 +3055,6 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 }
 
 
-
 standy_clone_mode
 get_standby_clone_mode(void)
 {
@@ -3072,12 +3069,11 @@ get_standby_clone_mode(void)
 }
 
 
-char *
-make_pg_path(const char *file)
+void
+make_pg_path(PQExpBufferData *buf, const char *file)
 {
-	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
-
-	return path_buf;
+	appendPQExpBuffer(buf, "%s%s",
+					  pg_bindir, file);
 }
 
 
@@ -3293,9 +3289,10 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				{
 					initPQExpBuffer(&command);
 
+					make_pg_path(&command, "pg_ctl");
+
 					appendPQExpBuffer(&command,
-									  "%s %s -w -D ",
-									  make_pg_path("pg_ctl"),
+									  " %s -w -D ",
 									  config_file_options.pg_ctl_options);
 
 					appendShellString(&command,
@@ -3323,9 +3320,10 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
+					make_pg_path(&command, "pg_ctl");
+
 					appendPQExpBuffer(&command,
-									  "%s %s -D ",
-									  make_pg_path("pg_ctl"),
+									  " %s -D ",
 									  config_file_options.pg_ctl_options);
 
 					appendShellString(&command,
@@ -3358,9 +3356,11 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
+
+					make_pg_path(&command, "pg_ctl");
+
 					appendPQExpBuffer(&command,
-									  "%s %s -w -D ",
-									  make_pg_path("pg_ctl"),
+									  " %s -w -D ",
 									  config_file_options.pg_ctl_options);
 
 					appendShellString(&command,
@@ -3386,9 +3386,11 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
+
+					make_pg_path(&command, "pg_ctl");
+
 					appendPQExpBuffer(&command,
-									  "%s %s -w -D ",
-									  make_pg_path("pg_ctl"),
+									  " %s -w -D ",
 									  config_file_options.pg_ctl_options);
 
 					appendShellString(&command,
@@ -3415,9 +3417,11 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
+
+					make_pg_path(&command, "pg_ctl");
+
 					appendPQExpBuffer(&command,
-									  "%s %s -w -D ",
-									  make_pg_path("pg_ctl"),
+									  " %s -w -D ",
 									  config_file_options.pg_ctl_options);
 
 					appendShellString(&command,

@@ -2733,9 +2733,9 @@ do_node_rejoin(void)
 		}
 		else
 		{
-			appendPQExpBuffer(&command,
-							  "%s -D ",
-							  make_pg_path("pg_rewind"));
+			make_pg_path(&command, "pg_rewind");
+			appendPQExpBufferStr(&command,
+								 " -D ");
 		}
 
 		appendShellString(&command,

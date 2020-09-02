@@ -6564,9 +6564,11 @@ initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_no
 static int
 run_basebackup(t_node_info *node_record)
 {
-	char		script[MAXLEN] = "";
-	int			r = SUCCESS;
 	PQExpBufferData params;
+	PQExpBufferData script;
+
+	int			r = SUCCESS;
+
 	TablespaceListCell *cell = NULL;
 	t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 
@@ -6717,21 +6719,25 @@ run_basebackup(t_node_info *node_record)
 		}
 	}
 
-	maxlen_snprintf(script,
-					"%s -l \"repmgr base backup\" %s %s",
-					make_pg_path("pg_basebackup"),
-					params.data,
-					config_file_options.pg_basebackup_options);
+	initPQExpBuffer(&script);
+	make_pg_path(&script, "pg_basebackup");
+
+	appendPQExpBuffer(&script,
+					  " -l \"repmgr base backup\" %s %s",
+					  params.data,
+					  config_file_options.pg_basebackup_options);
 
 	termPQExpBuffer(&params);
 
-	log_info(_("executing:\n  %s"), script);
+	log_info(_("executing:\n  %s"), script.data);
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
 	 */
 
-	r = system(script);
+	r = system(script.data);
+
+	termPQExpBuffer(&script);
 
 	if (r != 0)
 		return ERR_BAD_BASEBACKUP;
