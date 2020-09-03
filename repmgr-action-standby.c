@@ -157,6 +157,7 @@ static CheckStatus parse_db_connection(const char *db_connection);
  *  --replication-user (only required if no upstream record)
  *  --without-barman
  *  --replication-conf-only (--recovery-conf-only)
+ *  --verify-backup (PostgreSQL 13 and later)
  */
 
 void
@@ -218,6 +219,15 @@ do_standby_clone(void)
 
 	if (mode == barman)
 	{
+		/*
+		 * Not currently possible to use --verify-backup with Barman
+		 */
+		if (runtime_options.verify_backup == true)
+		{
+			log_error(_("--verify-backup option cannot be used when cloning from Barman backups"));
+			exit(ERR_BAD_CONFIG);
+		}
+
 		/*
 		 * Sanity-check barman connection and installation;
 		 * this will exit with ERR_BARMAN if problems found.
@@ -323,12 +333,24 @@ do_standby_clone(void)
 		/*
 		 * This connects to the source node and performs sanity checks, also
 		 * sets "recovery_conninfo_str", "upstream_repluser", "upstream_user" and
-		 * "upstream_node_id".
+		 * "upstream_node_id" and creates a connection handle in "source_conn".
 		 *
 		 * Will error out if source connection not possible and not in
 		 * "barman" mode.
 		 */
 		check_source_server();
+
+		if (runtime_options.verify_backup == true)
+		{
+			/*
+			 * --verify-backup available for PostgreSQL 13 and later
+			 */
+			if (PQserverVersion(source_conn) < 130000)
+			{
+				log_error(_("--verify-backup available for PostgreSQL 13 and later"));
+				exit(ERR_BAD_CONFIG);
+			}
+		}
 
 		/* attempt to retrieve upstream node record */
 		record_status = get_node_record(source_conn,
@@ -341,6 +363,7 @@ do_standby_clone(void)
 					  upstream_node_id);
 			exit(ERR_BAD_CONFIG);
 		}
+
 	}
 	else
 	{
@@ -717,6 +740,49 @@ do_standby_clone(void)
 
 		PQfinish(source_conn);
 		exit(r);
+	}
+
+	/*
+	 * Run pg_verifybackup here if requested, before any alterations are made
+	 * to the data directory.
+	 */
+	if (mode == pg_basebackup && runtime_options.verify_backup == true)
+	{
+		PQExpBufferData command;
+		int r;
+		struct stat st;
+
+		initPQExpBuffer(&command);
+
+		make_pg_path(&command, "pg_verifybackup");
+
+		/* check command actually exists */
+		if (stat(command.data, &st) != 0)
+		{
+			log_error(_("unable to find expected binary \"%s\""), command.data);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		appendPQExpBufferStr(&command, " ");
+
+		/* Somewhat inconsistent, but pg_verifybackup doesn't accept a -D option  */
+		appendShellString(&command,
+						  local_data_directory);
+
+		log_debug("executing:\n  %s", command.data);
+
+		r = system(command.data);
+		termPQExpBuffer(&command);
+
+		if (r != 0)
+		{
+			log_error(_("unable to verify backup"));
+			exit(ERR_BAD_BASEBACKUP);
+		}
+
+		log_verbose(LOG_INFO, _("backup successfully verified"));
+
 	}
 
 
@@ -8841,6 +8907,9 @@ do_standby_help(void)
 	printf(_("  --upstream-conninfo                 \"primary_conninfo\" value to write in recovery.conf\n" \
 			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional, defaults to primary node)\n"));
+#if (PG_VERSION_NUM >= 130000)
+	printf(_("  --verify-backup                     verify a cloned node using the \"pg_verifybackup\" utility\n"));
+#endif
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
 	printf(_("  --replication-conf-only             generate replication configuration for a previously cloned instance\n"));
 

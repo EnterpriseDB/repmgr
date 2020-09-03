@@ -373,6 +373,23 @@
           </para>
         </listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><option>--verify-backup</option></term>
+        <listitem>
+          <para>
+            <!-- update link after Pg13 release -->
+            Verify a cloned node using the
+            <ulink url="https://www.postgresql.org/docs/13/app-pgverifybackup.html">pg_verifybackup</ulink>
+            utility (PostgreSQL 13 and later).
+          </para>
+          <para>
+            This option can currently only be used when cloning directly from an upstream
+            node.
+          </para>
+        </listitem>
+      </varlistentry>
+
       <varlistentry>
         <term><option>--without-barman </option></term>
         <listitem>

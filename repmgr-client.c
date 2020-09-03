@@ -433,6 +433,10 @@ main(int argc, char **argv)
 				runtime_options.replication_conf_only = true;
 				break;
 
+				/* --verify-backup */
+			case OPT_VERIFY_BACKUP:
+				runtime_options.verify_backup = true;
+				break;
 
 				/*---------------------------
 				 * "standby register" options
