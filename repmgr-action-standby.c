@@ -8910,7 +8910,7 @@ do_standby_help(void)
 #if (PG_VERSION_NUM >= 130000)
 	printf(_("  --verify-backup                     verify a cloned node using the \"pg_verifybackup\" utility\n"));
 #endif
-	printf(_("  --without-barman                    do not use Barman even if configured\n"));
+	printf(_("  --without-barman                    do not clone from Barman even if configured\n"));
 	printf(_("  --replication-conf-only             generate replication configuration for a previously cloned instance\n"));
 
 	puts("");
