@@ -244,16 +244,15 @@
     </para>
     <para>
       <application>pg_rewind</application> has been part of the core PostgreSQL distribution since
-      version 9.5. Users of versions 9.3 and 9.4 will need to manually install it; the source code is available here:
+      version 9.5. Users of PostgreSQL 9.4 will need to manually install it; the source code is available here:
       <ulink url="https://github.com/vmware/pg_rewind">https://github.com/vmware/pg_rewind</ulink>.
       If the <application>pg_rewind</application>
       binary is not installed in the PostgreSQL <filename>bin</filename> directory, provide
       its full path  on the demotion candidate  with <option>--force-rewind</option>.
     </para>
     <para>
-      Note that building the 9.3/9.4 version of <application>pg_rewind</application> requires the PostgreSQL
-      source code. Also, PostgreSQL 9.3 does not provide <varname>wal_log_hints</varname>,
-      meaning data checksums must have been enabled when the database was initialized.
+      Note that building the 9.4 version of <application>pg_rewind</application> requires the PostgreSQL
+      source code.
     </para>
   </sect2>
 
@@ -343,7 +342,7 @@
    <itemizedlist spacing="compact" mark="bullet">
     <listitem>
      <simpara>
-      If using PostgreSQL 9.3 or 9.4, you should ensure that the shutdown command
+      If using PostgreSQL 9.4, you should ensure that the shutdown command
       is configured to use PostgreSQL's <varname>fast</varname> shutdown mode (the default in 9.5
       and later). If relying on <command>pg_ctl</command> to perform database server operations,
       you should include <literal>-m fast</literal> in <varname>pg_ctl_options</varname>

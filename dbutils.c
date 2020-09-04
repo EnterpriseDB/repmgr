@@ -5538,21 +5538,9 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 	}
 	else
 	{
-		if (PQserverVersion(conn) >= 90400)
-		{
-			appendPQExpBufferStr(&query,
-								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
-								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0'::PG_LSN) AS last_wal_replay_lsn, ");
-		}
-		else
-		{
-			/* 9.3 does not have "pg_lsn" datatype */
-			appendPQExpBufferStr(&query,
-								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0') AS last_wal_receive_lsn, "
-								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0') AS last_wal_replay_lsn, ");
-		}
-
 		appendPQExpBufferStr(&query,
+							 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
+							 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0'::PG_LSN) AS last_wal_replay_lsn, "
 							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
 							 "          THEN FALSE "
 							 "          ELSE pg_catalog.pg_is_xlog_replay_paused() "
@@ -5723,28 +5711,11 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 
 	appendPQExpBufferStr(&query,
 						 " SELECT pg_catalog.current_setting('max_wal_senders')::INT AS max_wal_senders, "
-						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
-
-	/* no replication slots in PostgreSQL 9.3 */
-	if (PQserverVersion(conn) < 90400)
-	{
-		appendPQExpBufferStr(&query,
-							 "        0 AS max_replication_slots, "
-							 "        0 AS total_replication_slots, "
-							 "        0 AS active_replication_slots, "
-							 "        0 AS inactive_replication_slots, ");
-	}
-	else
-	{
-		appendPQExpBufferStr(&query,
-							 "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE slot_type='physical') AS total_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE AND slot_type='physical')  AS active_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE AND slot_type='physical') AS inactive_replication_slots, ");
-	}
-
-
-	appendPQExpBufferStr(&query,
+						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, "
+						 "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
+						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE slot_type='physical') AS total_replication_slots, "
+						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE AND slot_type='physical')  AS active_replication_slots, "
+						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE AND slot_type='physical') AS inactive_replication_slots, "
 						 "        pg_catalog.pg_is_in_recovery() AS in_recovery");
 
 	log_verbose(LOG_DEBUG, "get_node_replication_stats():\n%s", query.data);

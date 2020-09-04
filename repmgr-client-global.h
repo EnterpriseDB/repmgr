@@ -252,7 +252,6 @@ extern char pg_bindir[MAXLEN];
 
 /* global functions */
 extern int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
-extern void check_93_config(void);
 extern bool create_repmgr_extension(PGconn *conn);
 extern int	test_ssh_connection(char *host, char *remote_user);
 

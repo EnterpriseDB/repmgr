@@ -2772,10 +2772,6 @@ do_standby_follow(void)
 	/* check this is a standby */
 	check_recovery_type(local_conn);
 
-	/* sanity-checks for 9.3 */
-	if (PQserverVersion(local_conn) < 90400)
-		check_93_config();
-
 	/* attempt to retrieve local node record */
 	record_status = get_node_record(local_conn,
 									config_file_options.node_id,
@@ -3205,9 +3201,6 @@ do_standby_follow(void)
 /*
  * Perform the actuall "follow" operation; this is executed by
  * "node rejoin" too.
- *
- * For PostgreSQL 9.3, ensure check_93_config() was called before calling
- * this function.
  */
 bool
 do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_node_info *follow_target_node_record, PQExpBufferData *output, int general_error_code, int *error_code)
@@ -6004,10 +5997,6 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	standy_clone_mode mode;
 	bool		pg_setting_ok;
 
-	/* Disable configuration file options incompatible with 9.3 */
-	if (server_version_num < 90400)
-		check_93_config();
-
 	/*
 	 * Detecting the intended cloning mode
 	 */
@@ -6040,13 +6029,6 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	if (strlen(backup_options.wal_method) && strcmp(backup_options.wal_method, "stream") != 0)
 		wal_method_stream = false;
 
-	/* Check that WAL level is set correctly */
-	if (server_version_num < 90400)
-	{
-		i = guc_set(conn, "wal_level", "=", "hot_standby");
-		wal_error_message = _("parameter \"wal_level\" must be set to \"hot_standby\"");
-	}
-	else
 	{
 		char	   *levels_pre96[] = {
 			"hot_standby",
@@ -6170,14 +6152,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 							   "until the standby has been cloned and started.\n "
 							   "Alternatively set up WAL archiving using e.g. PgBarman and configure "
 							   "'restore_command' in repmgr.conf to fetch WALs from there."));
-
-					if (server_version_num >= 90400)
-					{
-						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
-								   "do not require \"%s\" to be set "
-								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"),
-								   wal_keep_parameter_name);
-					}
+					log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
+							   "do not require \"%s\" to be set "
+							   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"),
+							 wal_keep_parameter_name);
 				}
 
 				if (exit_on_error == true)
@@ -6199,7 +6177,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	}
 
 
-	if (config_file_options.use_replication_slots == false && server_version_num >= 90400)
+	if (config_file_options.use_replication_slots == false)
 	{
 		log_info(_("replication slot usage not requested;  no replication slot will be set up for this standby"));
 	}
@@ -6452,30 +6430,17 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		}
 
 		/* wal_log_hints available from PostgreSQL 9.4; can be read by any user */
-		if (PQserverVersion(conn) >= 90400)
+		if (get_pg_setting_bool(conn, "wal_log_hints", &wal_log_hints) == false)
 		{
-			if (get_pg_setting_bool(conn, "wal_log_hints", &wal_log_hints) == false)
-			{
-				/* highly unlikely this will happen */
-				log_error(_("unable to determine value for \"wal_log_hints\""));
-				exit(ERR_BAD_CONFIG);
-			}
+			/* highly unlikely this will happen */
+			log_error(_("unable to determine value for \"wal_log_hints\""));
+			exit(ERR_BAD_CONFIG);
 		}
 
 		if (data_checksums == false && wal_log_hints == false)
 		{
-			/*
-			 * If anyone's still on 9.3, there's not a lot we can do anyway
-			 */
-			if (PQserverVersion(conn) < 90400)
-			{
-				log_warning(_("data checksums are not enabled"));
-			}
-			else
-			{
-				log_warning(_("data checksums are not enabled and \"wal_log_hints\" is \"off\""));
-				log_detail(_("pg_rewind requires \"wal_log_hints\" to be enabled"));
-			}
+			log_warning(_("data checksums are not enabled and \"wal_log_hints\" is \"off\""));
+			log_detail(_("pg_rewind requires \"wal_log_hints\" to be enabled"));
 		}
 	}
 
@@ -6520,66 +6485,59 @@ initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_no
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
-		if (source_server_version_num < 90400)
+		TablespaceListCell *cell;
+		KeyValueList not_found = {NULL, NULL};
+		int			total = 0,
+					matched = 0;
+		bool		success = false;
+
+		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 		{
-			log_warning(_("tablespace mapping not supported in PostgreSQL 9.3, ignoring"));
+			char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
+			char		name[MAXLEN] = "";
+
+			success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
+			pfree(old_dir_escaped);
+
+			if (success == true)
+			{
+				matched++;
+			}
+			else
+			{
+				key_value_list_set(&not_found,
+								   cell->old_dir,
+								   "");
+			}
+
+			total++;
 		}
-		else
+
+		if (not_found.head != NULL)
 		{
-			TablespaceListCell *cell;
-			KeyValueList not_found = {NULL, NULL};
-			int			total = 0,
-						matched = 0;
-			bool		success = false;
+			PQExpBufferData detail;
+			KeyValueListCell *kv_cell;
 
+			log_error(_("%i of %i mapped tablespaces not found"),
+					  total - matched, total);
 
-			for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
+			initPQExpBuffer(&detail);
+
+			for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
 			{
-				char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
-				char		name[MAXLEN] = "";
-
-				success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
-				pfree(old_dir_escaped);
-
-				if (success == true)
-				{
-					matched++;
-				}
-				else
-				{
-					key_value_list_set(&not_found,
-									   cell->old_dir,
-									   "");
-				}
-
-				total++;
+				appendPQExpBuffer(
+					&detail,
+					"  %s\n", kv_cell->key);
 			}
 
-			if (not_found.head != NULL)
-			{
-				PQExpBufferData detail;
-				KeyValueListCell *kv_cell;
+			log_detail(_("following tablespaces not found:\n%s"),
+					   detail.data);
+			termPQExpBuffer(&detail);
 
-				log_error(_("%i of %i mapped tablespaces not found"),
-						  total - matched, total);
-
-				initPQExpBuffer(&detail);
-
-				for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
-				{
-					appendPQExpBuffer(
-						&detail,
-						"  %s\n", kv_cell->key);
-				}
-
-				log_detail(_("following tablespaces not found:\n%s"),
-						   detail.data);
-				termPQExpBuffer(&detail);
-
-				exit(ERR_BAD_CONFIG);
-			}
+			exit(ERR_BAD_CONFIG);
 		}
 	}
+
 
 	/*
 	 * If replication slots requested, create appropriate slot on the source

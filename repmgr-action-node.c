@@ -85,7 +85,6 @@ do_node_status(void)
 	t_recovery_conf recovery_conf = T_RECOVERY_CONF_INITIALIZER;
 
 	char		data_dir[MAXPGPATH] = "";
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	char		server_version_str[MAXVERSIONSTR] = "";
 
 	/*
@@ -103,7 +102,7 @@ do_node_status(void)
 	conn = establish_db_connection(config_file_options.conninfo, true);
 	strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
 
-	server_version_num = get_server_version(conn, server_version_str);
+	(void)get_server_version(conn, server_version_str);
 
 	/* check node exists  */
 
@@ -334,13 +333,7 @@ do_node_status(void)
 		}
 	}
 
-	if (server_version_num < 90400)
-	{
-		key_value_list_set(&node_status,
-						   "Replication slots",
-						   "not available");
-	}
-	else if (node_info.max_replication_slots == 0)
+	if (node_info.max_replication_slots == 0)
 	{
 		key_value_list_set(&node_status,
 						   "Replication slots",
@@ -1843,12 +1836,7 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 
 	initPQExpBuffer(&details);
 
-	if (PQserverVersion(conn) < 90400)
-	{
-		appendPQExpBufferStr(&details,
-							 _("replication slots not available for this PostgreSQL version"));
-	}
-	else if (node_info->total_replication_slots == 0)
+	if (node_info->total_replication_slots == 0)
 	{
 		appendPQExpBufferStr(&details,
 							 _("node has no physical replication slots"));
@@ -1919,50 +1907,42 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 
 	initPQExpBuffer(&details);
 
-	if (PQserverVersion(conn) < 90400)
+	get_downstream_nodes_with_missing_slot(conn,
+										   config_file_options.node_id,
+										   &missing_slots);
+
+	if (missing_slots.node_count == 0)
 	{
 		appendPQExpBufferStr(&details,
-							 _("replication slots not available for this PostgreSQL version"));
+							 _("node has no missing physical replication slots"));
 	}
 	else
 	{
-		get_downstream_nodes_with_missing_slot(conn,
-											   config_file_options.node_id,
-											   &missing_slots);
+		NodeInfoListCell *missing_slot_cell = NULL;
+		bool first_element = true;
 
-		if (missing_slots.node_count == 0)
+		status = CHECK_STATUS_CRITICAL;
+
+		appendPQExpBuffer(&details,
+						  _("%i physical replication slots are missing"),
+						  missing_slots.node_count);
+
+		if (missing_slots.node_count)
 		{
-			appendPQExpBufferStr(&details,
-								 _("node has no missing physical replication slots"));
-		}
-		else
-		{
-			NodeInfoListCell *missing_slot_cell = NULL;
-			bool first_element = true;
+			appendPQExpBufferStr(&details, ": ");
 
-			status = CHECK_STATUS_CRITICAL;
-
-			appendPQExpBuffer(&details,
-							  _("%i physical replication slots are missing"),
-							  missing_slots.node_count);
-
-			if (missing_slots.node_count)
+			for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
 			{
-				appendPQExpBufferStr(&details, ": ");
-
-				for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
+				if (first_element == true)
 				{
-					if (first_element == true)
-					{
-						first_element = false;
-					}
-					else
-					{
-						appendPQExpBufferStr(&details, ", ");
-					}
-
-					appendPQExpBufferStr(&details, missing_slot_cell->node_info->slot_name);
+					first_element = false;
 				}
+				else
+				{
+					appendPQExpBufferStr(&details, ", ");
+				}
+
+				appendPQExpBufferStr(&details, missing_slot_cell->node_info->slot_name);
 			}
 		}
 	}
@@ -2556,10 +2536,6 @@ do_node_rejoin(void)
 
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
-
-	/* sanity checks for 9.3 */
-	if (PQserverVersion(upstream_conn) < 90400)
-		check_93_config();
 
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{

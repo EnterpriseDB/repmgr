@@ -26,7 +26,7 @@
   <abstract>
    <para>
    This is the official documentation of &repmgr; &repmgrversion; for
-   use with PostgreSQL 9.3 - PostgreSQL 12.
+   use with PostgreSQL 9.4 - PostgreSQL 13.
    </para>
    <para>
      &repmgr; is being continually developed and we strongly recommend using the

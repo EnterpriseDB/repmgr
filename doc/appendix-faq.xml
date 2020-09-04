@@ -22,6 +22,9 @@
           &repmgr; 5 is fundamentally the same code base as &repmgr; 4, but provides
           support for the revised replication configuration mechanism in PostgreSQL 12.
         </para>
+        <para>
+          Support for PostgreSQL 9.3 is no longer available from &repmgr; 5.2.
+        </para>
       </note>
       <para>
         &repmgr; 3.x builds on the improved replication facilities added

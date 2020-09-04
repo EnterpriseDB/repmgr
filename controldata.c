@@ -277,8 +277,19 @@ get_controlfile(const char *DataDir)
 		return control_file_info;
 	}
 
-
-	if (version_num >= 90500)
+	if (version_num >= 120000)
+	{
+#if PG_ACTUAL_VERSION_NUM >= 120000
+		expected_size = sizeof(ControlFileData12);
+		ControlFileDataPtr = palloc0(expected_size);
+#endif
+	}
+	else if (version_num >= 110000)
+	{
+		expected_size = sizeof(ControlFileData11);
+		ControlFileDataPtr = palloc0(expected_size);
+	}
+	else if (version_num >= 90500)
 	{
 		expected_size = sizeof(ControlFileData95);
 		ControlFileDataPtr = palloc0(expected_size);
@@ -288,12 +299,6 @@ get_controlfile(const char *DataDir)
 		expected_size = sizeof(ControlFileData94);
 		ControlFileDataPtr = palloc0(expected_size);
 	}
-	else if (version_num >= 90300)
-	{
-		expected_size = sizeof(ControlFileData93);
-		ControlFileDataPtr = palloc0(expected_size);
-	}
-
 
 	if (read(fd, ControlFileDataPtr, expected_size) != expected_size)
 	{
@@ -351,17 +356,6 @@ get_controlfile(const char *DataDir)
 	else if (version_num >= 90400)
 	{
 		ControlFileData94 *ptr = (struct ControlFileData94 *)ControlFileDataPtr;
-		control_file_info->system_identifier = ptr->system_identifier;
-		control_file_info->state = ptr->state;
-		control_file_info->checkPoint = ptr->checkPoint;
-		control_file_info->data_checksum_version = ptr->data_checksum_version;
-		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
-		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
-		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
-	}
-	else if (version_num >= 90300)
-	{
-		ControlFileData93 *ptr = (struct ControlFileData93 *)ControlFileDataPtr;
 		control_file_info->system_identifier = ptr->system_identifier;
 		control_file_info->state = ptr->state;
 		control_file_info->checkPoint = ptr->checkPoint;

@@ -2923,30 +2923,6 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 }
 
 
-
-/*
- * check_93_config()
- *
- * Disable options not compatible with PostgreSQL 9.3
- */
-void
-check_93_config(void)
-{
-	if (config_file_options.recovery_min_apply_delay_provided == true)
-	{
-		config_file_options.recovery_min_apply_delay_provided = false;
-		log_warning(_("configuration file option \"recovery_min_apply_delay\" not compatible with PostgreSQL 9.3, ignoring"));
-	}
-
-	if (config_file_options.use_replication_slots == true)
-	{
-		config_file_options.use_replication_slots = false;
-		log_warning(_("configuration file option \"use_replication_slots\" not compatible with PostgreSQL 9.3, ignoring"));
-		log_hint(_("replication slots are available from PostgreSQL 9.4"));
-	}
-}
-
-
 int
 test_ssh_connection(char *host, char *remote_user)
 {
@@ -3138,15 +3114,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		appendPQExpBufferStr(&rsync_flags,
 							 " --exclude=recovery.conf --exclude=recovery.done");
 
-		if (server_version_num >= 90400)
-		{
-			/*
-			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
-			 * that has too many dependencies for a mere client program.
-			 */
-			appendPQExpBuffer(&rsync_flags, " --exclude=%s.tmp",
-							  PG_AUTOCONF_FILENAME);
-		}
+		/*
+		 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
+		 * that has too many dependencies for a mere client program.
+		 */
+		appendPQExpBuffer(&rsync_flags, " --exclude=%s.tmp",
+						  PG_AUTOCONF_FILENAME);
 
 		/* Temporary files which we don't want, if they exist */
 		appendPQExpBuffer(&rsync_flags, " --exclude=%s*",
@@ -3598,27 +3571,6 @@ bool
 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason)
 {
 	bool		can_use = true;
-
-	/* wal_log_hints not available in 9.3, so just determine if data checksums enabled */
-	if (PQserverVersion(conn) < 90400)
-	{
-		int			data_checksum_version = get_data_checksum_version(data_directory);
-
-		if (data_checksum_version < 0)
-		{
-			appendPQExpBuffer(reason,
-							  _("unable to determine data checksum version"));
-			can_use = false;
-		}
-		else if (data_checksum_version == 0)
-		{
-			appendPQExpBuffer(reason,
-							  _("this cluster was initialised without data checksums"));
-			can_use = false;
-		}
-
-		return can_use;
-	}
 
 	/* "full_page_writes" must be on in any case */
 	if (guc_set(conn, "full_page_writes", "=", "off"))

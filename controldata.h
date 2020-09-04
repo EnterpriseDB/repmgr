@@ -31,9 +31,7 @@ typedef struct
 } ControlFileInfo;
 
 
-
-/* Same for 9.3, 9.4 */
-typedef struct CheckPoint93
+typedef struct CheckPoint94
 {
 	XLogRecPtr	redo;			/* next RecPtr available when we began to
 								 * create CheckPoint (i.e. REDO start point) */
@@ -53,7 +51,7 @@ typedef struct CheckPoint93
 	pg_time_t	time;			/* time stamp of checkpoint */
 
 	TransactionId oldestActiveXid;
-} CheckPoint93;
+} CheckPoint94;
 
 
 /* Same for 9.5, 9.6, 10, 11 */
@@ -128,65 +126,6 @@ typedef struct CheckPoint12
 } CheckPoint12;
 #endif
 
-typedef struct ControlFileData93
-{
-	uint64		system_identifier;
-
-	uint32		pg_control_version;		/* PG_CONTROL_VERSION */
-	uint32		catalog_version_no;		/* see catversion.h */
-
-	DBState		state;			/* see enum above */
-	pg_time_t	time;			/* time stamp of last pg_control update */
-	XLogRecPtr	checkPoint;		/* last check point record ptr */
-	XLogRecPtr	prevCheckPoint; /* previous check point record ptr */
-
-	CheckPoint93	checkPointCopy; /* copy of last check point record */
-
-	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
-
-	XLogRecPtr	minRecoveryPoint;
-	TimeLineID	minRecoveryPointTLI;
-	XLogRecPtr	backupStartPoint;
-	XLogRecPtr	backupEndPoint;
-	bool		backupEndRequired;
-
-	int			wal_level;
-	int			MaxConnections;
-	int			max_prepared_xacts;
-	int			max_locks_per_xact;
-
-	uint32		maxAlign;		/* alignment requirement for tuples */
-	double		floatFormat;	/* constant 1234567.0 */
-
-	uint32		blcksz;			/* data block size for this DB */
-	uint32		relseg_size;	/* blocks per segment of large relation */
-
-	uint32		xlog_blcksz;	/* block size within WAL files */
-	uint32		xlog_seg_size;	/* size of each WAL segment */
-
-	uint32		nameDataLen;	/* catalog name field width */
-	uint32		indexMaxKeys;	/* max number of columns in an index */
-
-	uint32		toast_max_chunk_size;	/* chunk size in TOAST tables */
-
-	/* flag indicating internal format of timestamp, interval, time */
-	bool		enableIntTimes; /* int64 storage enabled? */
-
-	/* flags indicating pass-by-value status of various types */
-	bool		float4ByVal;	/* float4 pass-by-value? */
-	bool		float8ByVal;	/* float8, int8, etc pass-by-value? */
-
-	/* Are data pages protected by checksums? Zero if no checksum version */
-	uint32		data_checksum_version;
-
-} ControlFileData93;
-
-
-/*
- * Following field added since 9.3:
- *
- * 	int			max_worker_processes;
- */
 
 typedef struct ControlFileData94
 {
@@ -200,7 +139,7 @@ typedef struct ControlFileData94
 	XLogRecPtr	checkPoint;		/* last check point record ptr */
 	XLogRecPtr	prevCheckPoint; /* previous check point record ptr */
 
-	CheckPoint93	checkPointCopy; /* copy of last check point record */
+	CheckPoint94	checkPointCopy; /* copy of last check point record */
 
 	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
 

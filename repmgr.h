@@ -74,8 +74,8 @@
 #include "log.h"
 #include "sysutils.h"
 
-#define MIN_SUPPORTED_VERSION		"9.3"
-#define MIN_SUPPORTED_VERSION_NUM	90300
+#define MIN_SUPPORTED_VERSION		"9.4"
+#define MIN_SUPPORTED_VERSION_NUM	90400
 
 #define REPLICATION_TYPE_PHYSICAL 1
 

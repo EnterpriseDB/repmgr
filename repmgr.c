@@ -33,22 +33,14 @@
 #include "storage/shmem.h"
 #include "storage/spin.h"
 #include "utils/builtins.h"
-
-#if (PG_VERSION_NUM >= 90400)
 #include "utils/pg_lsn.h"
-#endif
 
 #include "utils/timestamp.h"
 
 #include "lib/stringinfo.h"
 #include "access/xact.h"
 #include "utils/snapmgr.h"
-
-#if (PG_VERSION_NUM >= 90400)
 #include "pgstat.h"
-#else
-#define PGSTAT_STAT_PERMANENT_DIRECTORY             "pg_stat"
-#endif
 
 #include "voting.h"
 
