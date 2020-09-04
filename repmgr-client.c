@@ -3130,16 +3130,16 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		if (server_version_num >= 100000)
 		{
 			appendPQExpBufferStr(&rsync_flags,
-								 " --exclude=pg_wal/*");
+								 " --exclude=pg_wal/* --exclude=log/*");
 		}
 		else
 		{
 			appendPQExpBufferStr(&rsync_flags,
-								 " --exclude=pg_xlog/*");
+								 " --exclude=pg_xlog/* --exclude=pg_log/*");
 		}
 
 		appendPQExpBufferStr(&rsync_flags,
-							 " --exclude=pg_log/* --exclude=pg_stat_tmp/*");
+							 " --exclude=pg_stat_tmp/*");
 
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 						rsync_flags.data, host_string, remote_path, local_path);
