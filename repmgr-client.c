@@ -3616,8 +3616,12 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 }
 
 
-// provided connection should be for the normal repmgr user
-// upstream_node_record may be NULL or initialised to default values
+/*
+ * NOTE:
+ *  - the provided connection should be for the normal repmgr user
+ *  - if upstream_node_record is not NULL, its "repluser" entry, if
+ *    set, will be used as the fallback replication user
+ */
 bool
 create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_node_record, PQExpBufferData *error_msg)
 {
