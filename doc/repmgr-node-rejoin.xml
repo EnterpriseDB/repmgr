@@ -401,6 +401,51 @@
      is running in <option>--dry-run</option> mode.
    </para>
 
+   <warning>
+     <para>
+       In all current PostgreSQL versions (as of September 2020), <application>pg_rewind</application>
+       contains a corner-case bug which affects standbys in a very specific situation.
+     </para>
+     <para>
+       This situation occurs when a standby was shut down <emphasis>before</emphasis> its
+       primary node, and an attempt is made to attach this standby to another primary
+       in the same cluster (following a &quot;split brain&quot; situation where the standby
+       was connected to the wrong primary). In this case, &repmgr; will correctly determine
+       that <application>pg_rewind</application> should be executed, however
+       <application>pg_rewind</application> incorrectly decides that no action is necessary.
+     </para>
+     <para>
+       In this situation, &repmgr; will report something like:
+<programlisting>
+    NOTICE: pg_rewind execution required for this node to attach to rejoin target node 1
+    DETAIL: rejoin target server's timeline 3 forked off current database system timeline 2 before current recovery point 0/7019C10</programlisting>
+       but when executed, <application>pg_rewind</application> will report:
+<programlisting>
+    pg_rewind: servers diverged at WAL location 0/7015540 on timeline 2
+    pg_rewind: no rewind required</programlisting>
+       and if an attempt is made to attach the standby to the new primary, PostgreSQL logs on the standby
+       will contain errors like:
+<programlisting>
+    [2020-09-07 15:01:41 UTC]    LOG:  00000: replication terminated by primary server
+    [2020-09-07 15:01:41 UTC]    DETAIL:  End of WAL reached on timeline 2 at 0/7015540.
+    [2020-09-07 15:01:41 UTC]    LOG:  00000: new timeline 3 forked off current database system timeline 2 before current recovery point 0/7019C10</programlisting>
+     </para>
+     <para>
+       Currently it is not possible to resolve this situation using <application>pg_rewind</application>.
+       A <ulink url="https://www.postgresql.org/message-id/flat/CABvVfJU-LDWvoz4-Yow3Ay5LZYTuPD7eSjjE4kGyNZpXC6FrVQ@mail.gmail.com">patch</ulink>
+       has been submitted and will hopefully be included in a forthcoming PostgreSQL minor release.
+     </para>
+     <para>
+       As a workaround, start the primary server the standby was previously attached to,
+       and ensure the standby can be attached to it. If <application>pg_rewind</application> was actually executed,
+       it will have copied in the <filename>.history</filename> file from the target primary server; this must
+       be removed. <command>repmgr node rejoin</command> can then be used to attach the standby to the original
+       primary. Ensure any changes pending on the primary have propogated to the standby. Then shut down the primary
+       server <emphasis>first</emphasis>, before shutting down the standby. It should then be possible to
+       use <command>repmgr node rejoin</command> to attach the standby to the new primary.
+     </para>
+   </warning>
+
   </refsect1>
 
   <refsect1>
