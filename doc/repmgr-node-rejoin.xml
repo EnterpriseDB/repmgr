@@ -288,7 +288,15 @@
       to execute <command>pg_rewind</command> to ensure the node can be rejoined successfully.
     </para>
 
-    <important>
+    <refsect2 id="repmgr-node-rejoin-pg-rewind-config-files" xreflabel="pg_rewind and configuration files">
+
+      <title><command>pg_rewind</command> and configuration file retention</title>
+
+      <indexterm>
+        <primary>pg_rewind</primary>
+        <secondary>configuration file retention</secondary>
+      </indexterm>
+
       <para>
         Be aware that if <command>pg_rewind</command> is executed and actually performs a
         rewind operation, any configuration files in the PostgreSQL data directory will be
@@ -296,17 +304,27 @@
       </para>
       <para>
         To prevent this happening, provide a comma-separated list of files to retain
-        using the <literal>--config-file</literal> command line option; the specified files
+        using the <option>--config-file</option> command line option; the specified files
         will be archived in a temporary directory (whose parent directory can be specified with
-        <literal>--config-archive-dir</literal>) and restored once the rewind operation is
-        complete.
+        <option>--config-archive-dir</option>, default: <filename>/tmp</filename>)
+        and restored once the rewind operation is complete.
       </para>
-    </important>
+    </refsect2>
 
-    <para>
-      Example, first using <literal>--dry-run</literal>, then actually executing the
-      <literal>node rejoin command</literal>.
-    <programlisting>
+    <refsect2 id="repmgr-node-rejoin-pg-rewind-example" xreflabel="example using repmgr node rejoin and pg_rewind">
+
+      <title>Example using <command>repmgr node rejoin</command> and <command>pg_rewind</command></title>
+
+      <indexterm>
+        <primary>pg_rewind</primary>
+        <secondary>configuration file retention</secondary>
+      </indexterm>
+
+
+      <para>
+        Example, first using <option>--dry-run</option>, then actually executing the
+        <literal>node rejoin command</literal>.
+        <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind --dry-run
     INFO: replication connection to the rejoin target node was successful
@@ -322,17 +340,17 @@
       pg_rewind -D '/var/lib/postgresql/data' --source-server='host=node3 dbname=repmgr user=repmgr'
     INFO: prerequisites for executing NODE REJOIN are met</programlisting>
 
-    <note>
-      <para>
-        If <option>--force-rewind</option> is used with the <option>--dry-run</option> option,
-        this checks the prerequisites for using <application>pg_rewind</application>, but is
-        not an absolute guarantee that actually executing <application>pg_rewind</application>
-        will succeed. See also section <xref linkend="repmgr-node-rejoin-caveats"/> below.
-      </para>
+        <note>
+          <para>
+            If <option>--force-rewind</option> is used with the <option>--dry-run</option> option,
+            this checks the prerequisites for using <application>pg_rewind</application>, but is
+            not an absolute guarantee that actually executing <application>pg_rewind</application>
+            will succeed. See also section <xref linkend="repmgr-node-rejoin-caveats"/> below.
+          </para>
 
-    </note>
+        </note>
 
-    <programlisting>
+        <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind
     NOTICE: pg_rewind execution required for this node to attach to rejoin target node 3
@@ -344,8 +362,8 @@
     NOTICE: starting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' start"
     NOTICE: NODE REJOIN successful
     DETAIL: node 2 is now attached to node 3</programlisting>
-    </para>
-
+      </para>
+    </refsect2>
   </refsect1>
 
   <refsect1 id="repmgr-node-rejoin-caveats" xreflabel="Caveats">
