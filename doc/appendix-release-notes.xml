@@ -45,6 +45,38 @@
         </itemizedlist>
       </para>
     </sect2>
+    <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              Following additional parameters can be provided to <varname>failover_validation_command</varname>:
+              <itemizedlist spacing="compact" mark="bullet">
+                <listitem>
+                  <simpara><literal>%n</literal>: node ID</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%a</literal>: node name</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%v</literal>: number of visible nodes</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%u</literal>: number of shared upstream nodes</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%t</literal>: total number of nodes</simpara>
+                </listitem>
+              </itemizedlist>
+
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
   </sect1>
 
   <sect1 id="release-5.1.0">

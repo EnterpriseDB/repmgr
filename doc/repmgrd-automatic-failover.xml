@@ -331,11 +331,12 @@
     To use this, <option>failover_validation_command</option> in <filename>repmgr.conf</filename>
     to a script executable by the <literal>postgres</literal> system user, e.g.:
     <programlisting>
-      failover_validation_command=/path/to/script.sh %n %a</programlisting>
+      failover_validation_command=/path/to/script.sh %n</programlisting>
   </para>
   <para>
-    The <literal>%n</literal> parameter will be replaced with the node ID, and the
-    <literal>%a</literal> parameter will be replaced by the node name when the script is executed.
+    The <literal>%n</literal> parameter will be replaced with the node ID when the script is
+    executed. A number of other parameters are also available, see section
+    &quot;<xref linkend="repmgrd-automatic-failover-configuration-optional"/>&quot; for details.
   </para>
   <para>
     This script must return an exit code of <literal>0</literal> to indicate the node should promote itself.

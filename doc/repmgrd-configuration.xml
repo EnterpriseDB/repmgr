@@ -325,7 +325,7 @@
 
     </sect2>
 
-    <sect2 id="repmgrd-automatic-failover-configuration-optional">
+    <sect2 id="repmgrd-automatic-failover-configuration-optional" xreflabel="Optional configuration for automatic failover">
       <title>Optional configuration for automatic failover</title>
 
       <para>
@@ -370,8 +370,8 @@
               </para>
             </note>
             <para>
-              One or both of the following parameter placeholders
-			  should be provided, which will be replaced by repmgrd with the appropriate
+              One or more of the following parameter placeholders
+			  may be provided, which will be replaced by repmgrd with the appropriate
 	          value:
               <itemizedlist spacing="compact" mark="bullet">
                 <listitem>
@@ -379,6 +379,15 @@
                 </listitem>
                 <listitem>
                   <simpara><literal>%a</literal>: node name</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%v</literal>: number of visible nodes</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%u</literal>: number of shared upstream nodes</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%t</literal>: total number of nodes</simpara>
                 </listitem>
               </itemizedlist>
             </para>
