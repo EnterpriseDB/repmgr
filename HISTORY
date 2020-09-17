@@ -4,6 +4,7 @@
         repmgr: add option --verify-backup to "standby clone" (Ian)
         repmgrd: add additional optional parameters to "failover_validation command"
           (spaskalev; GitHub #651)
+        general: remove support for PostgreSQL 9.3 (Ian)
 
 5.1.0   2020-04-13
         repmgr: remove BDR 2.x support

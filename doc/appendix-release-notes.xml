@@ -24,6 +24,10 @@
     <para>
       &repmgr; 5.2.0 is a major release.
     </para>
+    <para>
+      This release removes support for PostgreSQL 9.3, which was
+      <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">designated EOL in November 2018</ulink>.
+    </para>
 
     <sect2>
       <title>General improvements</title>
