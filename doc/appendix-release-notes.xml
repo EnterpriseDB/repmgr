@@ -35,6 +35,12 @@
         <itemizedlist>
           <listitem>
             <para>
+              Configuration: support <command>include</command>, <command>include_dir</command> and
+              <command>include_if_exists</command> directives.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
               <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
               Improve sanity check failure log output from the demotion candidate.
             </para>
@@ -46,6 +52,38 @@
               of the respective sanity check.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link> /
+              <link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link>:
+              improve text mode output format, in particular so that node identifiers of arbitrary length are
+              displayed correctly.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>: new option
+              <option>--verify-backup</option> to run PostgreSQL's
+              <ulink url="https://www.postgresql.org/docs/13/app-pgverifybackup.html">pg_verifybackup</ulink>
+              utility after cloning a standby to verify the integrity of the copied data
+              (PostgreSQL 13 and later).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check">repmgr node check</link>:
+              option <option>--db-connection</option> added to check if &repmgr; can connect to the database on the
+              local node.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check">repmgr node check</link>:
+              report database connection error if the <option>--optformat</option> was provided.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>
@@ -74,10 +112,36 @@
                   <simpara><literal>%t</literal>: total number of nodes</simpara>
                 </listitem>
               </itemizedlist>
-
             </para>
           </listitem>
         </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+       <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
+              fix issue with cloning from Barman where the tablespace mapping file was
+              not flushed to disk before attempting to retrieve files from Barman. GitHub #650.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-rejoin">repmgr node rejoin</link>:
+              ensure that when verifying a standby node has attached to its upstream, the
+              node has started streaming before confirming the success of the rejoin operation.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: ensure primary connection is reset if same as upstream. GitHub #633.
+            </para>
+          </listitem>
+       </itemizedlist>
       </para>
     </sect2>
 
