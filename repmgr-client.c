@@ -277,6 +277,11 @@ main(int argc, char **argv)
 				runtime_options.detail = true;
 				break;
 
+				/* --dump-config */
+			case OPT_DUMP_CONFIG:
+				runtime_options.dump_config = true;
+				break;
+
 				/*----------------------------
 				 * database connection options
 				 *----------------------------
@@ -1081,6 +1086,24 @@ main(int argc, char **argv)
 				runtime_options.terse,
 				argv[0]);
 
+
+	/*
+	 * Handle options which must be executed without a repmgr command
+	 */
+	if (runtime_options.dump_config == true)
+	{
+		if (repmgr_command != NULL)
+		{
+			fprintf(stderr,
+					_("--dump-config cannot be used in combination with a repmgr command"));
+			exit(ERR_BAD_CONFIG);
+		}
+		dump_config();
+		exit(SUCCESS);
+	}
+
+
+
 	check_cli_parameters(action);
 
 	/*
@@ -1218,8 +1241,6 @@ main(int argc, char **argv)
 	{
 		logger_set_level(LOG_ERROR);
 	}
-
-
 
 	/*
 	 * Node configuration information is not needed for all actions, with

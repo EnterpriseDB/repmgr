@@ -104,6 +104,7 @@
 #define OPT_CONFIG_ARCHIVE_DIR			   2001
 #define OPT_DISABLE_WAL_RECEIVER		   2002
 #define OPT_ENABLE_WAL_RECEIVER			   2003
+#define OPT_DUMP_CONFIG					   2004
 
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
@@ -125,6 +126,7 @@ static struct option long_options[] =
 	{"no-wait", no_argument, NULL, 'W'},
 	{"compact", no_argument, NULL, OPT_COMPACT},
 	{"detail", no_argument, NULL, OPT_DETAIL},
+	{"dump-config", no_argument, NULL, OPT_DUMP_CONFIG},
 
 /* connection options */
 	{"dbname", required_argument, NULL, 'd'},

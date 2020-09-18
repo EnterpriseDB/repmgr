@@ -1354,6 +1354,61 @@ reload_config(t_server_type server_type)
 }
 
 
+/*
+ * Dump the parsed configuration
+ */
+void
+dump_config(void)
+{
+	ConfigFileSetting *setting;
+	int i = 0;
+
+	setting = &config_file_settings[0];
+
+	do {
+		printf("%s|", setting->name);
+		switch (setting->type)
+		{
+			case CONFIG_INT:
+				printf("%i", *setting->val.intptr);
+				break;
+			case CONFIG_BOOL:
+				printf("%s", format_bool(*setting->val.boolptr));
+				break;
+			case CONFIG_STRING:
+				printf("%s", setting->val.strptr);
+				break;
+			case CONFIG_FAILOVER_MODE:
+				printf("%s", format_failover_mode(*setting->val.failovermodeptr));
+				break;
+			case CONFIG_CONNECTION_CHECK_TYPE:
+				printf("%s", print_connection_check_type(*setting->val.checktypeptr));
+				break;
+			case CONFIG_EVENT_NOTIFICATION_LIST:
+			{
+				char *list = print_event_notification_list(setting->val.notificationlistptr);
+				printf("%s", list);
+				pfree(list);
+			}
+				break;
+			case CONFIG_TABLESPACE_MAPPING:
+			{
+				char *list = print_tablespace_mapping(setting->val.tablespacemappingptr);
+				printf("%s", list);
+				pfree(list);
+			}
+				break;
+			default:
+				/* this should never happen */
+				log_error("unhandled setting type %i", (int)setting->type);
+		}
+		puts("");
+		i++;
+		setting = &config_file_settings[i];
+	} while (setting->name != NULL);
+
+}
+
 static void
 exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 {
@@ -2118,7 +2173,7 @@ print_event_notification_list(EventNotificationList *list)
 		appendPQExpBufferStr(&buf, cell->event_type);
 
 		if (cell->next)
-			appendPQExpBufferStr(&buf, ", ");
+			appendPQExpBufferChar(&buf, ',');
 
 		cell = cell->next;
 	}
@@ -2131,6 +2186,35 @@ print_event_notification_list(EventNotificationList *list)
 	return ptr;
 }
 
+
+char *
+print_tablespace_mapping(TablespaceList *tablespace_mapping)
+{
+	TablespaceListCell *cell;
+	bool first = true;
+	PQExpBufferData buf;
+	char *ptr;
+
+	initPQExpBuffer(&buf);
+
+	for (cell = tablespace_mapping->head; cell; cell = cell->next)
+	{
+		if (first == true)
+			first = false;
+		else
+			appendPQExpBufferChar(&buf, ',');
+
+		appendPQExpBuffer(&buf, "%s=%s",
+						  cell->old_dir, cell->new_dir);
+	}
+
+	ptr = palloc0(strlen(buf.data) + 1);
+	strncpy(ptr, buf.data, strlen(buf.data));
+
+	termPQExpBuffer(&buf);
+
+	return ptr;
+}
 
 
 const char *

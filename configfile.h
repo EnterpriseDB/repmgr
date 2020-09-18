@@ -311,6 +311,8 @@ const char *progname(void);
 
 void		load_config(const char *config_file, bool verbose, bool terse, char *argv0);
 bool		reload_config(t_server_type server_type);
+void		dump_config(void);
+
 void		parse_configuration_item(ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
@@ -342,6 +344,7 @@ void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
 void		print_item_list(ItemList *item_list);
 const char *print_connection_check_type(ConnectionCheckType type);
 char 	   *print_event_notification_list(EventNotificationList *list);
+char 	   *print_tablespace_mapping(TablespaceList *tablespacemappingptr);
 
 extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
 
