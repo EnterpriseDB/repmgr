@@ -36,7 +36,7 @@
           <listitem>
             <para>
               Configuration: support <command>include</command>, <command>include_dir</command> and
-              <command>include_if_exists</command> directives.
+              <command>include_if_exists</command> directives (see <xref linkend="configuration-file-include-directives"/>).
             </para>
           </listitem>
           <listitem>

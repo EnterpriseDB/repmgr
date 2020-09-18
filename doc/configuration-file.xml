@@ -80,6 +80,51 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
       </para>
     </note>
 
+
+    <sect3 id="configuration-file-include-directives" xreflabel="configuration file include directives">
+
+      <title>Configuration file include directives</title>
+
+      <indexterm>
+        <primary>repmgr.conf</primary>
+        <secondary>include directives</secondary>
+      </indexterm>
+      <para>
+        From &repmgr; 5.2, the configuration file can contain the following include directives:
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              <option>include</option>: include the specified file,
+              either as an absolute path or path relative to the current file
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <option>include_if_exists</option>: include the specified file.
+              The file is specified as an absolute path or path relative to the current file.
+              However, if it does not exist, an error will not be raised.
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <option>include_dir</option>: include files in the specified directory
+              which have the <filename>.conf</filename> suffix.
+              The directory is specified either as an absolute path or path
+              relative to the current file
+            </simpara>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+      <para>
+        These behave in exactly the same way as the PostgreSQL configuration file processing;
+        see the <ulink url="https://www.postgresql.org/docs/current/config-setting.html#CONFIG-INCLUDES">PostgreSQL documentation</ulink>
+        for additional details.
+      </para>
+    </sect3>
+
   </sect2>
 
 
