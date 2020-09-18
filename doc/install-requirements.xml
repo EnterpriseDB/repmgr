@@ -130,7 +130,7 @@
 
           <row>
             <entry>
-              &repmgr; 5.0, &repmgr; 5.1
+              &repmgr; 5.1
             </entry>
             <entry>
               YES
@@ -142,6 +142,22 @@
               9.3, 9.4, 9.5, 9.6, 10, 11, 12
             </entry>
           </row>
+
+          <row>
+            <entry>
+              &repmgr; 5.0
+            </entry>
+            <entry>
+              NO
+            </entry>
+            <entry>
+              <link linkend="release-5.0">5.0</link> (2019-10-15)
+            </entry>
+            <entry>
+              9.3, 9.4, 9.5, 9.6, 10, 11, 12
+            </entry>
+          </row>
+
 
           <row>
             <entry>
@@ -208,34 +224,28 @@
 
   <sect2 id="install-postgresql-93-94">
 
-    <title>PostgreSQL 9.3 and 9.4 support</title>
+    <title>PostgreSQL 9.4 support</title>
 
     <indexterm>
-      <primary>PostgreSQL 9.3</primary>
+      <primary>PostgreSQL 9.4</primary>
       <secondary>repmgr support</secondary>
     </indexterm>
 
     <para>
-      Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4:
+      Note that some &repmgr; functionality is not available in PostgreSQL 9.4:
     </para>
     <itemizedlist spacing="compact" mark="bullet">
 
       <listitem>
         <para>
-          PostgreSQL 9.3 does not support replication slots, so corresponding &repmgr; functionality
-          is not available.
-        </para>
-      </listitem>
-      <listitem>
-        <para>
-          In PostgreSQL 9.3 and PostgreSQL 9.4, <command>pg_rewind</command> is not part of the core
+          In PostgreSQL 9.4, <command>pg_rewind</command> is not part of the core
           distribution. <command>pg_rewind</command> will need to be compiled separately to be able
           to use any &repmgr; functionality which takes advantage of it.
         </para>
       </listitem>
     </itemizedlist>
 
-    <important>
+    <warning>
       <para>
         PostgreSQL 9.3 has reached the end of its community support period (final release was
         <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">9.3.25</ulink>
@@ -250,13 +260,13 @@
         in February 2020) and will no longer be updated with security or bugfixes.
       </para>
       <para>
-        We recommend that users of these versions migrate to a recent PostgreSQL version
+        We recommend that users of these versions migrate to a supported PostgreSQL version
         as soon as possible.
       </para>
       <para>
         For further details, see the  <ulink url="https://www.postgresql.org/support/versioning/">PostgreSQL Versioning Policy</ulink>.
       </para>
-    </important>
+    </warning>
 
   </sect2>
 
