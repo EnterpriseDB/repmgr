@@ -568,7 +568,7 @@ parse_configuration_item(ItemList *error_list, ItemList *warning_list, const cha
 				}
 				case CONFIG_EVENT_NOTIFICATION_LIST:
 				{
-					parse_event_notifications_list((EventNotificationList *)&setting->val.notificationlistptr,
+					parse_event_notifications_list((EventNotificationList *)setting->val.notificationlistptr,
 												   value);
 					break;
 				}
@@ -1892,6 +1892,9 @@ clear_event_notification_list(EventNotificationList *event_notifications)
 			cell = next_cell;
 		}
 	}
+
+	event_notifications->head = NULL;
+	event_notifications->tail = NULL;
 }
 
 
