@@ -454,9 +454,9 @@ do_primary_unregister(void)
 
 			/*
 			 * This appears to be the cluster primary - cowardly refuse to
-			 * delete the record
+			 * delete the record, unless --force is supplied.
 			 */
-			if (primary_node_info.node_id == target_node_info_ptr->node_id)
+			if (primary_node_info.node_id == target_node_info_ptr->node_id && !runtime_options.force)
 			{
 				log_error(_("node \"%s\" (ID: %i) is the current primary node, unable to unregister"),
 						  target_node_info_ptr->node_name,

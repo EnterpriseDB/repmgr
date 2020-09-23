@@ -60,6 +60,15 @@
               displayed correctly.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-primary-unregister">repmgr primary unregister</link>:
+              the <option>--force</option> can be provided to unregister an active primary node, provided
+              it has no registered standby nodes.
+            </para>
+          </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-clone">repmgr standby clone</link>: new option

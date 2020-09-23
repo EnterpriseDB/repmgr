@@ -60,6 +60,17 @@
         </listitem>
       </varlistentry>
 
+     <varlistentry>
+        <term><option>--force</option></term>
+        <listitem>
+          <para>
+            Forcibly unregister the node if it is registered as an active primary,
+            as long as it has no registered standbys; or if it is registered as
+            a primary but running as a standby.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>
