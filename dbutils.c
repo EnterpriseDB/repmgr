@@ -1672,7 +1672,12 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 		return false;
 	}
 
+#if defined(__i386__) || defined(__i386)
+	identification->system_identifier = atoll(PQgetvalue(res, 0, 0));
+#else
 	identification->system_identifier = atol(PQgetvalue(res, 0, 0));
+#endif
+
 	identification->timeline = atoi(PQgetvalue(res, 0, 1));
 	identification->xlogpos = parse_lsn(PQgetvalue(res, 0, 2));
 
@@ -1709,7 +1714,11 @@ system_identifier(PGconn *conn)
 	}
 	else
 	{
+#if defined(__i386__) || defined(__i386)
+		system_identifier = atoll(PQgetvalue(res, 0, 0));
+#else
 		system_identifier = atol(PQgetvalue(res, 0, 0));
+#endif
 	}
 
 	PQclear(res);
