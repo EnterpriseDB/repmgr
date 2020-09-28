@@ -90,7 +90,9 @@ get_system_identifier(const char *data_directory)
 	uint64		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 
 	control_file_info = get_controlfile(data_directory);
-	system_identifier = control_file_info->system_identifier;
+
+	if (control_file_info->control_file_processed == true)
+		system_identifier = control_file_info->system_identifier;
 
 	pfree(control_file_info);
 
@@ -122,7 +124,8 @@ get_latest_checkpoint_location(const char *data_directory)
 
 	control_file_info = get_controlfile(data_directory);
 
-	checkPoint = control_file_info->checkPoint;
+	if (control_file_info->control_file_processed == true)
+		checkPoint = control_file_info->checkPoint;
 
 	pfree(control_file_info);
 
@@ -138,7 +141,8 @@ get_data_checksum_version(const char *data_directory)
 
 	control_file_info = get_controlfile(data_directory);
 
-	data_checksum_version = (int) control_file_info->data_checksum_version;
+	if (control_file_info->control_file_processed == true)
+		data_checksum_version = (int) control_file_info->data_checksum_version;
 
 	pfree(control_file_info);
 
