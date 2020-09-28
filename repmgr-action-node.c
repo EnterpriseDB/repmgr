@@ -134,13 +134,22 @@ do_node_status(void)
 
 	if (runtime_options.verbose == true)
 	{
-		uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+		uint64		local_system_identifier = get_system_identifier(config_file_options.data_directory);
 
-		local_system_identifier = get_system_identifier(config_file_options.data_directory);
-
-		key_value_list_set_format(&node_status,
-								  "System identifier",
-								  "%lu", local_system_identifier);
+		if (local_system_identifier == UNKNOWN_SYSTEM_IDENTIFIER)
+		{
+			key_value_list_set(&node_status,
+							   "System identifier",
+							   "unknown");
+			item_list_append_format(&warnings,
+									_("unable to retrieve system identifier from pg_control"));
+		}
+		else
+		{
+			key_value_list_set_format(&node_status,
+									  "System identifier",
+									  "%lu", local_system_identifier);
+		}
 	}
 
 	key_value_list_set(&node_status,
@@ -638,9 +647,17 @@ _do_node_status_is_shutdown_cleanly(void)
 			break;
 	}
 
-	/* check what pg_controldata says */
+	/* check what pg_control says */
 
-	db_state = get_db_state(config_file_options.data_directory);
+	if (get_db_state(config_file_options.data_directory, &db_state) == false)
+	{
+		/*
+		 * Unable to retrieve the database state from pg_control
+		 */
+		node_status = NODE_STATUS_UNKNOWN;
+		log_verbose(LOG_DEBUG, "unable to determine db state");
+		goto return_state;
+	}
 
 	log_verbose(LOG_DEBUG, "db state now: %s", describe_db_state(db_state));
 
@@ -659,20 +676,22 @@ _do_node_status_is_shutdown_cleanly(void)
 
 	checkPoint = get_latest_checkpoint_location(config_file_options.data_directory);
 
-	/* unable to read pg_control, don't know what's happening */
 	if (checkPoint == InvalidXLogRecPtr)
 	{
+		/* unable to read pg_control, don't know what's happening */
 		node_status = NODE_STATUS_UNKNOWN;
 	}
-
-	/*
-	 * if still "UNKNOWN" at this point, then the node must be cleanly shut
-	 * down
-	 */
 	else if (node_status == NODE_STATUS_UNKNOWN)
 	{
+		/*
+		 * if still "UNKNOWN" at this point, then the node must be cleanly shut
+		 * down
+		 */
 		node_status = NODE_STATUS_DOWN;
 	}
+
+
+return_state:
 
 	log_verbose(LOG_DEBUG, "node status determined as: %s",
 				print_node_status(node_status));
@@ -2504,7 +2523,11 @@ do_node_rejoin(void)
 			break;
 	}
 
-	db_state = get_db_state(config_file_options.data_directory);
+	if (get_db_state(config_file_options.data_directory, &db_state) == false)
+	{
+		log_error(_("unable to determine database state from pg_control"));
+		exit(ERR_BAD_CONFIG);
+	}
 
 	if (is_shutdown == false)
 	{

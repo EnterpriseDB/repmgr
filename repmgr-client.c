@@ -3612,7 +3612,7 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 	{
 		int			data_checksum_version = get_data_checksum_version(data_directory);
 
-		if (data_checksum_version < 0)
+		if (data_checksum_version == UNKNOWN_DATA_CHECKSUM_VERSION)
 		{
 			if (can_use == false)
 				appendPQExpBuffer(reason, "; ");
@@ -4081,10 +4081,31 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	local_system_identifier = get_system_identifier(config_file_options.data_directory);
 
 	/*
-	 * Check for thing that should never happen, but expect the unexpected anyway.
+	 * Check for things that should never happen, but expect the unexpected anyway.
 	 */
-	if (follow_target_identification.system_identifier != local_system_identifier)
+
+	if (local_system_identifier == UNKNOWN_SYSTEM_IDENTIFIER)
 	{
+		/*
+		 * We don't return immediately here so subsequent checks can be
+		 * made, but indicate the node will not be able to rejoin.
+		 */
+		success = false;
+		if (runtime_options.dry_run == true)
+		{
+			log_warning(_("unable to retrieve system identifier from pg_control"));
+		}
+		else
+		{
+			log_error(_("unable to retrieve system identifier from pg_control, aborting"));
+		}
+	}
+	else if (follow_target_identification.system_identifier != local_system_identifier)
+	{
+		/*
+		 * It's never going to be possible to rejoin a node from another cluster,
+		 * so no need to bother with further checks.
+		 */
 		log_error(_("this node is not part of the %s target node's replication cluster"), action);
 		log_detail(_("this node's system identifier is %lu, %s target node's system identifier is %lu"),
 				   local_system_identifier,
@@ -4093,8 +4114,7 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		PQfinish(follow_target_repl_conn);
 		return false;
 	}
-
-	if (runtime_options.dry_run == true)
+	else if (runtime_options.dry_run == true)
 	{
 		log_info(_("local and %s target system identifiers match"), action);
 		log_detail(_("system identifier is %lu"), local_system_identifier);

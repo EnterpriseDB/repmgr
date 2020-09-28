@@ -92,7 +92,11 @@
               report database connection error if the <option>--optformat</option> was provided.
             </para>
           </listitem>
-
+          <listitem>
+            <para>
+              Improve handling of pg_control read errors.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

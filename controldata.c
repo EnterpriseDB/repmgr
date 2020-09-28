@@ -100,19 +100,21 @@ get_system_identifier(const char *data_directory)
 }
 
 
-DBState
-get_db_state(const char *data_directory)
+bool
+get_db_state(const char *data_directory, DBState *state)
 {
 	ControlFileInfo *control_file_info = NULL;
-	DBState		state;
+	bool control_file_processed;
 
 	control_file_info = get_controlfile(data_directory);
+	control_file_processed = control_file_info->control_file_processed;
 
-	state = control_file_info->state;
+	if (control_file_processed == true)
+		*state = control_file_info->state;
 
 	pfree(control_file_info);
 
-	return state;
+	return control_file_processed;
 }
 
 
@@ -137,7 +139,7 @@ int
 get_data_checksum_version(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
-	int			data_checksum_version = -1;
+	int			data_checksum_version = UNKNOWN_DATA_CHECKSUM_VERSION;
 
 	control_file_info = get_controlfile(data_directory);
 

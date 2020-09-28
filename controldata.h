@@ -377,7 +377,7 @@ typedef struct ControlFileData12
 #endif
 
 extern int get_pg_version(const char *data_directory, char *version_string);
-extern DBState get_db_state(const char *data_directory);
+extern bool get_db_state(const char *data_directory, DBState *state);
 extern const char *describe_db_state(DBState state);
 extern int	get_data_checksum_version(const char *data_directory);
 extern uint64 get_system_identifier(const char *data_directory);

@@ -14,6 +14,7 @@
           demotion candidate during "standby switchover" (Ian)
         repmgr: fix issue with tablespace mapping when cloning from Barman;
           GitHub #650 (Ian)
+        repmgr: improve handling of pg_control read errors (Ian)
         repmgrd: add additional optional parameters to "failover_validation command"
           (spaskalev; GitHub #651)
         repmgrd: ensure primary connection is reset if same as upstream;
