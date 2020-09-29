@@ -3199,7 +3199,7 @@ do_standby_follow(void)
 
 
 /*
- * Perform the actuall "follow" operation; this is executed by
+ * Perform the actual "follow" operation; this is executed by
  * "node rejoin" too.
  */
 bool
