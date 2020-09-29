@@ -3206,7 +3206,7 @@ update_monitoring_history(void)
 		 * This should never happen, but in case it does set replication lag
 		 * to zero
 		 */
-		log_warning("primary xlog (%X/%X) location appears less than standby receive location (%X/%X)",
+		log_warning("primary xlog location (%X/%X) is behind the standby receive location (%X/%X)",
 					format_lsn(primary_last_wal_location),
 					format_lsn(replication_info.last_wal_receive_lsn));
 		replication_lag_bytes = 0;
