@@ -81,9 +81,22 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-standby-follow">repmgr standby follow</link>:
+              In PostgreSQL 13 and later, a standby no longer requires a restart to
+              follow a new upstream node.
+            </para>
+            <para>
+              The old behaviour (always restarting the standby to follow a new node)
+              can be restored by setting the configuration file parameter
+              <varname>standby_follow_restart</varname> to <literal>true</literal>.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-node-check">repmgr node check</link>:
-              option <option>--db-connection</option> added to check if &repmgr; can connect to the database on the
-              local node.
+              option <option>--db-connection</option> added to check if &repmgr;
+              can connect to the database on the local node.
             </para>
           </listitem>
           <listitem>

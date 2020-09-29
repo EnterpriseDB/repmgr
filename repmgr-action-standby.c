@@ -3361,9 +3361,27 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 
 		if (server_up == true)
 		{
-			/* no "service_restart_command" defined - stop and start using pg_ctl*/
+
+			if (PQserverVersion(primary_conn) >= 130000 && config_file_options.standby_follow_restart == false)
+			{
+				/* PostgreSQL 13 and later: we'll send SIGHUP via pg_ctl */
+				get_server_action(ACTION_RELOAD, server_command, config_file_options.data_directory);
+
+				success = local_command(server_command, &output_buf);
+
+				if (success == true)
+				{
+					goto cleanup;
+				}
+
+				/* In the unlikley event that fails, we'll fall back to a restart */
+				log_warning(_("unable to reload server configuration"));
+			}
+
 			if (config_file_options.service_restart_command[0] == '\0')
 			{
+				/* no "service_restart_command" defined - stop and start using pg_ctl */
+
 				action = "stopp"; /* sic */
 				get_server_action(ACTION_STOP_WAIT, server_command, config_file_options.data_directory);
 
@@ -3445,6 +3463,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		}
 	}
 
+cleanup:
 	/*
 	 * If replication slots are in use, and an inactive one for this node
 	 * exists on the former upstream, drop it.

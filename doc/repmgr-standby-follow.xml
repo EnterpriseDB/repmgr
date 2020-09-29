@@ -47,7 +47,15 @@
     </para>
 
     <para>
-      This command will force a restart of PostgreSQL on the standby node.
+      In PostgreSQL 12 and earlier, this command will force a restart of PostgreSQL on the standby node.
+    </para>
+
+    <para>
+      In PostgreSQL 13 and later, by default this command will signal PostgreSQL to reload its
+      configuration, which will cause PostgreSQL to follow the new upstream without
+      a restart. If this behaviour is not desired for whatever reason, the configuration
+      file parameter <varname>standby_follow_restart</varname> can be set <literal>true</literal>
+      to always force a restart.
     </para>
 
     <para>

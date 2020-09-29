@@ -164,6 +164,7 @@ typedef struct
 	/* standby follow settings */
 	int			primary_follow_timeout;
 	int			standby_follow_timeout;
+	bool		standby_follow_restart;
 
 	/* standby switchover settings */
 	int			shutdown_check_timeout;

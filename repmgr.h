@@ -116,6 +116,7 @@
 #define DEFAULT_PROMOTE_CHECK_INTERVAL       1   /* seconds */
 #define DEFAULT_PRIMARY_FOLLOW_TIMEOUT       60  /* seconds */
 #define DEFAULT_STANDBY_FOLLOW_TIMEOUT       30  /* seconds */
+#define DEFAULT_STANDBY_FOLLOW_RESTART       false
 #define DEFAULT_SHUTDOWN_CHECK_TIMEOUT       60  /* seconds */
 #define DEFAULT_STANDBY_RECONNECT_TIMEOUT    60  /* seconds */
 #define DEFAULT_NODE_REJOIN_TIMEOUT          60  /* seconds */

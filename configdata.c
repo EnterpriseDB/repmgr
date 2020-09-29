@@ -316,6 +316,16 @@ struct ConfigFileSetting config_file_settings[] =
 		{},
 		{}
 	},
+	/* standby_follow_restart */
+	{
+		"standby_follow_restart",
+		CONFIG_BOOL,
+		{ .boolptr = &config_file_options.standby_follow_restart },
+		{ .booldefault = DEFAULT_STANDBY_FOLLOW_RESTART },
+		{},
+		{},
+		{}
+	},
 
 	/* ===========================
 	 * standby switchover settings
