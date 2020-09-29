@@ -606,7 +606,17 @@ struct ConfigFileSetting config_file_settings[] =
 		"primary_visibility_consensus",
 		CONFIG_BOOL,
 		{ .boolptr = &config_file_options.primary_visibility_consensus },
-		{ .booldefault =  DEFAULT_PRIMARY_VISIBILITY_CONSENSUS },
+		{ .booldefault = DEFAULT_PRIMARY_VISIBILITY_CONSENSUS },
+		{},
+		{},
+		{}
+	},
+	/* always_promote */
+	{
+		"always_promote",
+		CONFIG_BOOL,
+		{ .boolptr = &config_file_options.always_promote },
+		{ .booldefault = DEFAULT_ALWAYS_PROMOTE },
 		{},
 		{},
 		{}

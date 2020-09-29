@@ -126,7 +126,7 @@
 #define DEFAULT_WITNESS_SYNC_INTERVAL        15  /* seconds */
 #define DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT    30  /* seconds */
 #define DEFAULT_LOCATION                     "default"
-#define DEFAULT_PRIORITY		             100
+#define DEFAULT_PRIORITY                     100
 #define DEFAULT_MONITORING_INTERVAL          2	 /* seconds */
 #define DEFAULT_RECONNECTION_ATTEMPTS        6	 /* seconds */
 #define DEFAULT_RECONNECTION_INTERVAL        10  /* seconds */
@@ -139,6 +139,7 @@
 #define DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT 30 /* seconds */
 #define DEFAULT_CONNECTION_CHECK_TYPE        CHECK_PING
 #define DEFAULT_PRIMARY_VISIBILITY_CONSENSUS false
+#define DEFAULT_ALWAYS_PROMOTE               false
 #define DEFAULT_ELECTION_RERUN_INTERVAL      15  /* seconds */
 #define DEFAULT_CHILD_NODES_CHECK_INTERVAL   5   /* seconds */
 #define DEFAULT_CHILD_NODES_DISCONNECT_MIN_COUNT -1

@@ -127,6 +127,14 @@
               </itemizedlist>
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              Configuration option <varname>always_promote</varname> (default: <literal>false</literal>)
+              to control whether a node should be promoted if the &repmgr; metadata is not up-to-date
+              on that node.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

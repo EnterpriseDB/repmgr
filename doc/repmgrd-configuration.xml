@@ -420,6 +420,33 @@
         </varlistentry>
 
         <varlistentry>
+          <term><option>always_promote</option></term>
+
+          <listitem>
+            <indexterm>
+              <primary>always_promote</primary>
+            </indexterm>
+
+            <para>
+              Default: <literal>false</literal>.
+            </para>
+            <para>
+              If <literal>true</literal>, promote the local node even if its
+              &repmgr; metadata is not up-to-date.
+            </para>
+            <para>
+              Normally &repmgr; expects its metadata (stored in the <varname>repmgr.nodes</varname>
+              table) to be up-to-date so &repmgrd; can take the correct action during a failover.
+              However it's possible that updates made on the primary may not
+              have propagated to the standby (promotion candidate). In this case &repmgrd; will
+              default to not promoting the standby. This behaviour can be overridden by setting
+              <option>always_promote</option> to <literal>true</literal>.
+            </para>
+          </listitem>
+        </varlistentry>
+
+
+        <varlistentry>
 
           <term><option>standby_disconnect_on_failover</option></term>
           <listitem>
@@ -762,6 +789,12 @@ repmgrd_service_stop_command='sudo systemctl repmgr12 stop'
         <listitem>
           <simpara>
             <varname>primary_visibility_consensus</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>always_promote</varname>
           </simpara>
         </listitem>
 

@@ -764,9 +764,25 @@ check_primary_status(int degraded_monitoring_elapsed)
 		}
 		else
 		{
-			appendPQExpBuffer(&event_details,
-							  _("node has become a standby, monitoring connection to upstream node %i"),
-							  local_node_info.upstream_node_id);
+			if (local_node_info.upstream_node_id == UNKNOWN_NODE_ID)
+			{
+				/*
+				 * If upstream_node_id is not set, it's possible that following a switchover
+				 * of some kind (possibly forced in some way), the updated node record has
+				 * not yet propagated to the local node. In this case however we can safely
+				 * assume we're monitoring the primary.
+				 */
+
+				appendPQExpBuffer(&event_details,
+								  _("node has become a standby, monitoring connection to primary node %i"),
+								  primary_node_id);
+			}
+			else
+			{
+				appendPQExpBuffer(&event_details,
+								  _("node has become a standby, monitoring connection to upstream node %i"),
+								  local_node_info.upstream_node_id);
+			}
 		}
 
 		create_event_notification(new_primary_conn,
@@ -3199,6 +3215,7 @@ update_monitoring_history(void)
 	if (primary_last_wal_location >= replication_info.last_wal_receive_lsn)
 	{
 		replication_lag_bytes = (long long unsigned int) (primary_last_wal_location - replication_info.last_wal_receive_lsn);
+		log_debug("replication lag in bytes is: %llu", replication_lag_bytes);
 	}
 	else
 	{
@@ -3482,6 +3499,14 @@ do_upstream_standby_failover(void)
 }
 
 
+/*
+ * This promotes the local node using the "promote_command" configuration
+ * parameter, which must be either "repmgr standby promote" or a script which
+ * at some point executes "repmgr standby promote".
+ *
+ * TODO: make "promote_command" and execute the same code used by
+ * "repmgr standby promote".
+ */
 static FailoverState
 promote_self(void)
 {
@@ -3504,13 +3529,43 @@ promote_self(void)
 		sleep(config_file_options.promote_delay);
 	}
 
-	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
-
-	if (record_status != RECORD_FOUND)
+	if (local_node_info.upstream_node_id == UNKNOWN_NODE_ID)
 	{
-		log_error(_("unable to retrieve metadata record for failed upstream (ID: %i)"),
-				  local_node_info.upstream_node_id);
-		return FAILOVER_STATE_PROMOTION_FAILED;
+		/*
+		 * This is a corner-case situation where the repmgr metadata on the
+		 * promotion candidate is outdated and the local node's upstream_node_id
+		 * is not set. This is often an indication of potentially serious issues,
+		 * such as the local node being very far behind the primary, or not being
+		 * attached at all.
+		 *
+		 * In this case it may be desirable to restore the original primary.
+		 * This behaviour can be controlled by the "always_promote" configuration option.
+		 */
+		if (config_file_options.always_promote == false)
+		{
+			log_error(_("this node (ID: %i) does not have its upstream_node_id set, not promoting"),
+					  local_node_info.node_id);
+			log_detail(_("the local node's metadata has not been updated since it became a standby"));
+			log_hint(_("set \"always_promote\" to \"true\" to force promotion in this situation"));
+			return FAILOVER_STATE_PROMOTION_FAILED;
+		}
+		else
+		{
+			log_warning(_("this node (ID: %i) does not have its upstream_node_id set, promoting anyway"),
+						local_node_info.node_id);
+			log_detail(_("\"always_promote\" is set to \"true\" "));
+		}
+	}
+	else
+	{
+		record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
+
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("unable to retrieve metadata record for failed upstream (ID: %i)"),
+					  local_node_info.upstream_node_id);
+			return FAILOVER_STATE_PROMOTION_FAILED;
+		}
 	}
 
 	/* the presence of this command has been established already */

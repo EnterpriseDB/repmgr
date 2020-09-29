@@ -201,6 +201,7 @@ typedef struct
 	int			sibling_nodes_disconnect_timeout;
 	ConnectionCheckType connection_check_type;
 	bool		primary_visibility_consensus;
+	bool		always_promote;
 	char		failover_validation_command[MAXPGPATH];
 	int			election_rerun_interval;
 	int			child_nodes_check_interval;

@@ -867,6 +867,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - monitoring_history
  * - primary_notification_timeout
  * - primary_visibility_consensus
+ * - always_promote
  * - promote_command
  * - reconnect_attempts
  * - reconnect_interval
@@ -1237,6 +1238,15 @@ reload_config(t_server_type server_type)
 								_("\"primary_visibility_consensus\" changed from \"%s\" to \"%s\""),
 								format_bool(orig_config_file_options.primary_visibility_consensus),
 								format_bool(config_file_options.primary_visibility_consensus));
+	}
+
+	/* always_promote */
+	if (config_file_options.always_promote != orig_config_file_options.always_promote)
+	{
+		item_list_append_format(&config_changes,
+								_("\"always_promote\" changed from \"%s\" to \"%s\""),
+								format_bool(orig_config_file_options.always_promote),
+								format_bool(config_file_options.always_promote));
 	}
 
 	/* failover_validation_command */

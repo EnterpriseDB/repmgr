@@ -342,6 +342,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# WAL receivers
 #primary_visibility_consensus=false	# If "true", only continue with failover if no standbys have seen
 					# the primary node recently. *Must* be the same on all nodes.
+#always_promote=false			# Always promote a node, even if repmgr metadata is outdated
 #failover_validation_command=''		# Script to execute for an external mechanism to validate the failover
 					# decision made by repmgrd. One or both of the following parameter placeholders
 					# should be provided, which will be replaced by repmgrd with the appropriate
