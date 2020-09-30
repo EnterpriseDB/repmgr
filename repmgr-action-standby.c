@@ -2390,7 +2390,7 @@ do_standby_promote(void)
 			if (PQserverVersion(local_conn) >= 100000)
 				log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
 			else
-				log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
+				log_hint(_("execute \"pg_xlog_replay_resume()\" to npause WAL replay"));
 
 			PQfinish(local_conn);
 			exit(ERR_PROMOTION_FAIL);
@@ -3813,8 +3813,9 @@ do_standby_switchover(void)
 	}
 
 	/*
-	 * Check that WAL replay on the standby is *not* paused, as that could lead
-	 * to unexpected behaviour when the standby is promoted.
+	 * In PostgreSQL 12 and earlier, check that WAL replay on the standby
+	 * is *not* paused, as that could lead to unexpected behaviour when the
+	 * standby is promoted.
 	 *
 	 * For switchover we'll mandate that WAL replay *must not* be paused.
 	 * For a promote operation we can proceed if WAL replay is paused and
@@ -3824,7 +3825,7 @@ do_standby_switchover(void)
 	 * the primary completely.
 	 */
 
-	if (is_wal_replay_paused(local_conn, false) == true)
+	if (PQserverVersion(local_conn) < 130000 && is_wal_replay_paused(local_conn, false) == true)
 	{
 		ReplInfo 	replication_info;
 		init_replication_info(&replication_info);
