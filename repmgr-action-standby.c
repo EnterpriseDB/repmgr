@@ -2333,14 +2333,15 @@ do_standby_promote(void)
 	}
 
 	/*
-	 * Executing "pg_ctl ... promote" when WAL replay is paused and
-	 * WAL is pending replay will mean the standby will not promote
-	 * until replay is resumed.
+	 * In PostgreSQL 12 and earlier, executing "pg_ctl ... promote" when WAL
+	 * replay is paused and WAL is pending replay will mean the standby will
+	 * not promote until replay is resumed.
 	 *
 	 * As that could happen at any time outside repmgr's control, we
 	 * need to avoid leaving a "ticking timebomb" which might cause
 	 * an unexpected status change in the replication cluster.
 	 */
+	if (PQserverVersion(local_conn) < 130000)
 	{
 		ReplInfo 	replication_info;
 		bool 	 	replay_paused = false;
