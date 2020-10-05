@@ -1224,7 +1224,7 @@ main(int argc, char **argv)
 
 	/*
 	 * If --dry-run specified, ensure log_level is at least LOG_INFO, regardless
-	 * of what's in the configuration file or -L/--log-level paremeter, otherwise
+	 * of what's in the configuration file or -L/--log-level parameter, otherwise
 	 * some or output might not be displayed.
 	 */
 	if (runtime_options.dry_run == true)
