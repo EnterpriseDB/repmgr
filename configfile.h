@@ -189,6 +189,7 @@ typedef struct
 
 	/* undocumented test settings */
 	int			promote_delay;
+	int			failover_delay;
 } t_configuration_options;
 
 /*
@@ -243,8 +244,9 @@ typedef struct
 		/* barman settings */ \
 		"", "", "",	 \
 		/* rsync/ssh settings */ \
-		 "", "", \
+		"", "", \
 		/* undocumented test settings */ \
+		0, \
 		0 \
  }
 

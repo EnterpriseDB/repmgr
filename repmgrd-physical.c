@@ -4100,6 +4100,12 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 		return ELECTION_NOT_CANDIDATE;
 	}
+	if (config_file_options.failover_delay > 0)
+	{
+		log_debug("sleeping %i seconds (\"failover_delay\") before initiating failover",
+				  config_file_options.failover_delay);
+		sleep(config_file_options.failover_delay);
+	}
 
 	/* node priority is set to zero - don't become a candidate, and lose by default */
 	if (local_node_info.priority <= 0)
