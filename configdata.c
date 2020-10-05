@@ -895,6 +895,16 @@ struct ConfigFileSetting config_file_settings[] =
 		{},
 		{}
 	},
+	/* failover_delay */
+	{
+		"failover_delay",
+		CONFIG_INT,
+		{ .intptr = &config_file_options.failover_delay },
+		{ .intdefault = 0 },
+		{ .intminval = 1 },
+		{},
+		{}
+	},
 	{
 		"connection_check_query",
 		CONFIG_STRING,

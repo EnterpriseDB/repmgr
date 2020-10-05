@@ -4178,6 +4178,13 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 	int			nodes_with_primary_still_visible = 0;
 
+	if (config_file_options.failover_delay > 0)
+	{
+		log_debug("sleeping %i seconds (\"failover_delay\") before initiating failover",
+				  config_file_options.failover_delay);
+		sleep(config_file_options.failover_delay);
+	}
+
 	/* we're visible */
 	stats.visible_nodes = 1;
 	stats.shared_upstream_nodes = 0;
