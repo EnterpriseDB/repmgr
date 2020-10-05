@@ -3663,6 +3663,11 @@ promote_self(void)
 		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
 
+	/*
+	 * Promotion has succeeded - verify local connection is still available
+	 */
+	try_reconnect(&local_conn, &local_node_info);
+
 	/* bump the electoral term */
 	increment_current_term(local_conn);
 
