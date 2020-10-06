@@ -25,6 +25,9 @@
       &repmgr; 5.2.0 is a major release.
     </para>
     <para>
+      This release provides support for <ulink url="https://www.postgresql.org/docs/13/release-13.htmll">PostgreSQL 13</ulink>, released in September 2020.
+    </para>
+    <para>
       This release removes support for PostgreSQL 9.3, which was
       <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">designated EOL in November 2018</ulink>.
     </para>
