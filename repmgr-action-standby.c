@@ -7203,6 +7203,10 @@ run_file_backup(t_node_info *local_node_record)
 				if (vers[i] < 0 && source_server_version_num >= abs(vers[i]))
 					continue;
 
+				/*
+				 * If --waldir/--xlogdir specified in "pg_basebackup_options",
+				 * create a symlink rather than make a directory.
+				 */
 				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
 				if (mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
 				{

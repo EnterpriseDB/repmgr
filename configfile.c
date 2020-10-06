@@ -2056,16 +2056,11 @@ bool
 parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
 {
 	bool		backup_options_ok = true;
-
 	int			c = 0,
 				argc_item = 0;
-
 	char	  **argv_array = NULL;
-
 	int			optindex = 0;
-
 	struct option *long_options = NULL;
-
 
 	/*
 	 * We're only interested in these options.
@@ -2075,7 +2070,8 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	{
 		{"slot", required_argument, NULL, 'S'},
 		{"wal-method", required_argument, NULL, 'X'},
-		{"no-slot", no_argument, NULL, 1},
+		{"waldir", required_argument, NULL, 1},
+		{"no-slot", no_argument, NULL, 2},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2086,6 +2082,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	{
 		{"slot", required_argument, NULL, 'S'},
 		{"xlog-method", required_argument, NULL, 'X'},
+		{"xlogdir", required_argument, NULL, 1},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2119,10 +2116,13 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 				strncpy(backup_options->wal_method, optarg, MAXLEN);
 				break;
 			case 1:
+				strncpy(backup_options->waldir, optarg, MAXPGPATH);
+				break;
+			case 2:
 				backup_options->no_slot = true;
 				break;
 			case '?':
-				if (server_version_num >= 100000 && optopt == 1)
+				if (server_version_num >= 100000 && optopt == 2)
 				{
 					if (error_list != NULL)
 					{
@@ -2141,6 +2141,24 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 			item_list_append(error_list, "--no-slot cannot be used with -S/--slot");
 		}
 		backup_options_ok = false;
+	}
+
+	/*
+	 * If --waldir/--xlogdir provided, check it's an absolute path.
+	 */
+	if (backup_options->waldir[0] != '\0')
+	{
+		canonicalize_path(backup_options->waldir);
+		if (!is_absolute_path(backup_options->waldir))
+		{
+			if (error_list != NULL)
+			{
+				item_list_append_format(error_list,
+										"--%s must be provided with an absolute path",
+										server_version_num >= 100000 ? "waldir" : "xlogdir");
+			}
+			backup_options_ok = false;
+		}
 	}
 
 	free_parsed_argv(&argv_array);

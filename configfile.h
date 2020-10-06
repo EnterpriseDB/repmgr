@@ -262,10 +262,11 @@ typedef struct
 {
 	char		slot[MAXLEN];
 	char		wal_method[MAXLEN];
+	char		waldir[MAXPGPATH];
 	bool		no_slot;		/* from PostgreSQL 10 */
 } t_basebackup_options;
 
-#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", false }
+#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", "", false }
 
 
 typedef enum
