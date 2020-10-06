@@ -238,7 +238,17 @@ typedef struct
 	char		rsync_options[MAXLEN];
 	char		ssh_options[MAXLEN];
 
-	/* undocumented test settings */
+	/*
+	 * undocumented settings
+	 *
+	 * These settings are for testing or experimential features
+	 * and may be changed without notice.
+	 */
+
+	/* experimental settings */
+	bool		reconnect_loop_sync;
+
+	/* test settings */
 	int			promote_delay;
 	int			failover_delay;
 	char		connection_check_query[MAXLEN];

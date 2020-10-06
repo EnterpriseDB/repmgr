@@ -5377,6 +5377,11 @@ try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 
 	for (i = 0; i < max_attempts; i++)
 	{
+		time_t started_at = time(NULL);
+		int up_to;
+		bool sleep_now = false;
+		bool max_sleep_seconds;
+
 		log_info(_("checking state of node \"%s\" (ID: %i), %i of %i attempts"),
 				 node_info->node_name,
 				 node_info->node_id,
@@ -5442,12 +5447,31 @@ try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 					   node_info->node_id);
 		}
 
-		if (i + 1 < max_attempts)
+		/*
+		 * Experimental behaviour, see GitHub #662.
+		 */
+		if (config_file_options.reconnect_loop_sync == true)
+		{
+			up_to = (time(NULL) - started_at);
+			max_sleep_seconds = (up_to == 0)
+				? config_file_options.reconnect_interval
+				: (up_to % config_file_options.reconnect_interval);
+			if (i + 1 <= max_attempts)
+				sleep_now = true;
+		}
+		else
+		{
+			max_sleep_seconds = config_file_options.reconnect_interval;
+			if (i + 1 < max_attempts)
+				sleep_now = true;
+		}
+
+		if (sleep_now == true)
 		{
 			int j;
-			log_info(_("sleeping %i seconds until next reconnection attempt"),
-					 config_file_options.reconnect_interval);
-			for (j = 0; j < config_file_options.reconnect_interval; j++)
+			log_info(_("sleeping up to %i seconds until next reconnection attempt"),
+					 max_sleep_seconds);
+			for (j = 0; j < max_sleep_seconds; j++)
 			{
 				int new_primary_node_id;
 				if (get_new_primary(local_conn, &new_primary_node_id) == true && new_primary_node_id != UNKNOWN_NODE_ID)

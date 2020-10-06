@@ -881,6 +881,20 @@ struct ConfigFileSetting config_file_settings[] =
 		{ .strmaxlen = sizeof(config_file_options.ssh_options) },
 		{}
 	},
+	/* ==================================
+	 * undocumented experimental settings
+	 * ==================================
+	 */
+	/* reconnect_loop_sync */
+	{
+		"reconnect_loop_sync",
+		CONFIG_BOOL,
+		{ .boolptr = &config_file_options.reconnect_loop_sync },
+		{ .booldefault = false },
+		{},
+		{},
+		{}
+	},
 	/* ==========================
 	 * undocumented test settings
 	 * ==========================
