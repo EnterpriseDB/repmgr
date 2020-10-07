@@ -84,6 +84,18 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
+              when cloning from Barman, setting <option>--waldir</option>
+              (PostgreSQL 9.6 and earlier: <option>--xlogdir</option>) in
+              <option>pg_basebackup_options</option> will cause &repmgr; to create
+              a WAL directory outside of the main data directory and symlink
+              it from there, in the same way as would happen when cloning
+              using <application>pg_basebackup</application>.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-standby-follow">repmgr standby follow</link>:
               In PostgreSQL 13 and later, a standby no longer requires a restart to
               follow a new upstream node.

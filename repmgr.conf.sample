@@ -181,6 +181,8 @@
 
 #pg_ctl_options=''			# Options to append to "pg_ctl"
 #pg_basebackup_options=''		# Options to append to "pg_basebackup"
+                                        # (Note: when cloning from Barman, repmgr will honour any
+                                        # --waldir/--xlogdir setting present in "pg_basebackup_options"
 #rsync_options=''			# Options to append to "rsync"
 ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 

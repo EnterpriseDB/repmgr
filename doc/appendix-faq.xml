@@ -350,6 +350,9 @@
         and earlier) with the absolute path to the WAL directory in <varname>pg_basebackup_options</varname>.
         For more details see <xref linkend="cloning-advanced-pg-basebackup-options"/>.
       </para>
+      <para>
+        In &repmgr; 5.2 and later, this setting will also be honoured when cloning from Barman.
+      </para>
     </sect2>
 
     <sect2 id="faq-repmgr-events-no-fkey" xreflabel="No foreign key on node_id in repmgr.events">

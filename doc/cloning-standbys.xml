@@ -149,6 +149,15 @@ description = "Main cluster"
     </simpara>
    </tip>
    <para>
+     If you wish to place WAL files in a location outside the main
+     PostgreSQL data directory, set <option>--waldir</option>
+     (PostgreSQL 9.6 and earlier: <option>--xlogdir</option>) in
+     <option>pg_basebackup_options</option> to the target directory
+     (must be an absolute filepath). &repmgr; will create and
+     symlink to this directory in exactly the same way
+     <application>pg_basebackup</application> would.
+   </para>
+   <para>
     It's now possible to clone a standby from Barman, e.g.:
     <programlisting>
     $ repmgr -f /etc/repmgr.conf -h node1 -U repmgr -d repmgr standby clone
@@ -440,6 +449,13 @@ description = "Main cluster"
       WAL directory. Any WALs generated during the cloning process will be copied here, and
       a symlink will automatically be created from the main data directory.
     </para>
+    <tip>
+      <para>
+        The <literal>--waldir</literal> (<literal>--xlogdir</literal>) option,
+        if present in <varname>pg_basebackup_options</varname>, will be honoured by &repmgr;
+        when cloning from Barman (&repmgr; 5.2 and later).
+      </para>
+    </tip>
     <para>
      See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
      for more details of available options.

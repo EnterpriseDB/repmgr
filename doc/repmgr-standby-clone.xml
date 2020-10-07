@@ -191,6 +191,25 @@
    </note>
   </refsect1>
 
+  <refsect1 id="repmgr-standby-clone-wal-directory">
+
+   <title>Placing WAL files into a different directory</title>
+
+   <para>
+     To ensure that WAL files are placed in a directory outside of the main data
+     directory (e.g. to keep them on a separate disk for performance reasons),
+     specify the location with  <option>--waldir</option>
+     (PostgreSQL 9.6 and earlier: <option>--xlogdir</option>) in
+     the <filename>repmgr.conf</filename> parameter <option>pg_basebackup_options</option>,
+     e.g.:
+     <programlisting>
+pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
+     This setting will also be honored by &repmgr; when cloning from Barman
+     (&repmgr; 5.2 and later).
+   </para>
+
+  </refsect1>
+
 <!-- don't rename this id as it may be used in external links -->
   <refsect1 id="repmgr-standby-create-recovery-conf">
 

@@ -6941,9 +6941,20 @@ run_file_backup(t_node_info *local_node_record)
 
 	/* For the foreseeable future, no other modes are supported */
 	Assert(mode == barman);
-
 	if (mode == barman)
 	{
+		t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
+
+		Assert(source_server_version_num != UNKNOWN_SERVER_VERSION_NUM);
+
+		/*
+		 * Parse the pg_basebackup_options provided in repmgr.conf - we need to
+		 * check if --waldir/--xlogdir was provided.
+		 */
+		parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
+									&backup_options,
+									source_server_version_num,
+									NULL);
 		/*
 		 * Locate Barman's base backups directory
 		 */
@@ -7203,11 +7214,31 @@ run_file_backup(t_node_info *local_node_record)
 				if (vers[i] < 0 && source_server_version_num >= abs(vers[i]))
 					continue;
 
+				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
+
 				/*
 				 * If --waldir/--xlogdir specified in "pg_basebackup_options",
 				 * create a symlink rather than make a directory.
 				 */
-				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
+				if (strcmp(dirs[i], "pg_wal") == 0 || strcmp(dirs[i], "pg_xlog") == 0)
+				{
+					if (backup_options.waldir[0] != '\0')
+					{
+						if (create_pg_dir(backup_options.waldir, false) == false)
+						{
+							/* create_pg_dir() will log any errors */
+							exit(ERR_BAD_CONFIG);
+						}
+
+						if (symlink(backup_options.waldir, filename) != 0)
+						{
+							log_error(_("could not create symbolic link \"%s\""), filename);
+							exit(ERR_BAD_CONFIG);
+						}
+						continue;
+					}
+				}
+
 				if (mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
 				{
 					log_error(_("unable to create the %s directory"), dirs[i]);

@@ -5,6 +5,8 @@
         repmgr: "primary unregister --force" will unregister an active primary
           with no registered standby nodes (Ian)
         repmgr: add option --verify-backup to "standby clone" (Ian)
+        repmgr: "standby clone" honours --waldir option if set in
+          "pg_basebackup_options" (Ian)
         repmgr: add option --db-connection to "node check" (Ian)
         repmgr: report database connection error if the --optformat option was
           provided to "node check" (Ian)
