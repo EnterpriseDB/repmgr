@@ -393,6 +393,11 @@
      &quot;<literal>record with incorrect prev-link</literal>&quot;.
    </para>
    <para>
+     In PostgreSQL 9.5 and earlier, it is <emphasis>not</emphasis> possible to use
+     <application>pg_rewind</application> to attach to a target node with a lower
+     timeline than the local node.
+   </para>
+   <para>
      We strongly recommend running <command>repmgr node rejoin</command> with the
      <option>--dry-run</option> option first. Additionally it might be a good idea
      to execute the <application>pg_rewind</application> command displayed by

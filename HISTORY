@@ -11,6 +11,7 @@
         repmgr: report database connection error if the --optformat option was
           provided to "node check" (Ian)
         repmgr: improve "node rejoin" checks (Ian)
+        repmgr: enable "node rejoin" to join a target with a lower timeline (Ian)
         repmgr: improve output formatting for cluster matrix/crosscheck (Ian)
         repmgr: improve database connection failure error checking on the
           demotion candidate during "standby switchover" (Ian)

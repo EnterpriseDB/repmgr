@@ -4044,7 +4044,7 @@ check_standby_join(PGconn *upstream_conn, t_node_info *upstream_node_record, t_n
 
 /*
  * Here we'll perform some timeline sanity checks to ensure the follow target
- * can actually be followed.
+ * can actually be followed or rejoined.
  *
  * See also comment for check_node_can_follow() in repmgrd-physical.c .
  */
@@ -4130,20 +4130,64 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 				action,
 				follow_target_identification.timeline);
 
-	/* upstream's timeline is lower than ours - impossible case */
+	/*
+	 * The upstream's timeline is lower than ours - we cannot follow, and rejoin
+	 * requires PostgreSQL 9.6 and later.
+	 */
 	if (follow_target_identification.timeline < local_tli)
 	{
-		log_error(_("this node's timeline is ahead of the %s target node's timeline"), action);
-		log_detail(_("this node's timeline is %i, %s target node's timeline is %i"),
-				   local_tli,
-				   action,
-				   follow_target_identification.timeline);
-		PQfinish(follow_target_repl_conn);
-		return false;
+		/*
+		 * "repmgr standby follow" is impossible in this case
+		 */
+		if (is_rejoin == false)
+		{
+			log_error(_("this node's timeline is ahead of the %s target node's timeline"), action);
+			log_detail(_("this node's timeline is %i, %s target node's timeline is %i"),
+					   local_tli,
+					   action,
+					   follow_target_identification.timeline);
+
+			if (PQserverVersion(follow_target_conn) >= 90600)
+			{
+				log_hint(_("use \"repmgr node rejoin --force-rewind\" to reattach this node"));
+			}
+
+			PQfinish(follow_target_repl_conn);
+			return false;
+		}
+
+		/*
+		 * pg_rewind can only rejoin to a lower timeline from PostgreSQL 9.6
+		 */
+		if (PQserverVersion(follow_target_conn) < 90600)
+		{
+			log_error(_("this node's timeline is ahead of the %s target node's timeline"), action);
+			log_detail(_("this node's timeline is %i, %s target node's timeline is %i"),
+					   local_tli,
+					   action,
+					   follow_target_identification.timeline);
+
+			if (runtime_options.force_rewind_used == true)
+			{
+				log_hint(_("pg_rewind can only be used to rejoin to a node with a lower timeline from PostgreSQL 9.6"));
+			}
+
+			PQfinish(follow_target_repl_conn);
+			return false;
+		}
+
+		if (runtime_options.force_rewind_used == false)
+		{
+			log_notice(_("pg_rewind execution required for this node to attach to rejoin target node %i"),
+					   follow_target_node_record->node_id);
+			log_hint(_("provide --force-rewind"));
+			PQfinish(follow_target_repl_conn);
+			return false;
+		}
 	}
 
 	/* timelines are the same - check relative positions */
-	if (follow_target_identification.timeline == local_tli)
+	else if (follow_target_identification.timeline == local_tli)
 	{
 		XLogRecPtr follow_target_xlogpos = get_node_current_lsn(follow_target_conn);
 

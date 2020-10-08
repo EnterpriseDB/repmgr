@@ -109,6 +109,14 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-node-rejoin">repmgr node rejoin</link>:
+              enable a node to attach to a target node even the target node
+              has a lower timeline (PostgreSQL 9.6 and later).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-node-check">repmgr node check</link>:
               option <option>--db-connection</option> added to check if &repmgr;
               can connect to the database on the local node.
