@@ -7226,7 +7226,9 @@ run_file_backup(t_node_info *local_node_record)
 					{
 						if (create_pg_dir(backup_options.waldir, false) == false)
 						{
-							/* create_pg_dir() will log any errors */
+							/* create_pg_dir() will log specifics */
+							log_error(_("unable to create an empty directory for WAL files"));
+							log_hint(_("see preceding error messages"));
 							exit(ERR_BAD_CONFIG);
 						}
 
