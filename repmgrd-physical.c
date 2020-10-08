@@ -202,6 +202,7 @@ do_physical_node_check(void)
 										  "node is inactive and cannot be used as a failover target");
 
 				terminate(ERR_BAD_CONFIG);
+				break;
 
 			case FAILOVER_MANUAL:
 				log_warning(_("this node is marked as inactive and will be passively monitored only"));

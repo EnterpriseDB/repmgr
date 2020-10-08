@@ -712,9 +712,12 @@ main(int argc, char **argv)
 				if (strcmp(argv[optind - 1], "-?") == 0)
 				{
 					help_option = true;
-					break;
 				}
-				/* otherwise fall through to default */
+				else
+				{
+					option_error_found = true;
+				}
+				break;
 			default:    /* invalid option */
 				option_error_found = true;
 				break;

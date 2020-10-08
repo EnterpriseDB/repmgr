@@ -1526,6 +1526,7 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 					   output_check_status(status),
 					   details.data);
 			}
+			break;
 		case OM_TEXT:
 			if (list_output != NULL)
 			{
