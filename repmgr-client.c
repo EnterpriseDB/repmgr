@@ -4208,11 +4208,25 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		}
 		else
 		{
-			log_error(_("this node is ahead of the %s target"), action);
+			/*
+			 * Unable to follow or join to a node we're ahead of, if we're on the
+			 * same timeline. Also, pg_rewind does not detect this situation,
+			 * as there is no definitive fork point.
+			 *
+			 * Note that Pg will still happily attach to the upstream in state "streaming"
+			 * for a while but then detach with an endless stream of
+			 * "record with incorrect prev-link" errors.
+			 */
+			log_error(_("this node ahead of the %s target on the same timeline (%i)"), action, local_tli);
 			log_detail(_("local node lsn is %X/%X, %s target lsn is %X/%X"),
 					   format_lsn(local_xlogpos),
 					   action,
 					   format_lsn(follow_target_xlogpos));
+
+			if (is_rejoin == true)
+			{
+				log_hint(_("the --force-rewind option is ineffective in this case"));
+			}
 
 			success = false;
 		}
