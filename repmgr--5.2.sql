@@ -15,6 +15,8 @@ CREATE TABLE repmgr.nodes (
   config_file      TEXT        NOT NULL
 );
 
+SELECT pg_catalog.pg_extension_config_dump('repmgr.nodes', '');
+
 CREATE TABLE repmgr.events (
   node_id          INTEGER NOT NULL,
   event            TEXT NOT NULL,
@@ -23,6 +25,7 @@ CREATE TABLE repmgr.events (
   details          TEXT NULL
 );
 
+SELECT pg_catalog.pg_extension_config_dump('repmgr.events', '');
 
 CREATE TABLE repmgr.monitoring_history (
   primary_node_id                INTEGER NOT NULL,
@@ -35,9 +38,10 @@ CREATE TABLE repmgr.monitoring_history (
   apply_lag                      BIGINT NOT NULL
 );
 
-
 CREATE INDEX idx_monitoring_history_time
           ON repmgr.monitoring_history (last_monitor_time, standby_node_id);
+
+SELECT pg_catalog.pg_extension_config_dump('repmgr.monitoring_history', '');
 
 CREATE VIEW repmgr.show_nodes AS
    SELECT n.node_id,

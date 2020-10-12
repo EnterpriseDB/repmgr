@@ -133,6 +133,12 @@
               Improve handling of pg_control read errors.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              It is now possible to dump the contents of &repmgr; metadata tables with
+              <application>pg_dump</application>.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

@@ -379,6 +379,22 @@
       </para>
     </sect2>
 
+    <sect2 id="faq-repmgr-exclude-metadata-from-dump" xreflabel="Excluding repmgr metadata from pg_dump output">
+      <title>How can I exclude &repmgr; metadata from <application>pg_dump</application> output?</title>
+      <para>
+        Beginning with &repmgr; 5.2, the metadata tables associated with the &repmgr; extension
+        (<literal>repmgr.nodes</literal>, <literal>repmgr.events</literal> and <literal>repmgr.monitoring_history</literal>)
+        have been marked as dumpable as they contain configuration and user-generated data.
+      </para>
+      <para>
+        To exclude these from <application>pg_dump</application> output, add the flag <option>--exclude-schema=repmgr</option>.
+      </para>
+      <para>
+        To exclude individual &repmgr; metadata tables from <application>pg_dump</application> output, add the flag
+        e.g. <option>--exclude-table=repmgr.monitoring_history</option>. This flag can be provided multiple times
+        to exclude individual tables,
+      </para>
+    </sect2>
 
   </sect1>
 
