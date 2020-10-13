@@ -6944,16 +6944,6 @@ run_file_backup(t_node_info *local_node_record)
 	{
 		t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 
-		Assert(source_server_version_num != UNKNOWN_SERVER_VERSION_NUM);
-
-		/*
-		 * Parse the pg_basebackup_options provided in repmgr.conf - we need to
-		 * check if --waldir/--xlogdir was provided.
-		 */
-		parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
-									&backup_options,
-									source_server_version_num,
-									NULL);
 		/*
 		 * Locate Barman's base backups directory
 		 */
@@ -7160,6 +7150,37 @@ run_file_backup(t_node_info *local_node_record)
 							 NULL);
 
 		unlink(datadir_list_filename);
+
+		/*
+		 * At this point we should have the source server version number.
+		 * If not, try and extract it from the data directory.
+		 */
+		if (source_server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		{
+			log_warning(_("server version number is unknown"));
+			source_server_version_num = get_pg_version(local_data_directory, NULL);
+
+			/*
+			 * In the unlikely we are still unable to obtain the server
+			 * version number, there's not a lot which can be done.
+			 */
+			if (source_server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+			{
+				log_error(_("unable to extract server version number from the data directory, aborting"));
+				exit(ERR_BAD_CONFIG);
+			}
+			log_notice(_("server version number is: %i"), source_server_version_num);
+		}
+
+		/*
+		 * Parse the pg_basebackup_options provided in repmgr.conf - we need to
+		 * check if --waldir/--xlogdir was provided.
+		 */
+		parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
+									&backup_options,
+									source_server_version_num,
+									NULL);
+
 
 		/*
 		 * We must create some PGDATA subdirectories because they are not
