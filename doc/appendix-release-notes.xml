@@ -117,6 +117,15 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-node-rejoin">repmgr node rejoin</link>:
+              in PostgreSQL 13 and later, support <application>pg_rewind</application>'s
+              ability to automatically run crash recovery on a PostgreSQL instance
+              which was not shut down cleanly.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-node-check">repmgr node check</link>:
               option <option>--db-connection</option> added to check if &repmgr;
               can connect to the database on the local node.

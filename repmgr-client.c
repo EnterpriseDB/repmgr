@@ -3640,6 +3640,58 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 }
 
 
+void
+make_standby_signal_path(char *buf)
+{
+	snprintf(buf, MAXPGPATH,
+			 "%s/%s",
+			 config_file_options.data_directory,
+			 STANDBY_SIGNAL_FILE);
+}
+
+/*
+ * create standby.signal (PostgreSQL 12 and later)
+ */
+bool
+write_standby_signal(void)
+{
+	char	    standby_signal_file_path[MAXPGPATH] = "";
+	FILE	   *file;
+	mode_t		um;
+
+	make_standby_signal_path(standby_signal_file_path);
+
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	file = fopen(standby_signal_file_path, "w");
+	umask(um);
+
+	if (file == NULL)
+	{
+		log_error(_("unable to create %s file at \"%s\""),
+				  STANDBY_SIGNAL_FILE,
+				  standby_signal_file_path);
+		log_detail("%s", strerror(errno));
+
+		return false;
+	}
+
+	if (fputs("# created by repmgr\n", file) == EOF)
+	{
+		log_error(_("unable to write to %s file at \"%s\""),
+				  STANDBY_SIGNAL_FILE,
+				  standby_signal_file_path);
+		fclose(file);
+
+		return false;
+	}
+
+	fclose(file);
+
+	return true;
+}
+
+
 /*
  * NOTE:
  *  - the provided connection should be for the normal repmgr user

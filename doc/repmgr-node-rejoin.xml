@@ -212,9 +212,18 @@
       a standby to the current primary, not another standby.
     </para>
     <para>
-      The node must have been shut down cleanly; if this was not the case, it will
-      need to be manually started (remove any existing <filename>recovery.conf</filename> file first)
-      until it has reached a consistent recovery point, then shut down cleanly.
+      The node's PostgreSQL instance  must have been shut down cleanly. If this was not the
+      case, it will need to be started up until it has reached a consistent recovery point,
+      then shut down cleanly.
+    </para>
+    <para>
+      In PostgreSQL 13 and later, this will be done automatically
+      if the <option>--force-rewind</option> is provided (even if an actual rewind
+      is not necessary).
+    </para>
+    <para>
+      With PostgreSQL 12 and earlier, PostgreSQL will need to
+      be started and shut down manually; see below for the best way to do this.
     </para>
     <tip>
       <para>
@@ -226,11 +235,14 @@
           rm -f /var/lib/pgsql/data/recovery.conf
           postgres --single -D /var/lib/pgsql/data/ &lt; /dev/null</programlisting>
       </para>
+      <para>
+        Note that  <filename>standby.signal</filename> (PostgreSQL 11 and earlier:
+        <filename>recovery.conf</filename>) <emphasis>must</emphasis> be removed
+        from the data directory for PostgreSQL to be able to start in single
+        user mode.
+      </para>
     </tip>
-    <para>
-      &repmgr; will attempt to verify whether the node can rejoin as-is, or whether
-      <command>pg_rewind</command> must be used (see following section).
-    </para>
+
   </refsect1>
 
   <refsect1 id="repmgr-node-rejoin-pg-rewind" xreflabel="Using pg_rewind">

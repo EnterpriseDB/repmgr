@@ -2494,6 +2494,8 @@ do_node_rejoin(void)
 	DBState		db_state;
 	PGPing		status;
 	bool		is_shutdown = true;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+	bool		hide_standby_signal = true;
 
 	PQExpBufferData command;
 	PQExpBufferData command_output;
@@ -2538,6 +2540,21 @@ do_node_rejoin(void)
 		exit(ERR_REJOIN_FAIL);
 	}
 
+	/*
+	 * Server version number required to determine whether pg_rewind will run
+	 * crash recovery (Pg 13 and later).
+	 */
+	server_version_num = get_pg_version(config_file_options.data_directory, NULL);
+
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+	{
+		/* This is very unlikely to happen */
+		log_error(_("unable to determine database version"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_verbose(LOG_DEBUG, "server version number is: %i", server_version_num);
+
 	/* check if cleanly shut down */
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
@@ -2545,15 +2562,41 @@ do_node_rejoin(void)
 		{
 			log_error(_("database is still shutting down"));
 		}
+		else if (server_version_num >= 130000 && runtime_options.force_rewind_used == true)
+		{
+			log_warning(_("database is not shut down cleanly"));
+			log_detail(_("--force-rewind provided, pg_rewind will automatically perform recovery"));
+
+			/*
+			 * If pg_rewind is executed, the first change it will make
+			 * is to start the server in single user mode, which will fail
+			 * in the presence of "standby.signal", so we'll "hide" it
+			 * (actually delete and recreate).
+			 */
+			hide_standby_signal = true;
+		}
 		else
 		{
+			/*
+			 * If the database was not shut down cleanly, it *might* rejoin correctly
+			 * after starting up and recovering, but better to ensure the database
+			 * can recover before trying anything else.
+			 */
 			log_error(_("database is not shut down cleanly"));
 
-			if (runtime_options.force_rewind_used == true)
+			if (server_version_num >= 130000)
 			{
-				log_detail(_("pg_rewind will not be able to run"));
+				log_hint(_("provide --force-rewind to run recovery"));
 			}
-			log_hint(_("database should be restarted then shut down cleanly after crash recovery completes"));
+			else
+			{
+				if (runtime_options.force_rewind_used == true)
+				{
+					log_detail(_("pg_rewind will not be able to run"));
+				}
+				log_hint(_("database should be restarted then shut down cleanly after crash recovery completes"));
+			}
+
 			exit(ERR_REJOIN_FAIL);
 		}
 	}
@@ -2757,12 +2800,46 @@ do_node_rejoin(void)
 			log_detail(_("pg_rewind command is \"%s\""),
 					   command.data);
 
+			/*
+			 * In Pg13 and later, pg_rewind will attempt to start up a server which
+			 * was not cleanly shut down in single user mode. This will fail if
+			 * "standby.signal" is present. We'll remove it and restore it after
+			 * pg_rewind runs.
+			 */
+			if (hide_standby_signal == true)
+			{
+				char	    standby_signal_file_path[MAXPGPATH] = "";
+
+				log_notice(_("temporarily removing \"standby.signal\""));
+				log_detail(_("this is required so pg_rewind can fix the unclean shutdown"));
+
+				make_standby_signal_path(standby_signal_file_path);
+
+				if (unlink(standby_signal_file_path) < 0 && errno != ENOENT)
+				{
+					log_error(_("unable to remove \"standby.signal\" file in data directory \"%s\""),
+							  standby_signal_file_path);
+					log_detail("%s", strerror(errno));
+					exit(ERR_REJOIN_FAIL);
+				}
+			}
+
 			initPQExpBuffer(&command_output);
 
 			ret = local_command(command.data,
 								&command_output);
 
 			termPQExpBuffer(&command);
+
+			if (hide_standby_signal == true)
+			{
+				/*
+				 * Restore standby.signal if we previously removed it, regardless
+				 * of whether the pg_rewind operation failed.
+				 */
+				log_notice(_("recreating \"standby.signal\""));
+				write_standby_signal();
+			}
 
 			if (ret == false)
 			{
