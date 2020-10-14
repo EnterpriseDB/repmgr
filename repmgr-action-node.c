@@ -2495,7 +2495,7 @@ do_node_rejoin(void)
 	PGPing		status;
 	bool		is_shutdown = true;
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
-	bool		hide_standby_signal = true;
+	bool		hide_standby_signal = false;
 
 	PQExpBufferData command;
 	PQExpBufferData command_output;
