@@ -208,7 +208,6 @@ ProcessConfigFp(FILE *fp, const char *config_file, const char *calling_file, int
 		goto cleanup;
 	}
 
-	//printf("ProcessConfigFp(): base: '%s' file: '%s'; calling: '%s'\n", base_dir, config_file, calling_file);
 	/*
 	 * Parse
 	 */
