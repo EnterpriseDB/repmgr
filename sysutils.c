@@ -57,27 +57,56 @@ _local_command(const char *command, PQExpBufferData *outputbuf, bool simple, int
 	char		output[MAXLEN];
 	int			retval = 0;
 	bool		success;
+	char		tmpfile_path[MAXPGPATH];
+	const char *tmpdir = getenv("TMPDIR");
+	int			fd;
+	PQExpBufferData command_final;
 
-	log_verbose(LOG_DEBUG, "executing:\n  %s", command);
+	if (!tmpdir)
+		tmpdir = "/tmp";
+
+	maxpath_snprintf(tmpfile_path, "%s/repmgr_command.XXXXXX",
+					 tmpdir);
+
+	fd = mkstemp(tmpfile_path);
+
+	if (fd < 1)
+	{
+		log_error(_("unable to open temporary file"));
+		return false;
+	}
+
+	initPQExpBuffer(&command_final);
+	appendPQExpBufferStr(&command_final, command);
+
+	appendPQExpBuffer(&command_final, " 2>%s", tmpfile_path);
+
+	log_verbose(LOG_DEBUG, "executing:\n  %s", command_final.data);
 
 	if (outputbuf == NULL)
 	{
-		retval = system(command);
+		retval = system(command_final.data);
+		termPQExpBuffer(&command_final);
 
 		if (return_value != NULL)
 			*return_value = WEXITSTATUS(retval);
 
+		close(fd);
+
 		return (retval == 0) ? true : false;
 	}
 
-	fp = popen(command, "r");
+	fp = popen(command_final.data, "r");
 
 	if (fp == NULL)
 	{
-		log_error(_("unable to execute local command:\n%s"), command);
+		log_error(_("unable to execute local command:\n%s"), command_final.data);
+		termPQExpBuffer(&command_final);
+		close(fd);
 		return false;
 	}
 
+	termPQExpBuffer(&command_final);
 
 	while (fgets(output, MAXLEN, fp) != NULL)
 	{
@@ -91,10 +120,31 @@ _local_command(const char *command, PQExpBufferData *outputbuf, bool simple, int
 
 	retval = pclose(fp);
 
-	/*  */
+	/* 141 = SIGPIPE */
 	success = (WEXITSTATUS(retval) == 0 || WEXITSTATUS(retval) == 141) ? true : false;
 
 	log_verbose(LOG_DEBUG, "result of command was %i (%i)", WEXITSTATUS(retval), retval);
+
+	/*
+	 * Append any captured STDERR output
+	 */
+
+	fp = fopen(tmpfile_path, "r");
+
+	/*
+	 * Not critical if we can't open the file
+	 */
+	if (fp != NULL)
+	{
+		while (fgets(output, MAXLEN, fp) != NULL)
+		{
+			appendPQExpBufferStr(outputbuf, output);
+		}
+
+		fclose(fp);
+	}
+
+	unlink(tmpfile_path);
 
 	if (return_value != NULL)
 		*return_value = WEXITSTATUS(retval);
@@ -103,6 +153,7 @@ _local_command(const char *command, PQExpBufferData *outputbuf, bool simple, int
 		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
 	else
 		log_verbose(LOG_DEBUG, "local_command(): no output returned");
+
 
 	return success;
 }

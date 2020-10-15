@@ -2843,7 +2843,7 @@ do_node_rejoin(void)
 
 			if (ret == false)
 			{
-				log_error(_("unable to execute pg_rewind"));
+				log_error(_("pg_rewind execution failed"));
 				log_detail("%s", command_output.data);
 
 				termPQExpBuffer(&command_output);
