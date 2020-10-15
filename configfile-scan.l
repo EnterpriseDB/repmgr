@@ -109,8 +109,6 @@ ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, ItemList 
 extern bool
 ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
 {
-	//printf("ProcessPostgresConfigFile(): base: %s file: %s\n", base_dir, config_file);
-
 	return ProcessConfigFile(base_dir, config_file, NULL, true, 0, contents, error_list, warning_list);
 }
 
