@@ -105,14 +105,6 @@
    <itemizedlist spacing="compact" mark="bullet">
 
      <listitem>
-       <simpara><varname>standby_mode</varname> (always <literal>'on'</literal>)</simpara>
-     </listitem>
-
-     <listitem>
-       <simpara><varname>recovery_target_timeline</varname> (always <literal>'latest'</literal>)</simpara>
-     </listitem>
-
-     <listitem>
        <simpara><varname>primary_conninfo</varname></simpara>
      </listitem>
 
@@ -121,6 +113,21 @@
      </listitem>
 
    </itemizedlist>
+
+   <para>
+     For PostgreSQL 11 and earlier, these parameters will also be set:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+       <simpara><varname>standby_mode</varname> (always <literal>'on'</literal>)</simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>recovery_target_timeline</varname> (always <literal>'latest'</literal>)</simpara>
+     </listitem>
+   </itemizedlist>
+
 
    <para>
      The following additional parameters can be specified in <filename>repmgr.conf</filename>
