@@ -5854,8 +5854,9 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 
 		if (node_state != NULL)
 		{
-			*node_state = palloc0(strlen(state) + 1);
-			strncpy(*node_state, state, strlen(state));
+			int		state_len = strlen(state);
+			*node_state = palloc0(state_len + 1);
+			strncpy(*node_state, state, state_len);
 		}
 
 		if (strcmp(state, "streaming") != 0)
