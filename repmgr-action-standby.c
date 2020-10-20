@@ -5962,19 +5962,22 @@ check_source_server_via_barman()
 
 	initPQExpBuffer(&command_output);
 	maxlen_snprintf(buf,
-					"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
+					"psql -AqtX -d \\\"%s\\\" -c \\\""
 					" SELECT conninfo"
 					" FROM repmgr.nodes"
 					" WHERE %s"
 					" AND active IS TRUE"
-					"\\\"\"",
-					config_file_options.barman_host,
+					"\\\"",
 					repmgr_conninfo_buf.data,
 					where_condition);
 
 	termPQExpBuffer(&repmgr_conninfo_buf);
 
-	command_success = local_command(buf, &command_output);
+	command_success = remote_command(config_file_options.barman_host,
+									 runtime_options.remote_user,
+									 buf,
+									 config_file_options.ssh_options,
+									 &command_output);
 
 	if (command_success == false)
 	{
