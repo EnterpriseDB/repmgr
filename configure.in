@@ -1,4 +1,4 @@
-AC_INIT([repmgr], [5.2], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
+AC_INIT([repmgr], [5.3.0], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
 
 AC_COPYRIGHT([Copyright (c) 2010-2020, 2ndQuadrant Ltd.])
 
@@ -32,7 +32,7 @@ if test "$major_version_num" -lt '10'; then
     version_num_int=$(echo "$version_num"|
                     $SED -e 's/^\([[0-9]]*\)\.\([[0-9]]*\)$/\1\2/')
 
-    if test "$version_num_int" -lt '93'; then
+    if test "$version_num_int" -lt '94'; then
         AC_MSG_ERROR([repmgr is not compatible with detected PostgreSQL version: $version_num])
     fi
 else
