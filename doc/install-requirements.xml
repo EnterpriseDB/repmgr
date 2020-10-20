@@ -133,10 +133,10 @@
               &repmgr; 5.1
             </entry>
             <entry>
-              YES
+              NO
             </entry>
             <entry>
-              <link linkend="release-5.1.0">5.1</link> (2020-04-13)
+              <link linkend="release-5.1.0">5.1.0</link> (2020-04-13)
             </entry>
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11, 12

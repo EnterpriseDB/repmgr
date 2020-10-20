@@ -18,14 +18,14 @@
 <!-- remember to update the release date in ../repmgr_version.h.in -->
 
   <sect1 id="release-5.2.0">
-    <title>Release 5.2.0</title>
-    <para><emphasis>??? ?? ???, 2020</emphasis></para>
+    <title id="release-current">Release 5.2.0</title>
+    <para><emphasis>??? ?? October, 2020</emphasis></para>
 
     <para>
       &repmgr; 5.2.0 is a major release.
     </para>
     <para>
-      This release provides support for <ulink url="https://www.postgresql.org/docs/13/release-13.htmll">PostgreSQL 13</ulink>, released in September 2020.
+      This release provides support for <ulink url="https://www.postgresql.org/docs/13/release-13.html">PostgreSQL 13</ulink>, released in September 2020.
     </para>
     <para>
       This release removes support for PostgreSQL 9.3, which was
@@ -220,7 +220,7 @@
   </sect1>
 
   <sect1 id="release-5.1.0">
-    <title id="release-current">Release 5.1.0</title>
+    <title>Release 5.1.0</title>
     <para><emphasis>Mon 13 April, 2020</emphasis></para>
 
     <para>
