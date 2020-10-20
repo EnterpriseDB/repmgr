@@ -7885,10 +7885,17 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	key_value_list_set(&recovery_config,
 					   "primary_conninfo", primary_conninfo_buf.data);
 
-	/* recovery_target_timeline = 'latest' */
-	key_value_list_set(&recovery_config,
-					   "recovery_target_timeline", "latest");
+	/*
+	 * recovery_target_timeline = 'latest'
+	 *
+	 * PostgreSQL 11 and earlier only; 'latest' is the default from PostgreSQL 12.
+	 */
 
+	if (server_version_num < 120000)
+	{
+		key_value_list_set(&recovery_config,
+						   "recovery_target_timeline", "latest");
+	}
 
 	/* recovery_min_apply_delay = ... (optional) */
 	if (config_file_options.recovery_min_apply_delay_provided == true)
