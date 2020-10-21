@@ -532,7 +532,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
   <sect2>
    <title>Upgrading the repmgr schema (PostgreSQL 13 and later)</title>
    <para>
-     Beginning with PostgreSQL 13, the <command>CREATE EXTENSION ... FROM</command>
+     Beginning with PostgreSQL 13, the <command>CREATE EXTENSION ... FROM unpackaged</command>
      syntax is no longer available. In the unlikely event you have ended up with an
      installation running PostgreSQL 13 or later and containing the legacy &repmgr;
      schema, there is no convenient way of upgrading this; instead you'll just need
