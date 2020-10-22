@@ -1,4 +1,4 @@
-5.2.0   2020-??-??
+5.2.0   2020-10-22
         general: add support for PostgreSQL 13 (Ian)
         general: remove support for PostgreSQL 9.3 (Ian)
         config: add support for file inclusion directives (Ian)
