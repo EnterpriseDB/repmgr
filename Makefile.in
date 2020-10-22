@@ -12,6 +12,7 @@ EXTENSION = repmgr
 DATA = \
   repmgr--unpackaged--4.0.sql \
   repmgr--unpackaged--5.1.sql \
+  repmgr--unpackaged--5.2.sql \
   repmgr--4.0.sql \
   repmgr--4.0--4.1.sql \
   repmgr--4.1.sql \
