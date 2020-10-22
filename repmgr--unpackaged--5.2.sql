@@ -239,6 +239,7 @@ CREATE VIEW repmgr.replication_status AS
 /* drop old tables */
 DROP TABLE repmgr.repl_nodes;
 DROP TABLE repmgr.repl_monitor;
+DROP TABLE repmgr.repl_events;
 
 -- remove temporary table
 DROP TABLE repmgr_old_schema;
