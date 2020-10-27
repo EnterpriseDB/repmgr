@@ -71,8 +71,6 @@ Please report bugs and other issues to:
 
 * https://github.com/2ndQuadrant/repmgr
 
-See 
-
 Further information is available at https://repmgr.org/
 
 We'd love to hear from you about how you use repmgr. Case studies and
@@ -101,7 +99,3 @@ Further reading
 * [repmgr documentation](https://repmgr.org/docs/current/index.html)
 * [How to Automate PostgreSQL 12 Replication and Failover with repmgr - Part 1](https://www.2ndquadrant.com/en/blog/how-to-automate-postgresql-12-replication-and-failover-with-repmgr-part-1/)
 * [How to Automate PostgreSQL 12 Replication and Failover with repmgr - Part 2](https://www.2ndquadrant.com/en/blog/how-to-automate-postgresql-12-replication-and-failover-with-repmgr-part-2/)
-* https://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
-* https://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
-* https://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
-* https://blog.2ndquadrant.com/easier_postgresql_90_clusters/
