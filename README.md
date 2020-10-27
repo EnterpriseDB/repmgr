@@ -24,7 +24,8 @@ The old `README` file for `repmgr` 3.x is available here:
 > https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
 
 Note that the `repmgr` 3.x series is no longer supported and contains known bugs;
-please upgrade to the current `repmgr` version as soon as possible.
+please upgrade to the [current repmgr version](https://repmgr.org/docs/current/appendix-release-notes.html)
+as soon as possible.
 
 Versions
 --------
