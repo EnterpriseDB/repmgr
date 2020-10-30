@@ -373,6 +373,6 @@ extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
 
 extern bool ProcessRepmgrConfigFile(const char *config_file, const char *base_dir, ItemList *error_list, ItemList *warning_list);
 
-extern bool ProcessPostgresConfigFile(const char *config_file, const char *base_dir, KeyValueList *contents, ItemList *error_list, ItemList *warning_list);
+extern bool ProcessPostgresConfigFile(const char *config_file, const char *base_dir, bool strict, KeyValueList *contents, ItemList *error_list, ItemList *warning_list);
 
 #endif							/* _REPMGR_CONFIGFILE_H_ */
