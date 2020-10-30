@@ -1785,7 +1785,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 
 	FILE	   *fp;
 	mode_t		um;
-	struct stat auto_conf_st;
+	struct stat data_dir_st;
 
 	KeyValueList config = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
@@ -1796,7 +1796,12 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	appendPQExpBuffer(&auto_conf, "%s/%s",
 					  data_dir, PG_AUTOCONF_FILENAME);
 
-	success = ProcessPostgresConfigFile(auto_conf.data, NULL, &config, NULL, NULL);
+	success = ProcessPostgresConfigFile(auto_conf.data,
+										NULL,
+										false, /* we don't care if the file does not exist */
+										&config,
+										NULL,
+										NULL);
 
 	if (success == false)
 	{
@@ -1807,7 +1812,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	}
 
 	/*
-	 * Append requested items to items extracted from the existing file.
+	 * Append requested items to any items extracted from the existing file.
 	 */
 	for (cell = items->head; cell; cell = cell->next)
 	{
@@ -1836,27 +1841,46 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 						  cell->key, cell->value);
 	}
 
-	stat(auto_conf.data, &auto_conf_st);
+	/* stat the data directory for the file mode */
+	if (stat(data_dir, &data_dir_st) != 0)
+	{
+		/*
+		 * This is highly unlikely to happen, but if it does (e.g. freak
+		 * race condition with some rogue process which is messing about
+		 * with the data directory), there's not a lot we can do.
+		 */
+		log_error(_("error encountered when checking \"%s\""),
+				  data_dir);
+		log_detail("%s", strerror(errno));
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
-	 * Set umask so the temporary file is created in the same mode as the original
-	 * postgresql.auto.conf file.
+	 * Set umask so the temporary file is created in the same mode as the data
+	 * directory. In PostgreSQL 11 and later this can be 0700 or 0750.
 	 */
-	um = umask(~(auto_conf_st.st_mode));
+	um = umask(~(data_dir_st.st_mode));
+
 	fp = fopen(auto_conf_tmp.data, "w");
+
 	umask(um);
 
 	if (fp == NULL)
 	{
-		fprintf(stderr, "unable to open \"%s\": %s\n",
+		fprintf(stderr, "unable to open \"%s\" for writing: %s\n",
 				auto_conf_tmp.data,
 				strerror(errno));
+		success = false;
 	}
 	else
 	{
 		if (fwrite(auto_conf_contents.data, strlen(auto_conf_contents.data), 1, fp) != 1)
 		{
+			fprintf(stderr, "unable to write to \"%s\": %s\n",
+					auto_conf_tmp.data,
+					strerror(errno));
 			fclose(fp);
+			success = false;
 		}
 		else
 		{
