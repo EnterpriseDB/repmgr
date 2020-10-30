@@ -1412,10 +1412,8 @@ dump_config(void)
 				printf("%s", print_connection_check_type(*setting->val.checktypeptr));
 				break;
 			case CONFIG_REPLICATION_TYPE:
-			{
 				printf("%s", print_replication_type(*setting->val.replicationtypeptr));
 				break;
-			}
 			case CONFIG_EVENT_NOTIFICATION_LIST:
 			{
 				char *list = print_event_notification_list(setting->val.notificationlistptr);
