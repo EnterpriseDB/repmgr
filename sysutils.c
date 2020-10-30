@@ -289,10 +289,19 @@ disable_wal_receiver(PGconn *conn)
 
 	if (wal_retrieve_retry_interval < WALRECEIVER_DISABLE_TIMEOUT_VALUE)
 	{
+		bool success;
+
 		log_notice(_("setting \"wal_retrieve_retry_interval\" to %i milliseconds"),
 				   new_wal_retrieve_retry_interval);
 		alter_system_int(conn, "wal_retrieve_retry_interval", new_wal_retrieve_retry_interval);
-		pg_reload_conf(conn);
+
+		success = pg_reload_conf(conn);
+
+		if (success == false)
+		{
+			log_warning(_("unable to reload configuration"));
+			return UNKNOWN_PID;
+		}
 	}
 
 	/*
@@ -394,7 +403,13 @@ enable_wal_receiver(PGconn *conn, bool wait_startup)
 			return UNKNOWN_PID;
 		}
 
-		pg_reload_conf(conn);
+		success = pg_reload_conf(conn);
+
+		if (success == false)
+		{
+			log_warning(_("unable to reload configuration"));
+			return UNKNOWN_PID;
+		}
 	}
 	else
 	{
