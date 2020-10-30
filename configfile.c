@@ -313,6 +313,9 @@ _parse_config(ItemList *error_list, ItemList *warning_list)
 			case CONFIG_CONNECTION_CHECK_TYPE:
 				*setting->val.checktypeptr = setting->defval.checktypedefault;
 				break;
+			case CONFIG_REPLICATION_TYPE:
+				*setting->val.replicationtypeptr = setting->defval.replicationtypedefault;
+				break;
 			case CONFIG_EVENT_NOTIFICATION_LIST:
 			case CONFIG_TABLESPACE_MAPPING:
 				/* no default for these types; lists cleared above */
@@ -562,6 +565,20 @@ parse_configuration_item(ItemList *error_list, ItemList *warning_list, const cha
 					{
 						item_list_append_format(error_list,
 												_("value for \"%s\" must be \"ping\", \"connection\" or \"query\"\n"),
+												name);
+					}
+					break;
+				}
+				case CONFIG_REPLICATION_TYPE:
+				{
+					if (strcasecmp(value, "physical") == 0)
+					{
+						*(ReplicationType *)setting->val.replicationtypeptr = REPLICATION_TYPE_PHYSICAL;
+					}
+					else
+					{
+						item_list_append_format(error_list,
+												_("value for \"%s\" must be \"physical\"\n"),
 												name);
 					}
 					break;
@@ -1394,6 +1411,11 @@ dump_config(void)
 			case CONFIG_CONNECTION_CHECK_TYPE:
 				printf("%s", print_connection_check_type(*setting->val.checktypeptr));
 				break;
+			case CONFIG_REPLICATION_TYPE:
+			{
+				printf("%s", print_replication_type(*setting->val.replicationtypeptr));
+				break;
+			}
 			case CONFIG_EVENT_NOTIFICATION_LIST:
 			{
 				char *list = print_event_notification_list(setting->val.notificationlistptr);
@@ -2164,6 +2186,20 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	free_parsed_argv(&argv_array);
 
 	return backup_options_ok;
+}
+
+
+const char *
+print_replication_type(ReplicationType type)
+{
+	switch (type)
+	{
+		case REPLICATION_TYPE_PHYSICAL:
+			return "physical";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN";
 }
 
 

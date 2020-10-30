@@ -50,6 +50,11 @@ typedef enum
 	CHECK_CONNECTION
 } ConnectionCheckType;
 
+typedef enum
+{
+	REPLICATION_TYPE_PHYSICAL
+} ReplicationType;
+
 typedef struct EventNotificationListCell
 {
 	struct EventNotificationListCell *next;
@@ -86,7 +91,8 @@ typedef enum
 	CONFIG_FAILOVER_MODE,
 	CONFIG_CONNECTION_CHECK_TYPE,
 	CONFIG_EVENT_NOTIFICATION_LIST,
-	CONFIG_TABLESPACE_MAPPING
+	CONFIG_TABLESPACE_MAPPING,
+    CONFIG_REPLICATION_TYPE
 } ConfigItemType;
 
 
@@ -103,6 +109,7 @@ typedef struct ConfigFileSetting
 		ConnectionCheckType *checktypeptr;
 		EventNotificationList *notificationlistptr;
 		TablespaceList *tablespacemappingptr;
+		ReplicationType *replicationtypeptr;
 	} val;
 	union {
 		int			intdefault;
@@ -110,6 +117,7 @@ typedef struct ConfigFileSetting
 		bool		booldefault;
 		failover_mode_opt failovermodedefault;
 		ConnectionCheckType checktypedefault;
+		ReplicationType replicationtypedefault;
 	} defval;
 	union {
 		int				intminval;
@@ -138,7 +146,7 @@ typedef struct
 	char		config_directory[MAXPGPATH];
 	char		pg_bindir[MAXPGPATH];
 	char		repmgr_bindir[MAXPGPATH];
-	int			replication_type;
+	ReplicationType	replication_type;
 
 	/* log settings */
 	char		log_level[MAXLEN];
@@ -356,6 +364,7 @@ const char *format_failover_mode(failover_mode_opt failover);
 void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
 
 void		print_item_list(ItemList *item_list);
+const char *print_replication_type(ReplicationType type);
 const char *print_connection_check_type(ConnectionCheckType type);
 char 	   *print_event_notification_list(EventNotificationList *list);
 char 	   *print_tablespace_mapping(TablespaceList *tablespacemappingptr);

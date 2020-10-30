@@ -120,10 +120,10 @@ struct ConfigFileSetting config_file_settings[] =
 	/* replication_type */
 	{
 		"replication_type",
-		CONFIG_INT,
-		{ .intptr = &config_file_options.replication_type },
-		{ .intdefault = REPLICATION_TYPE_PHYSICAL },
-		{ .intminval = -1 },
+		CONFIG_REPLICATION_TYPE,
+		{ .replicationtypeptr = &config_file_options.replication_type },
+		{ .replicationtypedefault = DEFAULT_REPLICATION_TYPE },
+		{},
 		{},
 		{}
 	},
