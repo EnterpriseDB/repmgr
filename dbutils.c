@@ -1255,7 +1255,7 @@ bool
 pg_reload_conf(PGconn *conn)
 {
 	PGresult   *res = NULL;
-	bool		success = false;
+	bool		success = true;
 
 	res = PQexec(conn, "SELECT pg_catalog.pg_reload_conf()");
 
