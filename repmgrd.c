@@ -396,13 +396,14 @@ main(int argc, char **argv)
 		 * extension is the latest available according to "pg_available_extensions" -
 		 * - does our (major) version match that?
 		 */
-		log_verbose(LOG_DEBUG, "binary version: %i; extension version: %i",
-					REPMGR_VERSION_NUM, extversions.installed_version_num);
-		if ((REPMGR_VERSION_NUM/100) < (extversions.installed_version_num / 100))
+		log_verbose(LOG_DEBUG, "expected extension version: %i; extension version: %i",
+					REPMGR_EXTENSION_NUM, extversions.installed_version_num);
+		if ((REPMGR_EXTENSION_NUM/100) < (extversions.installed_version_num / 100))
 		{
 			log_error(_("this \"repmgr\" version is older than the installed \"repmgr\" extension version"));
-			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
+			log_detail(_("\"repmgr\" version %s providing extension version %s is installed but extension is version %s"),
 					   REPMGR_VERSION,
+					   REPMGR_EXTENSION_VERSION,
 					   extversions.installed_version);
 			log_hint(_("update the repmgr binaries to match the installed extension version"));
 
@@ -410,11 +411,12 @@ main(int argc, char **argv)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if ((REPMGR_VERSION_NUM/100) > (extversions.installed_version_num / 100))
+		if ((REPMGR_EXTENSION_NUM/100) > (extversions.installed_version_num / 100))
 		{
 			log_error(_("this \"repmgr\" version is newer than the installed \"repmgr\" extension version"));
-			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
+			log_detail(_("\"repmgr\" version %s providing extension version %s is installed but extension is version %s"),
 					   REPMGR_VERSION,
+					   REPMGR_EXTENSION_VERSION,
 					   extversions.installed_version);
 			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\""));
 
