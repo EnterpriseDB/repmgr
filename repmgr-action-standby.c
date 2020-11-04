@@ -670,6 +670,15 @@ do_standby_clone(void)
 			log_hint(_("consider using the -c/--fast-checkpoint option"));
 		}
 
+		if (mode == pg_basebackup)
+		{
+			/*
+			 * In --dry-run mode, this will just output the pg_basebackup command which
+			 * would be executed.
+			 */
+			run_basebackup(&local_node_record);
+		}
+
 		PQfinish(source_conn);
 
 		log_info(_("all prerequisites for \"standby clone\" are met"));
@@ -6775,6 +6784,13 @@ run_basebackup(t_node_info *node_record)
 					  config_file_options.pg_basebackup_options);
 
 	termPQExpBuffer(&params);
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("would execute:\n  %s"), script.data);
+		termPQExpBuffer(&script);
+		return SUCCESS;
+	}
 
 	log_info(_("executing:\n  %s"), script.data);
 
