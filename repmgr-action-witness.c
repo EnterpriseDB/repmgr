@@ -560,7 +560,7 @@ void do_witness_help(void)
 
 	printf(_("WITNESS UNREGISTER\n"));
 	puts("");
-	printf(_("  \"witness register\" unregisters a witness node.\n"));
+	printf(_("  \"witness unregister\" unregisters a witness node.\n"));
 	puts("");
 	printf(_("  --dry-run                check prerequisites but don't make any changes\n"));
 	printf(_("  -F, --force              unregister when witness node not running\n"));
