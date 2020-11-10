@@ -1169,7 +1169,7 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Check for configuration file items which can be overriden by runtime
+	 * Check for configuration file items which can be overridden by runtime
 	 * options
 	 * =====================================================================
 	 */
