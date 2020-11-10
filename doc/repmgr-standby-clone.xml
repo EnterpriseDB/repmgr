@@ -379,12 +379,12 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
             Create recovery configuration for a previously cloned instance.
           </para>
 		  <para>
-			In PostgreSQL 11 and earlier, the replication configuration will be
-			written to <filename>recovery.conf</filename>.
-		  </para>
-		  <para>
 			In PostgreSQL 12 and later, the replication configuration will be
 			written to <filename>postgresql.auto.conf</filename>.
+		  </para>
+		  <para>
+			In PostgreSQL 11 and earlier, the replication configuration will be
+			written to <filename>recovery.conf</filename>.
 		  </para>
         </listitem>
       </varlistentry>
