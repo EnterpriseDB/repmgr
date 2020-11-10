@@ -99,6 +99,7 @@
 #define OPT_REPLICATION_CONFIG_OWNER	   1046
 #define OPT_DB_CONNECTION				   1047
 #define OPT_VERIFY_BACKUP				   1048
+#define OPT_RECOVERY_MIN_APPLY_DELAY       1049
 
 /* These options are for internal use only */
 #define OPT_CONFIG_ARCHIVE_DIR			   2001
@@ -164,6 +165,7 @@ static struct option long_options[] =
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 	{"replication-conf-only", no_argument, NULL, OPT_REPLICATION_CONF_ONLY},
 	{"verify-backup", no_argument, NULL, OPT_VERIFY_BACKUP },
+	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY },
 	/* deprecate this once Pg11 and earlier are unsupported */
 	{"recovery-conf-only", no_argument, NULL, OPT_REPLICATION_CONF_ONLY},
 
