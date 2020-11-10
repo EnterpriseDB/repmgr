@@ -84,7 +84,7 @@ typedef struct
 	bool		fast_checkpoint;
 	bool		rsync_only;
 	bool		no_upstream_connection;
-	char		recovery_min_apply_delay[MAXLEN];
+	char		recovery_min_apply_delay[MAXLEN];	/* overrides setting in repmgr.conf */
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
 	bool		without_barman;

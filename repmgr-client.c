@@ -438,6 +438,11 @@ main(int argc, char **argv)
 				runtime_options.replication_conf_only = true;
 				break;
 
+				/* --recovery-min-apply-delay */
+			case OPT_RECOVERY_MIN_APPLY_DELAY:
+				strncpy(runtime_options.recovery_min_apply_delay, optarg, sizeof(runtime_options.recovery_min_apply_delay));
+				break;
+
 				/* --verify-backup */
 			case OPT_VERIFY_BACKUP:
 				runtime_options.verify_backup = true;
@@ -1105,9 +1110,24 @@ main(int argc, char **argv)
 		exit(SUCCESS);
 	}
 
-
-
 	check_cli_parameters(action);
+
+
+	/*
+	 * Command-line parameter --recovery-min-apply-delay overrides the equivalent
+	 * setting in the config file. Note we'll need to parse it here to handle
+	 * any formatting errors.
+	 */
+
+	if (*runtime_options.recovery_min_apply_delay != '\0')
+	{
+		parse_time_unit_parameter("--recovery-min-apply-delay",
+								  runtime_options.recovery_min_apply_delay,
+								  config_file_options.recovery_min_apply_delay,
+								  &cli_errors);
+
+		config_file_options.recovery_min_apply_delay_provided = true;
+	}
 
 	/*
 	 * Sanity checks for command line parameters completed by now; any further

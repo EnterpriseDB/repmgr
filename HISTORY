@@ -1,6 +1,7 @@
 5.2.1   2020-??-??
         config: fix parsing of "replication_type"
         standby clone: handle missing "postgresql.auto.conf"
+        standby clone: add option --recovery-min-apply-delay
 
 5.2.0   2020-10-22
         general: add support for PostgreSQL 13 (Ian)

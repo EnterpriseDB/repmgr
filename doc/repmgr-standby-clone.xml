@@ -331,6 +331,25 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
         </listitem>
       </varlistentry>
 
+
+      <varlistentry>
+        <term><option>--recovery-min-apply-delay</option></term>
+        <listitem>
+          <para>
+            Set PostgreSQL configuration <option>recovery_min_apply_delay</option> parameter
+            to the provided value.
+          </para>
+          <para>
+            This overrides any <option>recovery_min_apply_delay</option> provided via
+            <filename>repmgr.conf</filename>.
+          </para>
+          <para>
+            For more details on this parameter, see:
+            <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-RECOVERY-MIN-APPLY-DELAY">recovery_min_apply_delay</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
       <varlistentry>
         <term><option>-R, --remote-user=USERNAME</option></term>
         <listitem>
