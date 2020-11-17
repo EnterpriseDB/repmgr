@@ -1444,7 +1444,18 @@ _do_create_replication_conf(void)
 
 			if (node_is_running == true)
 			{
-				log_hint(_("node must be restarted for the new file to take effect"));
+				if (PQserverVersion(upstream_conn) >= 130000)
+				{
+					log_hint(_("configuration must be reloaded for the configuration changes to take effect"));
+				}
+				else if (PQserverVersion(upstream_conn) >= 120000)
+				{
+					log_hint(_("node must be restarted for the configuration changes to take effect"));
+				}
+				else
+				{
+					log_hint(_("node must be restarted for the new file to take effect"));
+				}
 			}
 		}
 	}
