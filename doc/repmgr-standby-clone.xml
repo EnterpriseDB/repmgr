@@ -260,16 +260,29 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
      upstream node if required.
    </para>
    <para>
-     Note that the upstream node must be running. In PostgreSQL 11 and earlier, an existing
-     <filename>recovery.conf</filename> will not be overwritten unless the
-     <option>-F/--force</option> option is provided.
+     The upstream node must be running so the correct replication configuration can be obtained.
    </para>
    <para>
-     Execute <command>repmgr standby clone --replication-conf-only --dry-run</command>
-     to check the prerequisites for creating the recovery configuration,
-     and display the contents of the configuration which would be added without actually
-	 making any changes.
+     If the standby is running, the replication configuration will not be written unless the
+     <option>-F/--force</option> option is provided.
    </para>
+   <tip>
+     <para>
+       Execute <command>repmgr standby clone --replication-conf-only --dry-run</command>
+       to check the prerequisites for creating the recovery configuration,
+       and display the configuration changes which would be made without actually
+	   making any changes.
+     </para>
+   </tip>
+   <para>
+     In PostgreSQL 13 and later, the PostgreSQL configuration must be reloaded for replication
+     configuration changes to take effect.
+   </para>
+   <para>
+     In PostgreSQL 12 and earlier, the PostgreSQL instance must be restarted for replication
+     configuration changes to take effect.
+   </para>
+
 
   </refsect1>
 
