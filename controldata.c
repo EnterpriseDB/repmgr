@@ -333,7 +333,7 @@ get_controlfile(const char *DataDir)
 		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 #else
-		fprintf(stderr, "ERROR: please use a repmgr version built for PostgreSQL 12\n");
+		fprintf(stderr, "ERROR: please use a repmgr version built for PostgreSQL 12 or later\n");
 		exit(ERR_BAD_CONFIG);
 #endif
 	}
