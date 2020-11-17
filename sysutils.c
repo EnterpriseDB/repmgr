@@ -363,6 +363,12 @@ enable_wal_receiver(PGconn *conn, bool wait_startup)
 	/* make timeout configurable */
 	int i, timeout = 30;
 
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_error(_("database connection not available"));
+		return UNKNOWN_PID;
+	}
+
 	if (is_superuser_connection(conn, NULL) == false)
 	{
 		log_error(_("superuser connection required"));

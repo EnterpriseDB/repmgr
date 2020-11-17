@@ -15,10 +15,32 @@
     See also: <xref linkend="upgrading-repmgr"/>
   </para>
 
+  <sect1 id="release-5.2.1">
+    <title id="release-current">Release 5.2.1</title>
+    <para><emphasis>??? ?? ???, 2020</emphasis></para>
+
+    <para>
+      &repmgr; 5.2.1 is a minor release.
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+       <itemizedlist>
+          <listitem>
+            <para>
+              &repmgrd;: prevent termination when local node not available and
+              <option>standby_disconnect_on_failover</option> is set.  GitHub #675.
+            </para>
+          </listitem>
+       </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
 <!-- remember to update the release date in ../repmgr_version.h.in -->
 
   <sect1 id="release-5.2.0">
-    <title id="release-current">Release 5.2.0</title>
+    <title>Release 5.2.0</title>
     <para><emphasis>Thu 22 October, 2020</emphasis></para>
 
     <para>
