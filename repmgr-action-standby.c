@@ -7789,7 +7789,9 @@ static void
 tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location)
 {
 	TablespaceDataListCell *cell = NULL;
-
+	int oid_len = strlen(oid);
+	int name_len = strlen(name);
+	int location_len = strlen(location);
 	cell = (TablespaceDataListCell *) pg_malloc0(sizeof(TablespaceDataListCell));
 
 	if (cell == NULL)
@@ -7798,13 +7800,13 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 		exit(ERR_OUT_OF_MEMORY);
 	}
 
-	cell->oid = pg_malloc(1 + strlen(oid));
-	cell->name = pg_malloc(1 + strlen(name));
-	cell->location = pg_malloc(1 + strlen(location));
+	cell->oid = pg_malloc0(1 + oid_len);
+	cell->name = pg_malloc0(1 + name_len);
+	cell->location = pg_malloc0(1 + location_len);
 
-	strncpy(cell->oid, oid, 1 + strlen(oid));
-	strncpy(cell->name, name, 1 + strlen(name));
-	strncpy(cell->location, location, 1 + strlen(location));
+	strncpy(cell->oid, oid, oid_len);
+	strncpy(cell->name, name, name_len);
+	strncpy(cell->location, location, location_len);
 
 	if (list->tail)
 		list->tail->next = cell;

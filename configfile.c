@@ -2250,6 +2250,7 @@ print_event_notification_list(EventNotificationList *list)
 	PQExpBufferData buf;
 	char *ptr;
 	EventNotificationListCell *cell;
+	int ptr_len;
 
 	initPQExpBuffer(&buf);
 	cell = list->head;
@@ -2264,8 +2265,10 @@ print_event_notification_list(EventNotificationList *list)
 		cell = cell->next;
 	}
 
-	ptr = palloc0(strlen(buf.data) + 1);
-	strncpy(ptr, buf.data, strlen(buf.data));
+	ptr_len = strlen(buf.data);
+	ptr = palloc0(ptr_len + 1);
+
+	strncpy(ptr, buf.data, ptr_len);
 
 	termPQExpBuffer(&buf);
 
