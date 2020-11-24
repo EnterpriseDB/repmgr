@@ -76,10 +76,10 @@ configfile-scan.c: configfile-scan.l
 $(REPMGR_CLIENT_OBJS): repmgr-client.h repmgr_version.h
 
 repmgr: $(REPMGR_CLIENT_OBJS)
-	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
+	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) -o $@$(X)
 
 repmgrd: $(REPMGRD_OBJS)
-	$(CC) $(CFLAGS) $(REPMGRD_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
+	$(CC) $(CFLAGS) $(REPMGRD_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) -o $@$(X)
 
 $(REPMGR_CLIENT_OBJS): $(HEADERS)
 $(REPMGRD_OBJS): $(HEADERS)
