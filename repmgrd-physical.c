@@ -5381,7 +5381,7 @@ try_primary_reconnect(PGconn **conn, PGconn *local_conn, t_node_info *node_info)
 		time_t started_at = time(NULL);
 		int up_to;
 		bool sleep_now = false;
-		bool max_sleep_seconds;
+		int max_sleep_seconds;
 
 		log_info(_("checking state of node \"%s\" (ID: %i), %i of %i attempts"),
 				 node_info->node_name,
