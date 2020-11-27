@@ -282,8 +282,8 @@ extern void get_node_config_directory(char *config_dir_buf);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
 extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
-extern void make_standby_signal_path(char *buf);
-extern bool write_standby_signal(void);
+extern void make_standby_signal_path(const char *data_dir, char *buf);
+extern bool write_standby_signal(const char *data_dir);
 
 extern bool create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_node_record, PQExpBufferData *error_msg);
 extern bool drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);

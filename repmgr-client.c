@@ -3661,11 +3661,11 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 
 
 void
-make_standby_signal_path(char *buf)
+make_standby_signal_path(const char *data_dir, char *buf)
 {
 	snprintf(buf, MAXPGPATH,
 			 "%s/%s",
-			 config_file_options.data_directory,
+			 data_dir,
 			 STANDBY_SIGNAL_FILE);
 }
 
@@ -3673,13 +3673,15 @@ make_standby_signal_path(char *buf)
  * create standby.signal (PostgreSQL 12 and later)
  */
 bool
-write_standby_signal(void)
+write_standby_signal(const char *data_dir)
 {
 	char	    standby_signal_file_path[MAXPGPATH] = "";
 	FILE	   *file;
 	mode_t		um;
 
-	make_standby_signal_path(standby_signal_file_path);
+	Assert(data_dir != NULL);
+
+	make_standby_signal_path(data_dir, standby_signal_file_path);
 
 	/* Set umask to 0600 */
 	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));

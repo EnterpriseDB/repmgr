@@ -174,21 +174,6 @@ do_standby_clone(void)
 	initialize_conninfo_params(&recovery_conninfo, false);
 
 	/*
-	 * --replication-conf-only provided - we'll handle that separately
-	 */
-	if (runtime_options.replication_conf_only == true)
-	{
-		return _do_create_replication_conf();
-	}
-
-	/*
-	 * conninfo params for the actual upstream node (which might be different
-	 * to the node we're cloning from) to write to recovery.conf
-	 */
-
-	mode = get_standby_clone_mode();
-
-	/*
 	 * Copy the provided data directory; if a configuration file was provided,
 	 * use the (mandatory) value from that; if -D/--pgdata was provided, use
 	 * that.
@@ -215,6 +200,20 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/*
+	 * --replication-conf-only provided - we'll handle that separately
+	 */
+	if (runtime_options.replication_conf_only == true)
+	{
+		return _do_create_replication_conf();
+	}
+
+	/*
+	 * conninfo params for the actual upstream node (which might be different
+	 * to the node we're cloning from) to write to recovery.conf
+	 */
+
+	mode = get_standby_clone_mode();
 
 	if (mode == barman)
 	{
@@ -1479,7 +1478,7 @@ _do_create_replication_conf(void)
 		}
 		else
 		{
-			if (write_standby_signal() == false)
+			if (write_standby_signal(local_data_directory) == false)
 			{
 				log_error(_("unable to write \"standby.signal\" file"));
 			}
@@ -8001,7 +8000,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 			return false;
 		}
 
-		if (write_standby_signal() == false)
+		if (write_standby_signal(local_data_directory) == false)
 		{
 			return false;
 		}

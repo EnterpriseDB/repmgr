@@ -2813,7 +2813,8 @@ do_node_rejoin(void)
 				log_notice(_("temporarily removing \"standby.signal\""));
 				log_detail(_("this is required so pg_rewind can fix the unclean shutdown"));
 
-				make_standby_signal_path(standby_signal_file_path);
+				make_standby_signal_path(config_file_options.data_directory,
+										 standby_signal_file_path);
 
 				if (unlink(standby_signal_file_path) < 0 && errno != ENOENT)
 				{
@@ -2838,7 +2839,7 @@ do_node_rejoin(void)
 				 * of whether the pg_rewind operation failed.
 				 */
 				log_notice(_("recreating \"standby.signal\""));
-				write_standby_signal();
+				write_standby_signal(config_file_options.data_directory);
 			}
 
 			if (ret == false)
