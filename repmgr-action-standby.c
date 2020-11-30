@@ -8924,6 +8924,8 @@ do_standby_help(void)
 #endif
 	printf(_("  --without-barman                    do not clone from Barman even if configured\n"));
 	printf(_("  --replication-conf-only             generate replication configuration for a previously cloned instance\n"));
+	printf(_("  --recovery-min-apply-delay          set PostgreSQL configuration parameter \"recovery_min_apply_delay\"\n" \
+			 "                                      (overrides any setting in repmgr.conf)\n"));
 
 	puts("");
 
