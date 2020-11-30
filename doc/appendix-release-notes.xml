@@ -17,21 +17,63 @@
 
   <sect1 id="release-5.2.1">
     <title id="release-current">Release 5.2.1</title>
-    <para><emphasis>??? ?? ???, 2020</emphasis></para>
+    <para><emphasis>??? ?? December, 2020</emphasis></para>
 
     <para>
       &repmgr; 5.2.1 is a minor release.
     </para>
     <sect2>
+      <title>Improvements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
+              option <option>--recovery-min-apply-delay</option> added, overriding any
+              setting in <filename>repmgr.conf</filename>.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <command>repmgr witness --help</command>: fix <command>witness unregister</command>
+              description.  GitHub #676.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+    <sect2>
+
       <title>Bug fixes</title>
       <para>
-       <itemizedlist>
+        <itemizedlist>
+          <listitem>
+            <para>
+              Fix parsing of <option>replication_type</option>.  GitHub #672.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
+              handle case where <filename>postgresql.auto.conf</filename> is absent on the
+              source node.
+            </para>
+          </listitem>
+
+
           <listitem>
             <para>
               &repmgrd;: prevent termination when local node not available and
               <option>standby_disconnect_on_failover</option> is set.  GitHub #675.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: ensure <option>reconnect_interval</option> is correctly handled.
+              GitHub #673.
+            </para>
+          </listitem>
+
        </itemizedlist>
       </para>
     </sect2>

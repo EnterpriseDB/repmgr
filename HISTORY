@@ -1,7 +1,11 @@
 5.2.1   2020-??-??
-        config: fix parsing of "replication_type"
-        standby clone: handle missing "postgresql.auto.conf"
-        standby clone: add option --recovery-min-apply-delay
+        config: fix parsing of "replication_type"; GitHub #672 (Ian)
+        standby clone: handle missing "postgresql.auto.conf" (Ian)
+        standby clone: add option --recovery-min-apply-delay (Ian)
+        repmgrd: prevent termination when local node not available and
+          standby_disconnect_on_failover; GitHub #675 (Ian)
+        repmgrd: ensure reconnect_interval" is correctly handled;
+          GitHub #673 (Ian)
 
 5.2.0   2020-10-22
         general: add support for PostgreSQL 13 (Ian)
