@@ -847,6 +847,16 @@ do_standby_clone(void)
 	}
 
 	/*
+	 * Do a final check on the data directory permissions - if the user
+	 * is cloning into an existing directory set to 0750, and the server
+	 * is Pg10 or earlier, Pg will refuse to start. We might not have
+	 * known the server version when creating the data directory
+	 * (mainly if cloning from Barman with no upstream connection), hence
+	 * the additional check here.
+	 */
+	set_dir_permissions(local_data_directory, source_server_version_num);
+
+	/*
 	 * TODO: It might be nice to provide an option to have repmgr start the
 	 * PostgreSQL server automatically
 	 */

@@ -2,6 +2,8 @@
         config: fix parsing of "replication_type"; GitHub #672 (Ian)
         standby clone: handle missing "postgresql.auto.conf" (Ian)
         standby clone: add option --recovery-min-apply-delay (Ian)
+        standby clone: fix data directory permissions handling for
+          PostgreSQL 11 and later (Ian)
         repmgrd: prevent termination when local node not available and
           standby_disconnect_on_failover; GitHub #675 (Ian)
         repmgrd: ensure reconnect_interval" is correctly handled;

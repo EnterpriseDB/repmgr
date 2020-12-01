@@ -35,7 +35,7 @@ typedef enum
 } PgDirState;
 
 extern int	mkdir_p(char *path, mode_t omode);
-extern bool set_dir_permissions(const char *path);
+extern bool set_dir_permissions(const char *path, int server_version_num);
 
 extern DataDirState	check_dir(const char *path);
 extern bool create_dir(const char *path);
