@@ -3921,6 +3921,7 @@ follow_new_primary(int new_primary_id)
 
 				termPQExpBuffer(&event_details);
 
+				close_connection(&upstream_conn);
 				close_connection(&old_primary_conn);
 
 				return FAILOVER_STATE_PRIMARY_REAPPEARED;
@@ -3930,6 +3931,8 @@ follow_new_primary(int new_primary_id)
 
 			close_connection(&old_primary_conn);
 		}
+
+		close_connection(&upstream_conn);
 
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
