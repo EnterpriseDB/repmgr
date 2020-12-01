@@ -46,12 +46,14 @@
 
       <title>Bug fixes</title>
       <para>
-        <itemizedlist>
+
+         <itemizedlist>
           <listitem>
             <para>
-              Fix parsing of <option>replication_type</option>.  GitHub #672.
+              Configuration: fix parsing of <option>replication_type</option>.  GitHub #672.
             </para>
           </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
@@ -60,6 +62,14 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
+              in PostgreSQL 11 and later, an existing data directory's permissions
+              will not be changed to <option>0700</option> if they are already set to
+              <option>0750</option>.
+            </para>
+          </listitem>
 
           <listitem>
             <para>

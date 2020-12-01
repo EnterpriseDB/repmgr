@@ -109,9 +109,56 @@ create_dir(const char *path)
 
 
 bool
-set_dir_permissions(const char *path)
+set_dir_permissions(const char *path, int server_version_num)
 {
-	return (chmod(path, 0700) != 0) ? false : true;
+	struct stat stat_buf;
+	bool no_group_access =
+		(server_version_num != UNKNOWN_SERVER_VERSION_NUM) &&
+		(server_version_num < 110000);
+	/*
+	 * At this point the path should exist, so this check is very
+	 * much just-in-case.
+	 */
+	if (stat(path, &stat_buf) != 0)
+	{
+		if (errno == ENOENT)
+		{
+			log_warning(_("directory \"%s\" does not exist"), path);
+		}
+		else
+		{
+			log_warning(_("could not read permissions of directory \"%s\""),
+						path);
+			log_detail("%s", strerror(errno));
+		}
+
+		return false;
+	}
+
+	/*
+	 * If mode is not 0700 or 0750, attempt to change.
+	 */
+	if ((no_group_access == true  && (stat_buf.st_mode & (S_IRWXG | S_IRWXO)))
+	 || (no_group_access == false && (stat_buf.st_mode & (S_IWGRP | S_IRWXO))))
+	{
+		/*
+		 * Currently we default to 0700.
+		 * There is no facility to override this directly,
+		 * but the user can manually create the directory with
+		 * the desired permissions.
+		 */
+
+		if (chmod(path, 0700) != 0) {
+			log_error(_("unable to change permissions of directory \"%s\""), path);
+			log_detail("%s", strerror(errno));
+			return false;
+		}
+
+		return true;
+	}
+
+	/* Leave as-is */
+	return true;
 }
 
 
@@ -303,7 +350,7 @@ create_pg_dir(const char *path, bool force)
 	switch (check_dir(path))
 	{
 		case DIR_NOENT:
-			/* directory does not exist, attempt to create it */
+			/* Directory does not exist, attempt to create it. */
 			log_info(_("creating directory \"%s\"..."), path);
 
 			if (!create_dir(path))
@@ -314,14 +361,23 @@ create_pg_dir(const char *path, bool force)
 			}
 			break;
 		case DIR_EMPTY:
-			/* exists but empty, fix permissions and use it */
+			/*
+			 * Directory exists but empty, fix permissions and use it.
+			 *
+			 * Note that at this point the caller might not know the server
+			 * version number, so in this case "set_dir_permissions()" will
+			 * accept 0750 as a valid setting. As this is invalid in Pg10 and
+			 * earlier,  the caller should call "set_dir_permissions()" again
+			 * when it has the number.
+			 *
+			 * We need to do the permissions check here in any case to catch
+			 * fatal permissions early.
+			 */
 			log_info(_("checking and correcting permissions on existing directory \"%s\""),
 					 path);
 
-			if (!set_dir_permissions(path))
+			if (!set_dir_permissions(path, UNKNOWN_SERVER_VERSION_NUM))
 			{
-				log_error(_("unable to change permissions of directory \"%s\""), path);
-				log_detail("%s", strerror(errno));
 				return false;
 			}
 			break;
