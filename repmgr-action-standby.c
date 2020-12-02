@@ -212,7 +212,6 @@ do_standby_clone(void)
 	 * conninfo params for the actual upstream node (which might be different
 	 * to the node we're cloning from) to write to recovery.conf
 	 */
-
 	mode = get_standby_clone_mode();
 
 	if (mode == barman)
@@ -7975,9 +7974,9 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 		free(escaped);
 	}
 
-
-
-
+	/*
+	 * Caller requests the generated file to be written into a buffer
+	 */
 	if (as_file == false)
 	{
 		/* create file in buffer */
@@ -7997,20 +7996,17 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 		return true;
 	}
 
-
 	/*
 	 * PostgreSQL 12 and later: modify postgresql.auto.conf
-	 *
 	 */
 	if (server_version_num >= 120000)
 	{
-
 		if (modify_auto_conf(dest, &recovery_config) == false)
 		{
 			return false;
 		}
 
-		if (write_standby_signal(local_data_directory) == false)
+		if (write_standby_signal(dest) == false)
 		{
 			return false;
 		}
