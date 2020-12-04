@@ -30,13 +30,7 @@
             <para>
               <link linkend="repmgr-standby-clone">repmgr standby clone</link>:
               option <option>--recovery-min-apply-delay</option> added, overriding any
-              setting in <filename>repmgr.conf</filename>.
-            </para>
-          </listitem>
-          <listitem>
-            <para>
-              <command>repmgr witness --help</command>: fix <command>witness unregister</command>
-              description.  GitHub #676.
+              setting present in <filename>repmgr.conf</filename>.
             </para>
           </listitem>
         </itemizedlist>
@@ -50,7 +44,7 @@
          <itemizedlist>
           <listitem>
             <para>
-              Configuration: fix parsing of <option>replication_type</option>.  GitHub #672.
+              Configuration: fix parsing of <option>replication_type</option> configuration parameter.  GitHub #672.
             </para>
           </listitem>
 
@@ -81,6 +75,13 @@
             <para>
               &repmgrd;: ensure <option>reconnect_interval</option> is correctly handled.
               GitHub #673.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <command>repmgr witness --help</command>: fix <command>witness unregister</command>
+              description.  GitHub #676.
             </para>
           </listitem>
 
