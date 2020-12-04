@@ -740,7 +740,7 @@ do_standby_clone(void)
 			drop_replication_slot_if_exists(source_conn, UNKNOWN_NODE_ID, local_node_record.slot_name);
 		}
 
-		log_error(_("unable to take a base backup of the primary server"));
+		log_error(_("unable to take a base backup of the source server"));
 		log_hint(_("data directory (\"%s\") may need to be cleaned up manually"),
 				 local_data_directory);
 
