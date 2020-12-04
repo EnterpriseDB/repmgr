@@ -763,7 +763,7 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		appendPQExpBufferStr(&command, " ");
+		appendPQExpBufferChar(&command, ' ');
 
 		/* Somewhat inconsistent, but pg_verifybackup doesn't accept a -D option  */
 		appendShellString(&command,
