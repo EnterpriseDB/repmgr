@@ -1,4 +1,4 @@
-5.2.1   2020-??-??
+5.2.1   2020-12-07
         config: fix parsing of "replication_type"; GitHub #672 (Ian)
         standby clone: handle missing "postgresql.auto.conf" (Ian)
         standby clone: add option --recovery-min-apply-delay (Ian)

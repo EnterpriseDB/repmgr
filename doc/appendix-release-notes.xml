@@ -15,9 +15,11 @@
     See also: <xref linkend="upgrading-repmgr"/>
   </para>
 
+<!-- remember to update the release date in ../repmgr_version.h.in -->
+
   <sect1 id="release-5.2.1">
     <title id="release-current">Release 5.2.1</title>
-    <para><emphasis>??? ?? December, 2020</emphasis></para>
+    <para><emphasis>Mon 7 December, 2020</emphasis></para>
 
     <para>
       &repmgr; 5.2.1 is a minor release.
@@ -36,8 +38,8 @@
         </itemizedlist>
       </para>
     </sect2>
-    <sect2>
 
+    <sect2>
       <title>Bug fixes</title>
       <para>
 
@@ -90,7 +92,6 @@
     </sect2>
   </sect1>
 
-<!-- remember to update the release date in ../repmgr_version.h.in -->
 
   <sect1 id="release-5.2.0">
     <title>Release 5.2.0</title>
