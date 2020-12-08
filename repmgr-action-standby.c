@@ -5346,7 +5346,7 @@ do_standby_switchover(void)
 				break;
 			case JOIN_SUCCESS:
 				appendPQExpBuffer(&event_details,
-								  _("node  \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
+								  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
 								  config_file_options.node_name,
 								  config_file_options.node_id,
 								  remote_node_record.node_name,
