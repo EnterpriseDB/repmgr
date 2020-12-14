@@ -418,7 +418,7 @@ main(int argc, char **argv)
 					   REPMGR_VERSION,
 					   REPMGR_EXTENSION_VERSION,
 					   extversions.installed_version);
-			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\""));
+			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\" in the repmgr database"));
 
 			close_connection(&local_conn);
 			exit(ERR_BAD_CONFIG);

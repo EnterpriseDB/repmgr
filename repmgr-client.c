@@ -2770,7 +2770,7 @@ create_repmgr_extension(PGconn *conn)
 			log_detail(_("version %s is installed but newer version %s is available"),
 					   extversions.installed_version,
 					   extversions.default_version);
-			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\""));
+			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\" in the repmgr database"));
 			return false;
 
 		case REPMGR_INSTALLED:
