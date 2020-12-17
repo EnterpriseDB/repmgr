@@ -4086,7 +4086,7 @@ check_standby_join(PGconn *upstream_conn, t_node_info *upstream_node_record, t_n
 
 			 if (node_attached == NODE_NOT_ATTACHED)
 			 {
-				 log_detail(_("node \"%s\" (ID: %i) is currrently attached to its upstream node in state \"%s\""),
+				 log_detail(_("node \"%s\" (ID: %i) is currently attached to its upstream node in state \"%s\""),
 							upstream_node_record->node_name,
 							standby_node_record->node_id,
 							node_state);

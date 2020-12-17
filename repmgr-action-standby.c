@@ -4108,7 +4108,7 @@ do_standby_switchover(void)
 
 	if (command_success == false || command_output.data[0] == '0')
 	{
-		log_error(_("expected configuration file not found on the demotion candiate \"%s\" (ID: %i)"),
+		log_error(_("expected configuration file not found on the demotion candidate \"%s\" (ID: %i)"),
 				  remote_node_record.node_name,
 				  remote_node_record.node_id);
 		log_detail(_("registered configuration file is \"%s\""),
@@ -4208,7 +4208,7 @@ do_standby_switchover(void)
 				else if (remote_error == REMOTE_ERROR_CONNINFO_PARSE)
 				{
 					/* highly unlikely */
-					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"rempgr.conf\" on node \"%s\" (ID: %i)"),
+					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"repmgr.conf\" on node \"%s\" (ID: %i)"),
 							   remote_node_record.node_name,
 							   remote_node_record.node_id);
 				}
@@ -7530,7 +7530,7 @@ stop_backup:
 						if (record_status == RECORD_FOUND)
 						{
 							log_verbose(LOG_INFO,
-										_("replication slot \"%s\" aleady exists on upstream node %i"),
+										_("replication slot \"%s\" already exists on upstream node %i"),
 										local_node_record->slot_name,
 										upstream_node_id);
 						}
