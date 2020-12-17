@@ -212,7 +212,7 @@
       </para>
     </sect2>
 
-    <sect2 id="faq-third-party-packages" xreflabel="Compatability with third party vendor packages">
+    <sect2 id="faq-third-party-packages" xreflabel="Compatibility with third party vendor packages">
       <title>Are &repmgr; packages compatible with <literal>$third_party_vendor</literal>'s packages?</title>
       <para>
         &repmgr; packages provided by 2ndQuadrant are compatible with the community-provided PostgreSQL

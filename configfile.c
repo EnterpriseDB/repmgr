@@ -1889,7 +1889,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 			/*
 			 * Note: durable_rename() is not exposed to frontend code before Pg 10.
 			 * We only really need to be modifying postgresql.auto.conf from Pg 12,
-			 * but provide backwards compatibitilty for Pg 9.6 and earlier for the
+			 * but provide backwards compatibility for Pg 9.6 and earlier for the
 			 * (unlikely) event that a repmgr built against one of those versions
 			 * is being used against Pg 12 and later.
 			 */
