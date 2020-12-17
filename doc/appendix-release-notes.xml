@@ -1199,7 +1199,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             </para>
             <para>
               Possible values are <literal>ping</literal> (default; uses <command>PQping()</command> to
-              determine server availability), <literal>connection</literal> (attempst to make a new connection to
+              determine server availability), <literal>connection</literal> (attempts to make a new connection to
               the upstream node), and <literal>query</literal> (determines server availability
               by executing an SQL statement on the node via the existing connection).
             </para>

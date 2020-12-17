@@ -586,7 +586,7 @@ INFO:  node 3 received notification to rerun promotion candidate election
   <sect2 id="repmgrd-primary-child-disconnection-caveats">
 	<title>Standby disconnections monitoring caveats</title>
 	<para>
-	  The follwing caveats should be considered if you are intending to use this functionality.
+	  The following caveats should be considered if you are intending to use this functionality.
 	</para>
 	<para>
 	  <itemizedlist mark="bullet">

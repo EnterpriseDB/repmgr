@@ -25,7 +25,7 @@
     </para>
     <para>
       By default, &repmgr; will wait for up to 15 seconds to confirm that &repmgrd;
-      started. This behaviour can be overridden by specifying a diffent value using the <option>--wait</option>
+      started. This behaviour can be overridden by specifying a different value using the <option>--wait</option>
       option, or disabled altogether with the <option>--no-wait</option> option.
     </para>
 

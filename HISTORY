@@ -43,7 +43,7 @@
         repmgr: ensure postgresql.auto.conf is created with correct permissions (Ian)
         repmgr: minimize requirement to check upstream data directory location
           during "standby clone" (Ian)
-        repmgr: warn about missing pg_rewind prerequisites when excuting
+        repmgr: warn about missing pg_rewind prerequisites when executing
           "standby clone" (Ian)
         repmgr: add --upstream option to "node check"
         repmgr: report error code on follow/rejoin failure due to non-available
