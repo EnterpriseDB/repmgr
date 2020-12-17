@@ -3254,7 +3254,7 @@ update_monitoring_history(void)
  *
  * Attach cascaded standby to another node, currently the primary.
  *
- * Note that in contrast to a primary failover, where one of the downstrean
+ * Note that in contrast to a primary failover, where one of the downstream
  * standby nodes will become a primary, a cascaded standby failover (where the
  * upstream standby has gone away) is "just" a case of attaching the standby to
  * another node.
