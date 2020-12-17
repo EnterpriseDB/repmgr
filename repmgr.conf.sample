@@ -323,7 +323,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# for the the local node to restart and become ready to accept connections after
 					# executing "follow_command" (defaults to the value set in "standby_reconnect_timeout")
 
-#monitoring_history=no			# Whether to write monitoring data to the "montoring_history" table
+#monitoring_history=no			# Whether to write monitoring data to the "monitoring_history" table
 #monitor_interval_secs=2		# Interval (in seconds) at which to write monitoring data
 #degraded_monitoring_timeout=-1		# Interval (in seconds) after which repmgrd will terminate if the
 					# server(s) being monitored are no longer available. -1 (default)
