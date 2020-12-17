@@ -2735,7 +2735,7 @@ do_help(void)
  *
  * Note:
  *   This is one of two places where superuser rights are required.
- *   We should also consider possible scenarious where a non-superuser
+ *   We should also consider possible scenarios where a non-superuser
  *   has sufficient privileges to install the extension.
  */
 
