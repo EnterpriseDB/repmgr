@@ -4115,7 +4115,7 @@ do_standby_switchover(void)
 
 	if (command_success == false || command_output.data[0] == '0')
 	{
-		log_error(_("expected configuration file not found on the demotion candiate \"%s\" (ID: %i)"),
+		log_error(_("expected configuration file not found on the demotion candidate \"%s\" (ID: %i)"),
 				  remote_node_record.node_name,
 				  remote_node_record.node_id);
 		log_detail(_("registered configuration file is \"%s\""),
