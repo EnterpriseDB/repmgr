@@ -482,7 +482,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
      <simpara>
       If you don't care about any data from the existing &repmgr; installation,
       (e.g. the contents of the <structname>events</structname> and <structname>monitoring</structname>
-      tables), the follwing steps can be skipped; proceed to <xref linkend="upgrade-reregister-nodes"/>.
+      tables), the following steps can be skipped; proceed to <xref linkend="upgrade-reregister-nodes"/>.
      </simpara>
     </tip>
 

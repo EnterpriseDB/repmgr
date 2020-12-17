@@ -457,7 +457,7 @@
        and ensure the standby can be attached to it. If <application>pg_rewind</application> was actually executed,
        it will have copied in the <filename>.history</filename> file from the target primary server; this must
        be removed. <command>repmgr node rejoin</command> can then be used to attach the standby to the original
-       primary. Ensure any changes pending on the primary have propogated to the standby. Then shut down the primary
+       primary. Ensure any changes pending on the primary have propagated to the standby. Then shut down the primary
        server <emphasis>first</emphasis>, before shutting down the standby. It should then be possible to
        use <command>repmgr node rejoin</command> to attach the standby to the new primary.
      </para>

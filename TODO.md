@@ -1,7 +1,7 @@
 TODO
 ====
 
-This file contains a list of improvements which are desireable and/or have
+This file contains a list of improvements which are desirable and/or have
 been requested, and which we aim to address/implement when time and resources
 permit.
 

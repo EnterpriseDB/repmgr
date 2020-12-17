@@ -189,14 +189,14 @@
               </listitem>
               <listitem>
                 <simpara>
-                  If the promotion candidate has insufficient free walsenders to accomodate the standbys which will
+                  If the promotion candidate has insufficient free walsenders to accommodate the standbys which will
                   be attached to it, the standby will be promoted anyway.
                 </simpara>
               </listitem>
               <listitem>
                 <simpara>
                   If replication slots are in use but the promotion candidate has insufficient free replication slots
-                  to accomodate the standbys which will be attached to it, the standby will be promoted anyway.
+                  to accommodate the standbys which will be attached to it, the standby will be promoted anyway.
                 </simpara>
               </listitem>
             </itemizedlist>
