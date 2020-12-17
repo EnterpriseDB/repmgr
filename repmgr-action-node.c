@@ -3599,7 +3599,7 @@ do_node_help(void)
 	printf(_("  Following options check an individual status:\n"));
 	printf(_("    --archive-ready           number of WAL files ready for archiving\n"));
 	printf(_("    --downstream              whether all downstream nodes are connected\n"));
-	printf(_("    --uptream                 whether the node is connected to its upstream\n"));
+	printf(_("    --upstream                whether the node is connected to its upstream\n"));
 	printf(_("    --replication-lag         replication lag in seconds (standbys only)\n"));
 	printf(_("    --role                    check node has expected role\n"));
 	printf(_("    --slots                   check for inactive replication slots\n"));
