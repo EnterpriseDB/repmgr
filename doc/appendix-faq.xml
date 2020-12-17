@@ -311,7 +311,7 @@
       </para>
     </sect2>
 
-    <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
+    <sect2 id="faq-repmgr-shared-preload-libraries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
       <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
         in <filename>postgresql.conf</filename> if I'm not using &repmgrd;?</title>
       <para>
