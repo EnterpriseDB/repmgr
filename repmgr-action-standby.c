@@ -7544,7 +7544,7 @@ stop_backup:
 						if (record_status == RECORD_FOUND)
 						{
 							log_verbose(LOG_INFO,
-										_("replication slot \"%s\" aleady exists on upstream node %i"),
+										_("replication slot \"%s\" already exists on upstream node %i"),
 										local_node_record->slot_name,
 										upstream_node_id);
 						}
