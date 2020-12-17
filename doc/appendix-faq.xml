@@ -170,7 +170,7 @@
       <para>
         If different &quot;minor&quot; &repmgr; versions (e.g. 4.1.1 and 4.1.6) are installed,
         &repmgr; will function, but we strongly recommend always running the same version
-        to ensure there are no unexpected suprises, e.g. a newer version behaving slightly
+        to ensure there are no unexpected surprises, e.g. a newer version behaving slightly
         differently to the older version.
       </para>
       <para>
