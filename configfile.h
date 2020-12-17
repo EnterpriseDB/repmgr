@@ -249,7 +249,7 @@ typedef struct
 	/*
 	 * undocumented settings
 	 *
-	 * These settings are for testing or experimential features
+	 * These settings are for testing or experimental features
 	 * and may be changed without notice.
 	 */
 

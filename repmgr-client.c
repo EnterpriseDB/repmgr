@@ -122,7 +122,7 @@ main(int argc, char **argv)
 	/*
 	 * Tell the logger we're a command-line program - this will ensure any
 	 * output logged before the logger is initialized will be formatted
-	 * correctly. Can be overriden with "--log-to-file".
+	 * correctly. Can be overridden with "--log-to-file".
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
@@ -2735,7 +2735,7 @@ do_help(void)
  *
  * Note:
  *   This is one of two places where superuser rights are required.
- *   We should also consider possible scenarious where a non-superuser
+ *   We should also consider possible scenarios where a non-superuser
  *   has sufficient privileges to install the extension.
  */
 
@@ -2936,7 +2936,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	 * PostgreSQL from a particular PostgreSQL release onwards (e.g. 4.4 with PostgreSQL
 	 * 12 and later due to recovery.conf removal), set MAX_UNSUPPORTED_VERSION and
 	 * MAX_UNSUPPORTED_VERSION_NUM in "repmgr.h" to define the first PostgreSQL
-	 * version which can't be suppored.
+	 * version which can't be supported.
 	 */
 #ifdef MAX_UNSUPPORTED_VERSION_NUM
 	if (conn_server_version_num >= MAX_UNSUPPORTED_VERSION_NUM)

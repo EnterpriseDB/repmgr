@@ -1939,7 +1939,7 @@ do_standby_register(void)
 	/*
 	 * If --upstream-node-id not provided, we're defaulting to the primary as
 	 * upstream node. If local node is available, double-check that it's attached
-	 * to the primary, in case --upstream-node-id was an accidental ommission.
+	 * to the primary, in case --upstream-node-id was an accidental omission.
 	 *
 	 * Currently we'll only do this for newly registered nodes.
 	 */
@@ -3402,7 +3402,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 					goto cleanup;
 				}
 
-				/* In the unlikley event that fails, we'll fall back to a restart */
+				/* In the unlikely event that fails, we'll fall back to a restart */
 				log_warning(_("unable to reload server configuration"));
 			}
 
@@ -3633,7 +3633,7 @@ do_standby_switchover(void)
 	 * SANITY CHECKS
 	 *
 	 * We'll be doing a bunch of operations on the remote server (primary to
-	 * be demoted) - careful checks needed before proceding.
+	 * be demoted) - careful checks needed before proceeding.
 	 */
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
