@@ -1939,7 +1939,7 @@ do_standby_register(void)
 	/*
 	 * If --upstream-node-id not provided, we're defaulting to the primary as
 	 * upstream node. If local node is available, double-check that it's attached
-	 * to the primary, in case --upstream-node-id was an accidental ommission.
+	 * to the primary, in case --upstream-node-id was an accidental omission.
 	 *
 	 * Currently we'll only do this for newly registered nodes.
 	 */
