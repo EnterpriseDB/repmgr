@@ -289,7 +289,7 @@ is_pg_running(const char *path)
 	{
 		/*
 		 * No PID file - PostgreSQL shouldn't be running. From 9.3 (the
-		 * earliesty version we care about) removal of the PID file will
+		 * earliest version we care about) removal of the PID file will
 		 * cause the postmaster to shut down, so it's highly unlikely
 		 * that PostgreSQL will still be running.
 		 */
