@@ -391,7 +391,7 @@ description = "Main cluster"
      cluster, you may wish to clone a downstream standby whose upstream node
      does not yet exist. In this case you can clone from the primary (or
      another upstream node); provide the parameter <literal>--upstream-conninfo</literal>
-     to explictly set the upstream's <varname>primary_conninfo</varname> string
+     to explicitly set the upstream's <varname>primary_conninfo</varname> string
      in <filename>recovery.conf</filename>.
     </simpara>
    </tip>
