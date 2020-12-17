@@ -2936,7 +2936,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	 * PostgreSQL from a particular PostgreSQL release onwards (e.g. 4.4 with PostgreSQL
 	 * 12 and later due to recovery.conf removal), set MAX_UNSUPPORTED_VERSION and
 	 * MAX_UNSUPPORTED_VERSION_NUM in "repmgr.h" to define the first PostgreSQL
-	 * version which can't be suppored.
+	 * version which can't be supported.
 	 */
 #ifdef MAX_UNSUPPORTED_VERSION_NUM
 	if (conn_server_version_num >= MAX_UNSUPPORTED_VERSION_NUM)
