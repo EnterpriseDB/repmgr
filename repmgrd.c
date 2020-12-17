@@ -307,7 +307,7 @@ main(int argc, char **argv)
 	}
 
 
-	/* Some configuration file items can be overriden by command line options */
+	/* Some configuration file items can be overridden by command line options */
 
 	/*
 	 * Command-line parameter -L/--log-level overrides any setting in config

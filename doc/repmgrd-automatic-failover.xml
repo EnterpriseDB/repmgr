@@ -783,7 +783,7 @@ INFO:  node 3 received notification to rerun promotion candidate election
 
 		  <para>
 			Note that any value set in <varname>child_nodes_disconnect_min_count</varname>
-			will be overriden by <varname>child_nodes_connected_min_count</varname>.
+			will be overridden by <varname>child_nodes_connected_min_count</varname>.
 		  </para>
 		  <para>
 			If neither of <varname>child_nodes_connected_min_count</varname> or

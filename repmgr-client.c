@@ -122,7 +122,7 @@ main(int argc, char **argv)
 	/*
 	 * Tell the logger we're a command-line program - this will ensure any
 	 * output logged before the logger is initialized will be formatted
-	 * correctly. Can be overriden with "--log-to-file".
+	 * correctly. Can be overridden with "--log-to-file".
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
