@@ -4825,7 +4825,7 @@ cancel_query(PGconn *conn, int timeout)
  * Wait until current query finishes, ignoring any results.
  * Usually this will be an async query or query cancellation.
  *
- * Returns 1 for success; 0 if any error ocurred; -1 if timeout reached.
+ * Returns 1 for success; 0 if any error occurred; -1 if timeout reached.
  */
 int
 wait_connection_availability(PGconn *conn, int timeout)

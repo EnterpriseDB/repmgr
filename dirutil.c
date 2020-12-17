@@ -205,7 +205,7 @@ mkdir_p(char *path, mode_t omode)
 			/*
 			 * POSIX 1003.2: For each dir operand that does not name an
 			 * existing directory, effects equivalent to those caused by the
-			 * following command shall occcur:
+			 * following command shall occur:
 			 *
 			 * mkdir -p -m $(umask -S),u+wx $(dirname dir) && mkdir [-m mode]
 			 * dir
@@ -289,7 +289,7 @@ is_pg_running(const char *path)
 	{
 		/*
 		 * No PID file - PostgreSQL shouldn't be running. From 9.3 (the
-		 * earliesty version we care about) removal of the PID file will
+		 * earliest version we care about) removal of the PID file will
 		 * cause the postmaster to shut down, so it's highly unlikely
 		 * that PostgreSQL will still be running.
 		 */

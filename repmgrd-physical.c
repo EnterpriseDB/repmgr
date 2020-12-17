@@ -737,7 +737,7 @@ check_primary_status(int degraded_monitoring_elapsed)
 			/* refresh our copy of the node record from the primary */
 			record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
 
-			/* this is unlikley to happen */
+			/* this is unlikely to happen */
 			if (record_status != RECORD_FOUND)
 			{
 				log_warning(_("unable to retrieve local node record from primary node %i"), primary_node_id);
@@ -1111,7 +1111,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 	/* calculate number of connected child nodes */
 	for (cell = db_child_node_records->head; cell; cell = cell->next)
 	{
-		/* exclude witness server from total, if necessay */
+		/* exclude witness server from total, if necessary */
 		if (config_file_options.child_nodes_connected_include_witness == false &&
 			cell->node_info->type == WITNESS)
 			continue;
@@ -1149,7 +1149,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 				instr_time  current_time = current_time_base;
 				int seconds_since_detached;
 
-				/* exclude witness server from calculatin if neccessary */
+				/* exclude witness server from calculating if necessary */
 				if (config_file_options.child_nodes_connected_include_witness == false &&
 					child_node_rec->type == WITNESS)
 					continue;
@@ -3254,7 +3254,7 @@ update_monitoring_history(void)
  *
  * Attach cascaded standby to another node, currently the primary.
  *
- * Note that in contrast to a primary failover, where one of the downstrean
+ * Note that in contrast to a primary failover, where one of the downstream
  * standby nodes will become a primary, a cascaded standby failover (where the
  * upstream standby has gone away) is "just" a case of attaching the standby to
  * another node.
