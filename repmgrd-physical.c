@@ -737,7 +737,7 @@ check_primary_status(int degraded_monitoring_elapsed)
 			/* refresh our copy of the node record from the primary */
 			record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
 
-			/* this is unlikley to happen */
+			/* this is unlikely to happen */
 			if (record_status != RECORD_FOUND)
 			{
 				log_warning(_("unable to retrieve local node record from primary node %i"), primary_node_id);

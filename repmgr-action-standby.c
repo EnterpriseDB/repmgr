@@ -3402,7 +3402,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 					goto cleanup;
 				}
 
-				/* In the unlikley event that fails, we'll fall back to a restart */
+				/* In the unlikely event that fails, we'll fall back to a restart */
 				log_warning(_("unable to reload server configuration"));
 			}
 
