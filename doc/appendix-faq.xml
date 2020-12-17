@@ -459,7 +459,7 @@
       </title>
       <para>
         <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
-        so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
+        so &repmgr; will not apply <option>pg_bindir</option> even if executing &repmgr;. Always provide the full
         path; see <xref linkend="repmgrd-automatic-failover-configuration"/> for more details.
       </para>
     </sect2>
