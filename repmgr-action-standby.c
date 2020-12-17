@@ -4215,7 +4215,7 @@ do_standby_switchover(void)
 				else if (remote_error == REMOTE_ERROR_CONNINFO_PARSE)
 				{
 					/* highly unlikely */
-					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"rempgr.conf\" on node \"%s\" (ID: %i)"),
+					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"repmgr.conf\" on node \"%s\" (ID: %i)"),
 							   remote_node_record.node_name,
 							   remote_node_record.node_id);
 				}
