@@ -39,7 +39,7 @@
     </para>
 
     <para>
-      The following configuraton options apply to &repmgrd; in all circumstances:
+      The following configuration options apply to &repmgrd; in all circumstances:
     </para>
     <variablelist>
 
@@ -329,7 +329,7 @@
       <title>Optional configuration for automatic failover</title>
 
       <para>
-        The following configuraton options can be use to fine-tune automatic failover:
+        The following configuration options can be use to fine-tune automatic failover:
       </para>
       <variablelist>
 

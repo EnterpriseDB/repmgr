@@ -249,7 +249,7 @@ main(int argc, char **argv)
 	/*
 	 * Parse the configuration file, if provided (if no configuration file was
 	 * provided, an attempt will be made to find one in one of the default
-	 * locations). If no conifguration file is available, or it can't be parsed
+	 * locations). If no configuration file is available, or it can't be parsed
 	 * parse_config() will abort anyway, with an appropriate message.
 	 */
 	load_config(config_file, verbose, false, argv[0]);

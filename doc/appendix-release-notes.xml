@@ -627,7 +627,7 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
             </para>
             <para>
               Beginning with PostgreSQL 12, replication configuration has been integrated
-              into the main PostgreSQL configuraton system and the conventional
+              into the main PostgreSQL configuration system and the conventional
               <filename>recovery.conf</filename> file is no longer valid.
             </para>
             <para>
