@@ -1111,7 +1111,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 	/* calculate number of connected child nodes */
 	for (cell = db_child_node_records->head; cell; cell = cell->next)
 	{
-		/* exclude witness server from total, if necessay */
+		/* exclude witness server from total, if necessary */
 		if (config_file_options.child_nodes_connected_include_witness == false &&
 			cell->node_info->type == WITNESS)
 			continue;
@@ -1149,7 +1149,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 				instr_time  current_time = current_time_base;
 				int seconds_since_detached;
 
-				/* exclude witness server from calculating if neccessary */
+				/* exclude witness server from calculating if necessary */
 				if (config_file_options.child_nodes_connected_include_witness == false &&
 					child_node_rec->type == WITNESS)
 					continue;
