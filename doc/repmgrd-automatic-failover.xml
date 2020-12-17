@@ -296,7 +296,7 @@
   <para>
 	&repmgrd; will wait up to <option>sibling_nodes_disconnect_timeout</option> seconds (default:
 	<literal>30</literal>) to confirm that the WAL receiver on all sibling nodes hase been
-	disconnected before proceding with the failover operation. If the timeout is reached, the
+	disconnected before proceeding with the failover operation. If the timeout is reached, the
 	failover operation will go ahead anyway.
   </para>
   <para>

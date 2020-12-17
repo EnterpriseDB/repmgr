@@ -3633,7 +3633,7 @@ do_standby_switchover(void)
 	 * SANITY CHECKS
 	 *
 	 * We'll be doing a bunch of operations on the remote server (primary to
-	 * be demoted) - careful checks needed before proceding.
+	 * be demoted) - careful checks needed before proceeding.
 	 */
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
