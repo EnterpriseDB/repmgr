@@ -439,7 +439,7 @@ curl https://dl.2ndquadrant.com/default/snapshot/get/9.6/rpm | sudo bash</progra
       The package name will be formatted like this:
       <programlisting>
 repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
-      containg the snapshot build number (here: <literal>320</literal>) and the hash
+      containing the snapshot build number (here: <literal>320</literal>) and the hash
       of the <application>git</application> commit it was built from (here: <literal>g5113ab0</literal>).
     </para>
 
