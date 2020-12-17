@@ -479,7 +479,7 @@
         is out-of-date, which may lead to incorrect failover behaviour.
       </para>
       <para>
-        The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
+        The onus is therefore on the administrator to manually set the cluster to a stable, healthy state before
         starting &repmgrd;.
       </para>
     </sect2>
