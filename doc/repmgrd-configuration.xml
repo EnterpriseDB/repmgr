@@ -329,7 +329,7 @@
       <title>Optional configuration for automatic failover</title>
 
       <para>
-        The following configuraton options can be use to fine-tune automatic failover:
+        The following configuraton options can be used to fine-tune automatic failover:
       </para>
       <variablelist>
 
