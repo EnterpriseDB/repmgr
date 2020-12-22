@@ -1149,7 +1149,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 				instr_time  current_time = current_time_base;
 				int seconds_since_detached;
 
-				/* exclude witness server from calculating if necessary */
+				/* exclude witness server from calculation, if requested */
 				if (config_file_options.child_nodes_connected_include_witness == false &&
 					child_node_rec->type == WITNESS)
 					continue;
