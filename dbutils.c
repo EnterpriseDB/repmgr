@@ -730,6 +730,8 @@ validate_conninfo_string(const char *conninfo_str, char **errmsg)
 	if (connOptions == NULL)
 		return false;
 
+	PQconninfoFree(connOptions);
+
 	return true;
 }
 
