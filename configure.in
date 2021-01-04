@@ -1,6 +1,6 @@
 AC_INIT([repmgr], [5.3.0], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
 
-AC_COPYRIGHT([Copyright (c) 2010-2020, 2ndQuadrant Ltd.])
+AC_COPYRIGHT([Copyright (c) 2010-2021, 2ndQuadrant Ltd.])
 
 AC_CONFIG_HEADER(config.h)
 

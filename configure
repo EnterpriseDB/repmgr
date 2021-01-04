@@ -11,7 +11,7 @@
 # This configure script is free software; the Free Software Foundation
 # gives unlimited permission to copy, distribute and modify it.
 #
-# Copyright (c) 2010-2020, 2ndQuadrant Ltd.
+# Copyright (c) 2010-2021, 2ndQuadrant Ltd.
 ## -------------------- ##
 ## M4sh Initialization. ##
 ## -------------------- ##
@@ -1323,7 +1323,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This configure script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it.
 
-Copyright (c) 2010-2020, 2ndQuadrant Ltd.
+Copyright (c) 2010-2021, 2ndQuadrant Ltd.
 _ACEOF
   exit
 fi
