@@ -1,7 +1,7 @@
 /*
  * repmgr.c - repmgr extension
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) 2ndQuadrant, 2010-2021
  *
  * This is the actual extension code; see repmgr-client.c for the code which
  * generates the repmgr binary

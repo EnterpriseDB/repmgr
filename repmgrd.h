@@ -1,6 +1,6 @@
 /*
  * repmgrd.h
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) 2ndQuadrant, 2010-2021
  */
 
 
