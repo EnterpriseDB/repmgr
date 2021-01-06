@@ -285,6 +285,7 @@
       <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose --dry-run
+    NOTICE: rejoin target is node "node3" (node ID: 3)
     INFO: replication connection to the rejoin target node was successful
     INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652184002263212600
@@ -343,6 +344,7 @@
         <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind --dry-run
+    NOTICE: rejoin target is node "node3" (node ID: 3)
     INFO: replication connection to the rejoin target node was successful
     INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652460429293670710

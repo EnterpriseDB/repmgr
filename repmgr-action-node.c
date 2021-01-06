@@ -2612,6 +2612,13 @@ do_node_rejoin(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/*
+	 * Emit a notice about the identity of the rejoin target
+	 */
+	log_notice(_("rejoin target is node \"%s\" (ID: %i)"),
+			   primary_node_record.node_name,
+			   primary_node_record.node_id);
+
 	/* connect to registered primary and check it's not in recovery */
 	primary_conn = establish_db_connection(primary_node_record.conninfo, false);
 
