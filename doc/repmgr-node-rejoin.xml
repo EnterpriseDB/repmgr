@@ -22,6 +22,10 @@
       This can optionally use <application>pg_rewind</application> to re-integrate
       a node which has diverged from the rest of the cluster, typically a failed primary.
     </para>
+    <para>
+      Note that <command>repmgr node rejoin</command> can only be used to attach
+      a standby to the current primary, not another standby.
+    </para>
 
     <tip>
       <para>
@@ -449,8 +453,9 @@
      </para>
      <para>
        Currently it is not possible to resolve this situation using <application>pg_rewind</application>.
-       A <ulink url="https://www.postgresql.org/message-id/flat/CABvVfJU-LDWvoz4-Yow3Ay5LZYTuPD7eSjjE4kGyNZpXC6FrVQ@mail.gmail.com">patch</ulink>
-       has been submitted and will hopefully be included in a forthcoming PostgreSQL minor release.
+       A <ulink url="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=2b4f3130382fe2f8705863e4d38589d4d69cd695">patch</ulink>
+       has been successfully submitted and will be included the next PostgreSQL minor release round, scheduled for
+       February 2021.
      </para>
      <para>
        As a workaround, start the primary server the standby was previously attached to,
