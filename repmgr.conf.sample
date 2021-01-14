@@ -238,7 +238,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 #primary_follow_timeout=60		# The max length of time (in seconds) to wait
 					# for the new primary to become available
-#standby_follow_timeout=15		# The max length of time (in seconds) to wait
+#standby_follow_timeout=30		# The max length of time (in seconds) to wait
 					# for the standby to connect to the primary
 #standby_follow_restart=false		# Restart the standby instead of sending a SIGHUP
 					# (only for PostgreSQL 13 and later)
