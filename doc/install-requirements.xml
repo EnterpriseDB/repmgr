@@ -93,7 +93,7 @@
     <table id="repmgr-compatibility-matrix">
       <title>&repmgr; compatibility matrix</title>
 
-      <tgroup cols="3">
+      <tgroup cols="4">
         <thead>
           <row>
             <entry>
