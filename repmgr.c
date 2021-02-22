@@ -194,7 +194,7 @@ repmgr_shmem_startup(void)
 	shared_state = NULL;
 
 	/*
-	 * Create or attach to the shared memory state, including hash table
+	 * Create or attach to the shared memory state
 	 */
 	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
 
