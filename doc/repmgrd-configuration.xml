@@ -152,7 +152,7 @@
     </variablelist>
 
       <para>
-        See also <filename><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename> for an annotated sample configuration file.
+        See also <filename><ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename> for an annotated sample configuration file.
       </para>
 
     <sect2 id="repmgrd-automatic-failover-configuration">
@@ -539,7 +539,7 @@
       </indexterm>
       <para>
         For further details and a reference implementation, see the separate document
-        <ulink url="https://github.com/2ndQuadrant/repmgr/blob/master/doc/repmgrd-node-fencing.md">Fencing a failed master node with repmgrd and PgBouncer</ulink>.
+        <ulink url="https://github.com/EnterpriseDB/repmgr/blob/master/doc/repmgrd-node-fencing.md">Fencing a failed master node with repmgrd and PgBouncer</ulink>.
       </para>
     </sect2>
 

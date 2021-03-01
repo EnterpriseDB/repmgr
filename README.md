@@ -21,7 +21,7 @@ The full `repmgr` documentation is available here:
 
 The old `README` file for `repmgr` 3.x is available here:
 
-> https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
+> https://github.com/EnterpriseDB/repmgr/blob/REL3_3_STABLE/README.md
 
 Note that the `repmgr` 3.x series is no longer supported and contains known bugs;
 please upgrade to the [current repmgr version](https://repmgr.org/docs/current/appendix-release-notes.html)
@@ -69,7 +69,7 @@ The IRC channel #repmgr is registered with freenode.
 
 Please report bugs and other issues to:
 
-* https://github.com/2ndQuadrant/repmgr
+* https://github.com/EnterpriseDB/repmgr
 
 Further information is available at https://repmgr.org/
 

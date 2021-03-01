@@ -178,18 +178,18 @@ deb-src https://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlist
 
    <para>
     The source for &repmgr; is maintained at
-    <ulink url="https://github.com/2ndQuadrant/repmgr">https://github.com/2ndQuadrant/repmgr</ulink>.
+    <ulink url="https://github.com/EnterpriseDB/repmgr">https://github.com/EnterpriseDB/repmgr</ulink>.
    </para>
 
    <para>
-    There are also tags for each <ulink url="https://github.com/2ndQuadrant/repmgr/releases">&repmgr; release</ulink>, e.g.
-    <literal><ulink url="https://github.com/2ndQuadrant/repmgr/releases/tag/v4.4.0">v4.4.0</ulink></literal>.
+    There are also tags for each <ulink url="https://github.com/EnterpriseDB/repmgr/releases">&repmgr; release</ulink>, e.g.
+    <literal><ulink url="https://github.com/EnterpriseDB/repmgr/releases/tag/v4.4.0">v4.4.0</ulink></literal>.
    </para>
 
    <para>
     Clone the source code using <application>git</application>:
     <programlisting>
-     git clone https://github.com/2ndQuadrant/repmgr</programlisting>
+     git clone https://github.com/EnterpriseDB/repmgr</programlisting>
    </para>
 
    <para>
