@@ -52,8 +52,7 @@
       <para>
         &repmgr; packages are available from the public 2ndQuadrant repository, and also the
         PostgreSQL community repository. The 2ndQuadrant repository is updated immediately
-        after each
-        &repmgr; release.
+        after each &repmgr; release.
       </para>
 
       <table id="centos-2ndquadrant-repository">

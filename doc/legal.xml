@@ -4,7 +4,7 @@
 
 <copyright>
  <year>2010-2021</year>
- <holder>2ndQuadrant, Ltd.</holder>
+ <holder>EnterpriseDB Corporation</holder>
 </copyright>
 
 <legalnotice id="legalnotice">
@@ -12,7 +12,7 @@
 
  <para>
   <productname>repmgr</productname> is Copyright &copy; 2010-2021
-  by 2ndQuadrant, Ltd. All rights reserved.
+  by EnterpriseDB Corporation All rights reserved.
  </para>
 
  <para>
