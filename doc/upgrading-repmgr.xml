@@ -497,10 +497,10 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
       <itemizedlist spacing="compact" mark="bullet">
       <listitem>
         <simpara>
-          <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.0_repmgr3.1.sql">repmgr3.0_repmgr3.1.sql</ulink></simpara>
+          <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/REL3_3_STABLE/sql/repmgr3.0_repmgr3.1.sql">repmgr3.0_repmgr3.1.sql</ulink></simpara>
       </listitem>
       <listitem>
-        <simpara><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.1.1_repmgr3.1.2.sql">repmgr3.1.1_repmgr3.1.2.sql</ulink></simpara>
+        <simpara><ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/REL3_3_STABLE/sql/repmgr3.1.1_repmgr3.1.2.sql">repmgr3.1.1_repmgr3.1.2.sql</ulink></simpara>
       </listitem>
       </itemizedlist>
     </para>

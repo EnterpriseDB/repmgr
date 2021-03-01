@@ -302,7 +302,7 @@
 
   <para>
    See the file
-   <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>
+   <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>
     for details of all available configuration parameters.
   </para>
 

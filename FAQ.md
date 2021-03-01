@@ -5,6 +5,6 @@ The repmgr 4 FAQ is located here: [repmgr FAQ (Frequently Asked Questions)](http
 
 The repmgr 3.x FAQ can be found here:
 
-    https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/FAQ.md
+    https://github.com/EnterpriseDB/repmgr/blob/REL3_3_STABLE/FAQ.md
 
 Note that repmgr 3.x is no longer supported.
