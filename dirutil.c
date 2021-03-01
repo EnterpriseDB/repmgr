@@ -3,7 +3,7 @@
  * dirmod.c
  *	  directory handling functions
  *
- * Copyright (c) 2ndQuadrant, 2010-2021
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

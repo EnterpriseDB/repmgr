@@ -62,7 +62,7 @@
 
       <tip>
         <para>
-          2ndQuadrant's recommended configuration is to configure
+          Our recommended configuration is to configure
           <ulink url="https://www.pgbarman.org/">Barman</ulink> as a fallback
           source of WAL files, rather than maintain replication slots for
           each standby. See also: <link linkend="cloning-from-barman-restore-command">Using Barman as a WAL file source</link>.
@@ -127,7 +127,7 @@
         filesystem layouts.
       </para>
       <para>
-        Either use PostgreSQL packages provided by the community or 2ndQuadrant; if this
+        Either use PostgreSQL packages provided by the community or EnterpriseDB; if this
         is not possible, contact your vendor for assistance.
       </para>
     </sect2>
@@ -215,8 +215,8 @@
     <sect2 id="faq-third-party-packages" xreflabel="Compatibility with third party vendor packages">
       <title>Are &repmgr; packages compatible with <literal>$third_party_vendor</literal>'s packages?</title>
       <para>
-        &repmgr; packages provided by 2ndQuadrant are compatible with the community-provided PostgreSQL
-        packages and any software provided by 2ndQuadrant.
+        &repmgr; packages provided by EnterpriseDB are compatible with the community-provided PostgreSQL
+        packages and specified software provided by EnterpriseDB.
       </para>
       <para>
         A number of other vendors provide their own versions of PostgreSQL packages, often with different

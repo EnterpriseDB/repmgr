@@ -1,6 +1,6 @@
 /*
  * repmgrd.h
- * Copyright (c) 2ndQuadrant, 2010-2021
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  */
 
 

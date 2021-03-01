@@ -10,7 +10,7 @@ operations.
 The most recent `repmgr` version (5.2.0) supports all PostgreSQL versions from
 9.5 to 13. PostgreSQL 9.4 is also supported, with some restrictions.
 
-`repmgr` is distributed under the GNU GPL 3 and maintained by 2ndQuadrant.
+`repmgr` is distributed under the GNU GPL 3 and maintained by EnterpriseDB.
 
 Documentation
 -------------
@@ -55,7 +55,7 @@ Directories
 Support and Assistance
 ----------------------
 
-2ndQuadrant provides 24x7 production support for `repmgr`, including
+EnterpriseDB provides 24x7 production support for `repmgr`, including
 configuration assistance, installation verification and training for
 running a robust replication cluster. For further details see:
 
@@ -74,16 +74,7 @@ Please report bugs and other issues to:
 Further information is available at https://repmgr.org/
 
 We'd love to hear from you about how you use repmgr. Case studies and
-news are always welcome. Send us an email at info@2ndQuadrant.com, or
-send a postcard to
-
-    repmgr
-    c/o 2ndQuadrant
-    7200 The Quorum
-    Oxford Business Park North
-    Oxford
-    OX4 2JZ
-    United Kingdom
+news are always welcome.
 
 Thanks from the repmgr core team.
 
