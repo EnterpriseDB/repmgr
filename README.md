@@ -59,7 +59,7 @@ EnterpriseDB provides 24x7 production support for `repmgr`, including
 configuration assistance, installation verification and training for
 running a robust replication cluster. For further details see:
 
-* https://2ndquadrant.com/en/support/
+* [EDB Support Services](https://www.enterprisedb.com/support/postgresql-support-overview-get-the-most-out-of-postgresql)
 
 There is a mailing list/forum to discuss contributions or issues:
 
