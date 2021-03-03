@@ -89,6 +89,10 @@
                   <literal>query</literal> - determines server availability
                   by executing an SQL statement on the node via the existing connection
                 </simpara>
+                <simpara>
+                  The query is a minimal throwaway query - <command>SELECT 1</command> -
+                  which is used to determine that the server can accept queries.
+                </simpara>
               </listitem>
 
             </itemizedlist>
