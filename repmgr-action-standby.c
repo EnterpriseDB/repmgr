@@ -8999,7 +8999,7 @@ do_standby_help(void)
 	printf(_("  --dry-run                           perform checks etc. but don't actually execute switchover\n"));
 	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
 	printf(_("  --force-rewind[=VALUE]              use \"pg_rewind\" to reintegrate the old primary if necessary\n"));
-	printf(_("                                        (9.3 and 9.4 - provide \"pg_rewind\" path)\n"));
+	printf(_("                                        (PostgreSQL 9.4 - provide \"pg_rewind\" path)\n"));
 
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));

@@ -3625,7 +3625,7 @@ do_node_help(void)
 	printf(_("    --dry-run               check that the prerequisites are met for rejoining the node\n" \
 			 "                              (including usability of \"pg_rewind\" if requested)\n"));
 	printf(_("    --force-rewind[=VALUE]  execute \"pg_rewind\" if necessary\n"));
-	printf(_("                              (9.3 and 9.4 - provide full \"pg_rewind\" path)\n"));
+	printf(_("                              (PostgreSQL 9.4 - provide full \"pg_rewind\" path)\n"));
 
 	printf(_("    --config-files          comma-separated list of configuration files to retain\n" \
 			 "                            after executing \"pg_rewind\"\n"));
