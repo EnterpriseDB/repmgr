@@ -1300,6 +1300,64 @@ _do_create_replication_conf(void)
 		PQExpBufferData msg;
 		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 
+		/*
+		 * Check the node record has slot_name set; if not we'll need to
+		 * update it.
+		 */
+		if (local_node_record.slot_name[0] == '\0')
+		{
+			PGconn	   *primary_conn = NULL;
+
+			create_slot_name(local_node_record.slot_name, local_node_record.node_id);
+
+			/* Check we can connect to the primary so we can update the record */
+
+			if (get_recovery_type(upstream_conn) == RECTYPE_PRIMARY)
+			{
+				primary_conn = upstream_conn;
+			}
+			else
+			{
+				primary_conn = establish_primary_db_connection(upstream_conn, false);
+
+				if (primary_conn == NULL)
+				{
+					log_error(_("unable to connect to primary to update slot name for node \"%s\" (ID: %i)"),
+							  local_node_record.node_name,
+							  local_node_record.node_id);
+					PQfinish(upstream_conn);
+					termPQExpBuffer(&msg);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+			if (runtime_options.dry_run == true)
+			{
+				log_info(_("would set \"slot_name\" for node \"%s\" (ID: %i) to \"%s\""),
+						  local_node_record.node_name,
+						  local_node_record.node_id,
+						  local_node_record.slot_name);
+			}
+			else
+			{
+				bool success = update_node_record_slot_name(primary_conn,
+															local_node_record.node_id,
+															local_node_record.slot_name);
+
+				if (primary_conn != upstream_conn)
+					PQfinish(primary_conn);
+
+				if (success == false)
+				{
+					log_error(_("unable to update slot name for node \"%s\" (ID: %i)"),
+							  local_node_record.node_name,
+							  local_node_record.node_id);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+		}
+
 		record_status = get_slot_record(upstream_conn, local_node_record.slot_name, &slot_info);
 
 		/* check if replication slot exists*/
