@@ -2,6 +2,11 @@
         repmgrd: prefix all shared library functions with "repmgr_" to
           minimize the risk of clashes with other shared libraries (Ian)
 
+5.2.2.  2021-??-??
+        standby clone: set "slot_name" in node record if required (Ian)
+        node rejoin: emit rejoin target note information as NOTICE (Ian)
+        repmgrd: ensure short option "-s" is accepted (Ian)
+
 5.2.1   2020-12-07
         config: fix parsing of "replication_type"; GitHub #672 (Ian)
         standby clone: handle missing "postgresql.auto.conf" (Ian)
