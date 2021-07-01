@@ -22,6 +22,10 @@
     <para>
       &repmgr; 5.3.0 is a major release.
     </para>
+    <para>
+      This release provides support for <ulink url="https://www.postgresql.org/docs/14/release-14.html">PostgreSQL 14</ulink>,
+      to be released later in 2021.
+    </para>
 
     <sect2>
       <title>Bug fixes</title>
