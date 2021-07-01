@@ -16,9 +16,50 @@
   </para>
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.2.2">
+    <title id="release-current">Release 5.2.2</title>
+    <para><emphasis>??? ? ???, 2021</emphasis></para>
+    <para>
+      &repmgr; 5.2.2 is a minor release.
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+
+         <itemizedlist>
+           <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+              if using <option>--replication-conf-only</option> on a node
+              which was set up without replication slots, but the &repmgr; configuration
+              was since changed to <option>use_replication_slots=1</option>,
+              &repmgr; will now set <varname>slot_name</varname> in the
+              node record, if it was previously empty.
+            </para>
+           </listitem>
+
+           <listitem>
+             <para>
+               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
+               emit rejoin target note information as <literal>NOTICE</literal>.
+             </para>
+             <para>
+               This makes it clearer what &repmgr; is trying to do.
+             </para>
+           </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: ensure short option <option>-s</option> is accepted.
+            </para>
+          </listitem>
+
+         </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
 
   <sect1 id="release-5.2.1">
-    <title id="release-current">Release 5.2.1</title>
+    <title>Release 5.2.1</title>
     <para><emphasis>Mon 7 December, 2020</emphasis></para>
 
     <para>
