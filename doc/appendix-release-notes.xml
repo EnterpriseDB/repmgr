@@ -16,9 +16,33 @@
   </para>
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.3.0">
+    <title id="release-current">Release 5.3.0</title>
+    <para><emphasis>??? ? ???, 2021</emphasis></para>
+    <para>
+      &repmgr; 5.3.0 is a major release.
+    </para>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              &repmgrd;: rename internal shared library functions to minimize the
+              risk of clashes with other shared libraries.
+            </para>
+            <para>
+              This does not affect user-facing SQL functions.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
 
   <sect1 id="release-5.2.1">
-    <title id="release-current">Release 5.2.1</title>
+    <title>Release 5.2.1</title>
     <para><emphasis>Mon 7 December, 2020</emphasis></para>
 
     <para>
