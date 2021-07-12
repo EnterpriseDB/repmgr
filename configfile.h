@@ -206,6 +206,7 @@ typedef struct
 	int			primary_notification_timeout;
 	int			repmgrd_standby_startup_timeout;
 	char		repmgrd_pid_file[MAXPGPATH];
+	bool		repmgrd_exit_on_inactive_node;
 	bool		standby_disconnect_on_failover;
 	int			sibling_nodes_disconnect_timeout;
 	ConnectionCheckType connection_check_type;

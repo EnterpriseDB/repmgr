@@ -169,7 +169,7 @@ handle_sigint_physical(SIGNAL_ARGS)
 /* perform some sanity checks on the node's configuration */
 
 void
-do_physical_node_check(void)
+do_physical_node_check(PGconn *conn)
 {
 	/*
 	 * Check if node record is active - if not, and `failover=automatic`, the
@@ -186,8 +186,37 @@ do_physical_node_check(void)
 	{
 		char	   *hint = "Check that \"repmgr (primary|standby) register\" was executed for this node";
 
+		/*
+		 * Attempt to set node record active (unless explicitly configured not to)
+		 */
+		if (config_file_options.repmgrd_exit_on_inactive_node == false)
+		{
+			PGconn *primary_conn = get_primary_connection_quiet(conn, NULL, NULL);
+			bool	success = true;
+
+			if (PQstatus(primary_conn) != CONNECTION_OK)
+			{
+				success = false;
+			}
+			else
+			{
+				log_notice(_("setting node record for node \"%s\" (ID: %i) to \"active\""),
+						   local_node_info.node_name,
+						   local_node_info.node_id);
+				success = update_node_record_set_active(primary_conn, local_node_info.node_id, true);
+				PQfinish(primary_conn);
+			}
+
+			if (success == true)
+			{
+				local_node_info.active = true;
+				return;
+			}
+		}
+
 		switch (config_file_options.failover)
 		{
+
 			/* "failover" is an enum, all values should be covered here */
 
 			case FAILOVER_AUTOMATIC:

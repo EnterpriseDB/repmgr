@@ -1,6 +1,8 @@
 5.3.0   2021-??-??
         repmgrd: prefix all shared library functions with "repmgr_" to
           minimize the risk of clashes with other shared libraries (Ian)
+        repmgrd: at startup, if node record is marked as "inactive", attempt
+          to set it to "active" (Ian)
 
 5.2.2.  2021-??-??
         standby clone: set "slot_name" in node record if required (Ian)

@@ -26,6 +26,23 @@
       This release provides support for <ulink url="https://www.postgresql.org/docs/14/release-14.html">PostgreSQL 14</ulink>,
       to be released later in 2021.
     </para>
+    <sect2>
+      <title>Improvements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              &repmgrd;: at startup, if node record is marked as "inactive", attempt
+              to set it to "active".
+            </para>
+            <para>
+              This behaviour can be overridden by setting the configuration parameter
+              <varname>repmgrd_exit_on_inactive_node</varname> to <literal>true</literal>.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
 
     <sect2>
       <title>Bug fixes</title>

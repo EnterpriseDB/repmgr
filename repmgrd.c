@@ -512,7 +512,7 @@ main(int argc, char **argv)
 		log_debug("node id is %i, upstream node id is %i",
 				  local_node_info.node_id,
 				  local_node_info.upstream_node_id);
-		do_physical_node_check();
+		do_physical_node_check(local_conn);
 	}
 
 	if (daemonize == true)

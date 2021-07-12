@@ -19,7 +19,7 @@
 #ifndef _REPMGRD_PHYSICAL_H_
 #define _REPMGRD_PHYSICAL_H_
 
-void		do_physical_node_check(void);
+void		do_physical_node_check(PGconn *conn);
 
 void		monitor_streaming_primary(void);
 void		monitor_streaming_standby(void);

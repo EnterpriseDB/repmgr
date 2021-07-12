@@ -485,6 +485,32 @@
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+
+          <term><option>repmgrd_exit_on_inactive_node</option></term>
+          <listitem>
+            <indexterm>
+              <primary>repmgrd_exit_on_inactive_node</primary>
+            </indexterm>
+            <para>
+              This parameter is available in &repmgr; 5.3 and later.
+            </para>
+            <para>
+              If a node was marked as inactive but is running, and this option is set to
+              <literal>true</literal>, &repmgrd; will abort on startup.
+            </para>
+            <para>
+              By default, <option>repmgrd_exit_on_inactive_node</option> is set
+              to <literal>false</literal>, in which case &repmgrd; will set the
+              node record to active on startup.
+            </para>
+            <para>
+              Setting this parameter to <literal>true</literal> causes &repmgrd;
+              to behave in the same way it did in &repmgr; 5.2 and earlier.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
 
       <para>
