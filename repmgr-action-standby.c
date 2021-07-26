@@ -4776,6 +4776,7 @@ do_standby_switchover(void)
 
 		repmgrd_info = (RepmgrdInfo **) pg_malloc0(sizeof(RepmgrdInfo *) * all_nodes.node_count);
 
+		log_notice(_("attempting to pause repmgrd on %i nodes"), all_nodes.node_count);
 		for (cell = all_nodes.head; cell; cell = cell->next)
 		{
 			repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
@@ -4835,8 +4836,9 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&msg);
 			appendPQExpBuffer(&msg,
-							  _("unable to connect to %i node(s), unable to pause all repmgrd instances"),
-							  unreachable_node_count);
+							  _("unable to connect to %i of %i node(s), unable to pause all repmgrd instances"),
+							  unreachable_node_count,
+							  all_nodes.node_count);
 
 			initPQExpBuffer(&detail);
 
@@ -4900,7 +4902,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->running == false)
 				{
-					log_warning(_("repmgrd not running on node \"%s\" (ID: %i)"),
+					log_notice(_("repmgrd not running on node \"%s\" (ID: %i), not pausing"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
