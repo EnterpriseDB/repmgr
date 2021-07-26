@@ -120,16 +120,19 @@
    </important>
 
    <note>
-    <simpara>
+    <para>
      On <literal>systemd</literal> systems we strongly recommend using the appropriate
      <command>systemctl</command> commands (typically run via <command>sudo</command>) to ensure
      <literal>systemd</literal> is informed about the status of the PostgreSQL service.
-    </simpara>
-    <simpara>
+    </para>
+    <para>
      If using <command>sudo</command> for the <command>systemctl</command> calls, make sure the
      <command>sudo</command> specification doesn't require a real tty for the user. If not set
      this way, <command>repmgr</command> will fail to stop the primary.
-    </simpara>
+    </para>
+    <para>
+      See the <xref linkend="configuration-file-service-commands"/> documentation section for further details.
+    </para>
    </note>
 
    <para>
