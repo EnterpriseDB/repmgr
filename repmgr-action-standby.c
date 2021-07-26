@@ -2006,7 +2006,7 @@ do_standby_register(void)
 		/* only do this if record does not exist */
 		if (record_status != RECORD_FOUND)
 		{
-			log_warning(_("--upstream-node-id not supplied, assuming upstream node is primary (node ID %i)"),
+			log_warning(_("--upstream-node-id not supplied, assuming upstream node is primary (node ID: %i)"),
 						primary_node_id);
 
 			/* check our standby is connected */
@@ -4804,7 +4804,7 @@ do_standby_switchover(void)
 					unreachable_node_count++;
 
 					item_list_append_format(&repmgrd_connection_errors,
-											_("unable to connect to node \"%s\" (ID %i):\n%s"),
+											_("unable to connect to node \"%s\" (ID: %i):\n%s"),
 											cell->node_info->node_name,
 											cell->node_info->node_id,
 											PQerrorMessage(cell->node_info->conn));
@@ -4887,7 +4887,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->pg_running == false)
 				{
-					log_warning(_("node \"%s\" (ID %i) unreachable, unable to pause repmgrd"),
+					log_warning(_("node \"%s\" (ID: %i) unreachable, unable to pause repmgrd"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4900,7 +4900,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->running == false)
 				{
-					log_warning(_("repmgrd not running on node \"%s\" (ID %i)"),
+					log_warning(_("repmgrd not running on node \"%s\" (ID: %i)"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4921,14 +4921,14 @@ do_standby_switchover(void)
 
 				if (runtime_options.dry_run == true)
 				{
-					log_info(_("would pause repmgrd on node \"%s\" (ID %i)"),
+					log_info(_("would pause repmgrd on node \"%s\" (ID: %i)"),
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
 				else
 				{
 					/* XXX check result  */
-					log_debug("pausing repmgrd on node \"%s\" (ID %i)",
+					log_debug("pausing repmgrd on node \"%s\" (ID: %i)",
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 
@@ -5550,7 +5550,7 @@ do_standby_switchover(void)
 
 				if (repmgrd_info[i]->paused == true && runtime_options.repmgrd_force_unpause == false)
 				{
-					log_debug("repmgrd on node \"%s\" (ID %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
+					log_debug("repmgrd on node \"%s\" (ID: %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id);
 
@@ -5558,7 +5558,7 @@ do_standby_switchover(void)
 					continue;
 				}
 
-				log_debug("unpausing repmgrd on node \"%s\" (ID %i)",
+				log_debug("unpausing repmgrd on node \"%s\" (ID: %i)",
 						  cell->node_info->node_name,
 						  cell->node_info->node_id);
 
@@ -5569,7 +5569,7 @@ do_standby_switchover(void)
 					if (repmgrd_pause(cell->node_info->conn, false) == false)
 					{
 						item_list_append_format(&repmgrd_unpause_errors,
-												_("unable to unpause node \"%s\" (ID %i)"),
+												_("unable to unpause node \"%s\" (ID: %i)"),
 												cell->node_info->node_name,
 												cell->node_info->node_id);
 						error_node_count++;
@@ -5578,7 +5578,7 @@ do_standby_switchover(void)
 				else
 				{
 					item_list_append_format(&repmgrd_unpause_errors,
-											_("unable to connect to node \"%s\" (ID %i):\n%s"),
+											_("unable to connect to node \"%s\" (ID: %i):\n%s"),
 											cell->node_info->node_name,
 											cell->node_info->node_id,
 											PQerrorMessage(cell->node_info->conn));
