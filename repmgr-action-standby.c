@@ -5231,6 +5231,18 @@ do_standby_switchover(void)
 			  format_lsn(remote_last_checkpoint_lsn));
 
 	/*
+	 * optionally add a delay before promoting the standby; this is mainly
+	 * useful for testing (e.g. for reappearance of the original primary) and
+	 * is not documented.
+	 */
+	if (config_file_options.promote_delay > 0)
+	{
+		log_debug("sleeping %i seconds before promoting standby",
+				  config_file_options.promote_delay);
+		sleep(config_file_options.promote_delay);
+	}
+
+	/*
 	 * Promote standby (local node).
 	 *
 	 * If PostgreSQL 12 or later, and -S/--superuser provided, we will provide
