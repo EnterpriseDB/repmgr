@@ -5428,6 +5428,27 @@ do_standby_switchover(void)
 							  remote_node_record.node_name,
 							  remote_node_record.node_id);
 
+			/*
+			 * Speculatively check if the demotion candidate has been restarted, e.g. by
+			 * an external watchdog process which isn't aware a switchover is happening.
+			 * This falls into the category "thing outside of our control which shouldn't
+			 * happen, but if it does, make it easier to find out what happened".
+			 */
+			remote_conn = establish_db_connection(remote_node_record.conninfo, false);
+
+			if (PQstatus(remote_conn) == CONNECTION_OK)
+			{
+				if (get_recovery_type(remote_conn) == RECTYPE_PRIMARY)
+				{
+					appendPQExpBuffer(&detailmsg,
+									  _("PostgreSQL instance on demotion candidate \"%s\" (ID: %i) is running as a primary\n"),
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					log_warning("%s", detailmsg.data);
+				}
+			}
+			PQfinish(remote_conn);
+
 			appendPQExpBuffer(&detailmsg,
 							  "check log file \"%s\" on \"%s\" for details",
 							  node_rejoin_log,
