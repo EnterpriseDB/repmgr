@@ -3651,8 +3651,9 @@ do_standby_switchover(void)
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 	PQExpBufferData node_rejoin_options;
-	PQExpBufferData errmsg;
+	PQExpBufferData logmsg;
 	PQExpBufferData detailmsg;
+	PQExpBufferData event_details;
 
 	int			r,
 				i;
@@ -3668,6 +3669,9 @@ do_standby_switchover(void)
 
 	/* store list of configuration files on the demotion candidate */
 	KeyValueList remote_config_files = {NULL, NULL};
+
+	/* temporary log file for "repmgr node rejoin" on the demotion candidate */
+	char		node_rejoin_log[MAXPGPATH] = "";
 
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
@@ -3811,24 +3815,24 @@ do_standby_switchover(void)
 	 * the demotion candidate as the rejoin will fail if we are unable to to write to that.
 	 */
 
-	initPQExpBuffer(&errmsg);
+	initPQExpBuffer(&logmsg);
 	initPQExpBuffer(&detailmsg);
 
 	if (check_replication_config_owner(PQserverVersion(local_conn),
 									   config_file_options.data_directory,
-									   &errmsg, &detailmsg) == false)
+									   &logmsg, &detailmsg) == false)
 	{
-		log_error("%s", errmsg.data);
+		log_error("%s", logmsg.data);
 		log_detail("%s", detailmsg.data);
 
-		termPQExpBuffer(&errmsg);
+		termPQExpBuffer(&logmsg);
 		termPQExpBuffer(&detailmsg);
 
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	termPQExpBuffer(&errmsg);
+	termPQExpBuffer(&logmsg);
 	termPQExpBuffer(&detailmsg);
 
 	/* check remote server connection and retrieve its record */
@@ -5367,6 +5371,21 @@ do_standby_switchover(void)
 		pfree(conninfo_normalized);
 	}
 
+	/* */
+	snprintf(node_rejoin_log, MAXPGPATH,
+#if defined(__i386__) || defined(__i386)
+			 "/tmp/node-rejoin.%u.log",
+			 (unsigned)time(NULL)
+#else
+			 "/tmp/node-rejoin.%lu.log",
+			 (unsigned long)time(NULL)
+#endif
+		);
+
+	appendPQExpBuffer(&remote_command_str,
+					  " > %s 2>&1 && echo \"1\" || echo \"0\"",
+					  node_rejoin_log);
+
 	termPQExpBuffer(&node_rejoin_options);
 
 	log_debug("executing:\n  %s", remote_command_str.data);
@@ -5380,77 +5399,139 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&remote_command_str);
 
-	/* TODO: verify this node's record was updated correctly */
+	initPQExpBuffer(&logmsg);
+	initPQExpBuffer(&detailmsg);
 
+	/* This is failure to execute the ssh command */
 	if (command_success == false)
 	{
 		log_error(_("rejoin failed with error code %i"), r);
+		switchover_success = false;
 
-		create_event_notification_extended(local_conn,
-										   &config_file_options,
-										   config_file_options.node_id,
-										   "standby_switchover",
-										   false,
-										   command_output.data,
-										   &event_info);
+		appendPQExpBuffer(&logmsg,
+						  _("unable to execute \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i)"),
+						  remote_node_record.node_name,
+						  remote_node_record.node_id);
+		appendPQExpBufferStr(&detailmsg,
+							 command_output.data);
+
 	}
 	else
 	{
-		PQExpBufferData event_details;
-		standy_join_status join_success = check_standby_join(local_conn,
-															 &local_node_record,
-															 &remote_node_record);
+		standy_join_status join_success = JOIN_UNKNOWN;
 
-		initPQExpBuffer(&event_details);
-
-		switch (join_success) {
-			case JOIN_FAIL_NO_PING:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not beome available"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-				switchover_success = false;
-
-				break;
-			case JOIN_FAIL_NO_REPLICATION:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not connect to the new primary"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-				switchover_success = false;
-				break;
-			case JOIN_SUCCESS:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-		}
-
-		create_event_notification_extended(local_conn,
-										   &config_file_options,
-										   config_file_options.node_id,
-										   "standby_switchover",
-										   switchover_success,
-										   event_details.data,
-										   &event_info);
-		if (switchover_success == true)
+		/* "rempgr node rejoin" failed on the demotion candidate */
+		if (command_output.data[0] == '0')
 		{
-			log_notice("%s", event_details.data);
+			appendPQExpBuffer(&logmsg,
+							  _("execution of \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i) failed"),
+							  remote_node_record.node_name,
+							  remote_node_record.node_id);
+
+			appendPQExpBuffer(&detailmsg,
+							  "check log file \"%s\" on \"%s\" for details",
+							  node_rejoin_log,
+							  remote_node_record.node_name);
+
+			switchover_success = false;
+			join_success = JOIN_COMMAND_FAIL;
 		}
 		else
 		{
-			log_error("%s", event_details.data);
+			join_success = check_standby_join(local_conn,
+											  &local_node_record,
+											  &remote_node_record);
+
+
+
+			switch (join_success) {
+				case JOIN_FAIL_NO_PING:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not become available"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+
+					switchover_success = false;
+
+					break;
+				case JOIN_FAIL_NO_REPLICATION:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not connect to the new primary"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					switchover_success = false;
+					break;
+				case JOIN_SUCCESS:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					break;
+				/* check_standby_join() does not return this */
+				case JOIN_COMMAND_FAIL:
+					break;
+				/* should never happen*/
+				case JOIN_UNKNOWN:
+					appendPQExpBuffer(&logmsg,
+									  "unable to determine success of node rejoin action for demotion candidate \"%s\" (ID: %i)",
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					switchover_success = false;
+					break;
+			}
+
+			if (switchover_success == false)
+			{
+				appendPQExpBuffer(&detailmsg,
+								  "check the PostgreSQL log file on  demotion candidate \"%s\" (ID: %i)",
+								  remote_node_record.node_name,
+								  remote_node_record.node_id);
+			}
 		}
-		termPQExpBuffer(&event_details);
 	}
 
+	if (switchover_success == true)
+	{
+		/* TODO: verify demotion candidates's node record was updated correctly */
+
+		log_notice("%s", logmsg.data);
+	}
+	else
+	{
+		log_error("%s", logmsg.data);
+	}
+
+	initPQExpBuffer(&event_details);
+
+	appendPQExpBufferStr(&event_details, logmsg.data);
+
+	if (detailmsg.data[0] != '\0')
+	{
+		log_detail("%s", detailmsg.data);
+		appendPQExpBuffer(&event_details, "\n%s",
+						  detailmsg.data);
+	}
+
+
+	create_event_notification_extended(local_conn,
+									   &config_file_options,
+									   config_file_options.node_id,
+									   "standby_switchover",
+									   switchover_success,
+									   event_details.data,
+									   &event_info);
+
+	termPQExpBuffer(&event_details);
+	termPQExpBuffer(&logmsg);
+	termPQExpBuffer(&detailmsg);
 	termPQExpBuffer(&command_output);
+
 
 	/*
 	 * If --siblings-follow specified, attempt to make them follow the new

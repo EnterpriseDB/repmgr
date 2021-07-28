@@ -219,7 +219,9 @@ typedef enum
 
 typedef enum
 {
+	JOIN_UNKNOWN = -1,
 	JOIN_SUCCESS,
+	JOIN_COMMAND_FAIL,
 	JOIN_FAIL_NO_PING,
 	JOIN_FAIL_NO_REPLICATION
 } standy_join_status;

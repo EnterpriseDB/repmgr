@@ -32,6 +32,21 @@
         <itemizedlist>
           <listitem>
             <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Improve handling of node rejoin failure on the demotion candidate.
+            </para>
+            <para>
+              Previously &repmgr; did not check whether <command>repmgr node rejoin</command> actually
+              succeeded on the demotion candidate, and would always wait up to <varname>node_rejoin_timeout</varname>
+              seconds for it to attach to the promotion candidate, even if this would never happen.
+            </para>
+            <para>
+              This makes it easier to identify unexpected events during a switchover operation, such as
+              the demotion candidate being unexpectedly restarted by an external process.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
               &repmgrd;: at startup, if node record is marked as "inactive", attempt
               to set it to "active".
             </para>
