@@ -88,58 +88,23 @@ void		_PG_fini(void);
 
 static void repmgr_shmem_startup(void);
 
-Datum		repmgr_set_local_node_id(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_set_local_node_id);
-
-Datum		repmgr_get_local_node_id(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_get_local_node_id);
-
-Datum		repmgr_standby_set_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_standby_set_last_updated);
-
-Datum		repmgr_standby_get_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_standby_get_last_updated);
-
-Datum		repmgr_set_upstream_last_seen(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_set_upstream_last_seen);
-
-Datum		repmgr_get_upstream_last_seen(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_get_upstream_last_seen);
-
-Datum		repmgr_get_upstream_node_id(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_get_upstream_node_id);
-
-Datum		repmgr_set_upstream_node_id(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_set_upstream_node_id);
-
-Datum		repmgr_notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_notify_follow_primary);
-
-Datum		repmgr_get_new_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_get_new_primary);
-
-Datum		repmgr_reset_voting_status(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_reset_voting_status);
-
-Datum		set_repmgrd_pid(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(set_repmgrd_pid);
-
-Datum		get_repmgrd_pid(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_repmgrd_pid);
-
-Datum		get_repmgrd_pidfile(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_repmgrd_pidfile);
-
-Datum		repmgrd_is_running(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_is_running);
-
-Datum		repmgrd_pause(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_pause);
-
-Datum		repmgrd_is_paused(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_is_paused);
-
-Datum		repmgr_get_wal_receiver_pid(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_get_wal_receiver_pid);
 
 
