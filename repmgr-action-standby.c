@@ -20,6 +20,7 @@
  */
 
 #include <sys/stat.h>
+#include <time.h>
 
 #include "repmgr.h"
 #include "dirutil.h"
