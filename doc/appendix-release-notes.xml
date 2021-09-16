@@ -95,7 +95,8 @@
               risk of clashes with other shared libraries.
             </para>
             <para>
-              This does not affect user-facing SQL functions. Howe
+              This does not affect user-facing SQL functions. However an upgrade
+              of the installed extension version is required.
             </para>
           </listitem>
 
