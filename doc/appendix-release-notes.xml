@@ -24,7 +24,7 @@
     </para>
     <para>
       This release provides support for <ulink url="https://www.postgresql.org/docs/14/release-14.html">PostgreSQL 14</ulink>,
-      to be released later in 2021.
+      to be released in September 2021.
     </para>
     <sect2>
       <title>Improvements</title>
@@ -44,6 +44,11 @@
               This makes it easier to identify unexpected events during a switchover operation, such as
               the demotion candidate being unexpectedly restarted by an external process.
             </para>
+            <para>
+              Note that the output of the <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link>
+              operation on the demotion candidate will now be logged to a temporary file on that node;
+              the location of the file will be reported in the error message, if one is emitted.
+            </para>
           </listitem>
           <listitem>
             <para>
@@ -55,6 +60,15 @@
               <varname>repmgrd_exit_on_inactive_node</varname> to <literal>true</literal>.
             </para>
           </listitem>
+           <listitem>
+             <para>
+               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
+               emit rejoin target note information as <literal>NOTICE</literal>.
+             </para>
+             <para>
+               This makes it clearer what &repmgr; is trying to do.
+             </para>
+           </listitem>
         </itemizedlist>
       </para>
     </sect2>
@@ -63,31 +77,6 @@
       <title>Bug fixes</title>
       <para>
         <itemizedlist>
-          <listitem>
-            <para>
-              &repmgrd;: rename internal shared library functions to minimize the
-              risk of clashes with other shared libraries.
-            </para>
-            <para>
-              This does not affect user-facing SQL functions.
-            </para>
-          </listitem>
-        </itemizedlist>
-     </para>
-    </sect2>
-  </sect1>
-
-  <sect1 id="release-5.2.2">
-    <title>Release 5.2.2</title>
-    <para><emphasis>??? ? ???, 2021</emphasis></para>
-    <para>
-      &repmgr; 5.2.2 is a minor release.
-    </para>
-    <sect2>
-      <title>Bug fixes</title>
-      <para>
-
-         <itemizedlist>
            <listitem>
             <para>
               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
@@ -99,23 +88,23 @@
             </para>
            </listitem>
 
+
            <listitem>
-             <para>
-               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
-               emit rejoin target note information as <literal>NOTICE</literal>.
-             </para>
-             <para>
-               This makes it clearer what &repmgr; is trying to do.
-             </para>
-           </listitem>
+            <para>
+              &repmgrd;: rename internal shared library functions to minimize the
+              risk of clashes with other shared libraries.
+            </para>
+            <para>
+              This does not affect user-facing SQL functions. Howe
+            </para>
+          </listitem>
+
           <listitem>
             <para>
               &repmgrd;: ensure short option <option>-s</option> is accepted.
             </para>
           </listitem>
-
-         </itemizedlist>
-
+        </itemizedlist>
       </para>
     </sect2>
   </sect1>

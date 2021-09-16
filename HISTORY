@@ -4,8 +4,6 @@
           minimize the risk of clashes with other shared libraries (Ian)
         repmgrd: at startup, if node record is marked as "inactive", attempt
           to set it to "active" (Ian)
-
-5.2.2.  2021-??-??
         standby clone: set "slot_name" in node record if required (Ian)
         node rejoin: emit rejoin target note information as NOTICE (Ian)
         repmgrd: ensure short option "-s" is accepted (Ian)
