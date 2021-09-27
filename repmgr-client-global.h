@@ -120,6 +120,7 @@ typedef struct
 	bool		missing_slots;
 	bool		has_passfile;
 	bool		replication_connection;
+	bool		repmgrd;
 	bool		data_directory_config;
 	bool		replication_config_owner;
 	bool		db_connection;
@@ -175,7 +176,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	false, false, false, false, \
+		false, false, false, false, false, false, false, false,	false, false, false, false, false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \

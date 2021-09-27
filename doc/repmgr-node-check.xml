@@ -125,10 +125,27 @@
         is correctly configured.
       </simpara>
      </listitem>
-
-
     </itemizedlist>
   </para>
+  </refsect1>
+
+
+  <refsect1>
+    <title>repmgrd</title>
+    <para>
+      A separate check is available to verify whether &repmgrd; is running,
+      This is not included in the general output, as this does not
+      per-se constitute a check of the node's replication status.
+    </para>
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <simpara>
+        <option>--repmgrd</option>: checks whether &repmgrd; is running.
+        If &repmgrd; is running but paused, status <literal>1</literal>
+        (<literal>WARNING</literal>) is returned.
+      </simpara>
+     </listitem>
+    </itemizedlist>
   </refsect1>
 
   <refsect1>

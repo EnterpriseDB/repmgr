@@ -602,6 +602,9 @@ int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
 
+/* repmgrd status functions */
+CheckStatus	get_repmgrd_status(PGconn *conn);
+
 /* miscellaneous debugging functions */
 const char *print_node_status(NodeStatus node_status);
 const char *print_pqping_status(PGPing ping_status);
