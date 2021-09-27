@@ -369,7 +369,6 @@ check_status_list_free(CheckStatusList *list)
 }
 
 
-
 const char *
 output_check_status(CheckStatus status)
 {

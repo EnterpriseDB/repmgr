@@ -69,6 +69,14 @@
                This makes it clearer what &repmgr; is trying to do.
              </para>
            </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check">repmgr node check</link>:
+              option <option>--repmgrd</option> added to check &repmgrd;
+              status.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

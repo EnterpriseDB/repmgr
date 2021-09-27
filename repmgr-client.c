@@ -549,6 +549,10 @@ main(int argc, char **argv)
 				runtime_options.data_directory_config = true;
 				break;
 
+			case OPT_REPMGRD:
+				runtime_options.repmgrd = true;
+				break;
+
 			case OPT_REPLICATION_CONFIG_OWNER:
 				runtime_options.replication_config_owner = true;
 				break;

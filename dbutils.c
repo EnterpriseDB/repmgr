@@ -6008,6 +6008,43 @@ is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
 	return is_paused;
 }
 
+/* repmgrd status functions */
+
+CheckStatus
+get_repmgrd_status(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	CheckStatus	repmgrd_status = CHECK_STATUS_CRITICAL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 " SELECT "
+						 " CASE "
+						 "   WHEN repmgr.repmgrd_is_running() "
+						 "   THEN "
+						 "     CASE "
+						 "       WHEN repmgr.repmgrd_is_paused() THEN 1 ELSE 0 "
+						 "     END "
+						 "   ELSE 2 "
+						 " END AS repmgrd_status");
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute repmgrd status query"));
+	}
+	else
+	{
+		repmgrd_status = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+	return repmgrd_status;
+}
+
 
 /* miscellaneous debugging functions */
 

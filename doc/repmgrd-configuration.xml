@@ -1079,6 +1079,29 @@ REPMGRD_OPTS="--daemonize=false"
       </para>
 
     </sect2>
+
+    <sect2 id="repmgrd-daemon-monitoring">
+      <title>repmgrd daemon monitoring</title>
+      <indexterm>
+        <primary>repmgrd</primary>
+        <secondary>monitoring</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>monitoring</primary>
+        <secondary>repmgrd</secondary>
+      </indexterm>
+
+      <para>
+        The command <command><link linkend="repmgr-service-status">repmgr service status</link></command>
+        provides an overview of the &repmgrd; daemon status (including pause status)
+        on all nodes in the cluster.
+      </para>
+      <para>
+        From &repmgr; 5.3, <command><link linkend="repmgr-node-check">repmgr node check --repmgrd</link></command>
+        can be used to check the status of &repmgrd; (including pause status)
+        on the local node.
+      </para>
+    </sect2>
   </sect1>
 
   <sect1 id="repmgrd-connection-settings">
