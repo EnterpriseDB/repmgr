@@ -1842,6 +1842,7 @@ monitor_streaming_standby(void)
 						int			former_upstream_node_id = local_node_info.upstream_node_id;
 						NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 						PQExpBufferData event_details;
+						t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 						update_node_record_set_primary(local_conn,  local_node_info.node_id);
 						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -1854,12 +1855,16 @@ monitor_streaming_standby(void)
 						initPQExpBuffer(&event_details);
 						appendPQExpBufferStr(&event_details,
 											 _("promotion command failed but promotion completed successfully"));
-						create_event_notification(local_conn,
-												  &config_file_options,
-												  local_node_info.node_id,
-												  "repmgrd_failover_promote",
-												  true,
-												  event_details.data);
+
+						event_info.node_id = former_upstream_node_id;
+
+						create_event_notification_extended(local_conn,
+														   &config_file_options,
+														   local_node_info.node_id,
+														   "repmgrd_failover_promote",
+														   true,
+														   event_details.data,
+														   &event_info);
 
 						termPQExpBuffer(&event_details);
 
@@ -3703,6 +3708,7 @@ promote_self(void)
 
 	{
 		PQExpBufferData event_details;
+		t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 		/* update own internal node record */
 		record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -3719,13 +3725,16 @@ promote_self(void)
 						  failed_primary.node_name,
 						  failed_primary.node_id);
 
+		event_info.node_id = failed_primary.node_id;
+
 		/* local_conn is now the primary connection */
-		create_event_notification(local_conn,
-								  &config_file_options,
-								  local_node_info.node_id,
-								  "repmgrd_failover_promote",
-								  true,
-								  event_details.data);
+		create_event_notification_extended(local_conn,
+										   &config_file_options,
+										   local_node_info.node_id,
+										   "repmgrd_failover_promote",
+										   true,
+										   event_details.data,
+										   &event_info);
 
 		termPQExpBuffer(&event_details);
 	}

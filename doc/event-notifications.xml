@@ -95,7 +95,8 @@
  </para>
 
  <para>
-   The following parameters are provided for a subset of event notifications:
+   The following parameters are provided for a subset of event notifications; their meaning may
+   change according to context:
  </para>
 
  <variablelist>
@@ -107,6 +108,9 @@
     </para>
     <para>
      node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"/> only)
+    </para>
+    <para>
+     node ID of the former primary (<literal>repmgrd_failover_promote</literal> only)
     </para>
    </listitem>
   </varlistentry>
@@ -133,7 +137,7 @@
 
  <para>
   The values provided for <literal>%c</literal> and <literal>%a</literal>
-  will probably contain spaces, so should always be quoted.
+  may contain spaces, so should always be quoted.
  </para>
 
  <para>
