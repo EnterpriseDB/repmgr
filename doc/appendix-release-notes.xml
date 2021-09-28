@@ -77,7 +77,16 @@
               status.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              Add <literal>%p</literal> <link linkend="event-notifications">event notification parameter</link>
+              providing the node ID of the former primary for the <literal>repmgrd_failover_promote</literal> event.
+            </para>
+          </listitem>
+
         </itemizedlist>
+
       </para>
     </sect2>
 

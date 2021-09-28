@@ -4242,7 +4242,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						}
 						break;
 					case 'p':
-						/* %p: primary id ("standby_switchover": former primary id) */
+						/* %p: primary id ("standby_switchover"/"repmgrd_failover_promote": former primary id) */
 						src_ptr++;
 						if (event_info->node_id != UNKNOWN_NODE_ID)
 						{
