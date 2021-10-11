@@ -172,37 +172,85 @@ void
 do_physical_node_check(PGconn *conn)
 {
 	/*
-	 * Check if node record is active - if not, and `failover=automatic`, the
-	 * node won't be considered as a promotion candidate; this often happens
-	 * when a failed primary is recloned and the node was not re-registered,
-	 * giving the impression failover capability is there when it's not. In
-	 * this case abort with an error and a hint about registering.
+	 * If node record is "inactive"; if not, attempt to set it to "active".
 	 *
-	 * If `failover=manual`, repmgrd can continue to passively monitor the
-	 * node, but we should nevertheless issue a warning and the same hint.
+	 * Usually it will have become inactive due to e.g. a standby being shut down
+	 * while repmgrd was running in an unpaused state. In this case it's
+	 * perfectly reasonable to automatically mark the node as "active".
 	 */
 
 	if (local_node_info.active == false)
 	{
 		char	   *hint = "Check that \"repmgr (primary|standby) register\" was executed for this node";
+		RecoveryType recovery_type = get_recovery_type(conn);
+
+		/*
+		 * If the local node's recovery status is incompatible with its registered
+		 * status, e.g. registered as primary but running as a standby, refuse to start.
+		 *
+		 * This typically happens when a failed primary is recloned but the node was not
+		 * re-registered, leaving the cluster in a potentially ambiguous state. In
+		 * this case it would not be possible or desirable to attempt to set the
+		 * node to active; the user should ensure the cluster is in the correct state.
+		 */
+		if (recovery_type != RECTYPE_UNKNOWN && local_node_info.type != UNKNOWN)
+		{
+			bool	require_reregister = false;
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+
+			if (recovery_type == RECTYPE_STANDBY && local_node_info.type != STANDBY)
+			{
+				appendPQExpBuffer(&event_details,
+								  _("node is registered as a %s but running as a standby"),
+								  get_node_type_string(local_node_info.type));
+
+				require_reregister = true;
+			}
+			else if (recovery_type == RECTYPE_PRIMARY && local_node_info.type == STANDBY)
+			{
+				log_error(_("node is registered as a standby but running as a %s"), get_node_type_string(local_node_info.type));
+				require_reregister = true;
+			}
+
+			if (require_reregister == true)
+			{
+				log_error("%s", event_details.data);
+				log_hint(_("%s"), hint);
+
+				create_event_notification(NULL,
+										  &config_file_options,
+										  config_file_options.node_id,
+										  "repmgrd_start",
+										  false,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+				terminate(ERR_BAD_CONFIG);
+			}
+
+			termPQExpBuffer(&event_details);
+		}
 
 		/*
 		 * Attempt to set node record active (unless explicitly configured not to)
 		 */
+		log_notice(_("setting node record for node \"%s\" (ID: %i) to \"active\""),
+				   local_node_info.node_name,
+				   local_node_info.node_id);
+
 		if (config_file_options.repmgrd_exit_on_inactive_node == false)
 		{
-			PGconn *primary_conn = get_primary_connection_quiet(conn, NULL, NULL);
+			PGconn *primary_conn = get_primary_connection(conn, NULL, NULL);
 			bool	success = true;
 
 			if (PQstatus(primary_conn) != CONNECTION_OK)
 			{
+				log_error(_("unable to connect to the primary node to activate the node record"));
 				success = false;
 			}
 			else
 			{
-				log_notice(_("setting node record for node \"%s\" (ID: %i) to \"active\""),
-						   local_node_info.node_name,
-						   local_node_info.node_id);
 				success = update_node_record_set_active(primary_conn, local_node_info.node_id, true);
 				PQfinish(primary_conn);
 			}
@@ -210,33 +258,37 @@ do_physical_node_check(PGconn *conn)
 			if (success == true)
 			{
 				local_node_info.active = true;
-				return;
 			}
 		}
 
-		switch (config_file_options.failover)
+		/*
+		 * Corner-case where it was not possible to set the node to "active"
+		 */
+		if (local_node_info.active == false)
 		{
+			switch (config_file_options.failover)
+			{
+				/* "failover" is an enum, all values should be covered here */
 
-			/* "failover" is an enum, all values should be covered here */
+				case FAILOVER_AUTOMATIC:
+					log_error(_("this node is marked as inactive and cannot be used as a failover target"));
+					log_hint(_("%s"), hint);
 
-			case FAILOVER_AUTOMATIC:
-				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
-				log_hint(_("%s"), hint);
+					create_event_notification(NULL,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_start",
+											  false,
+											  "node is inactive and cannot be used as a failover target");
 
-				create_event_notification(NULL,
-										  &config_file_options,
-										  config_file_options.node_id,
-										  "repmgrd_shutdown",
-										  false,
-										  "node is inactive and cannot be used as a failover target");
+					terminate(ERR_BAD_CONFIG);
+					break;
 
-				terminate(ERR_BAD_CONFIG);
-				break;
-
-			case FAILOVER_MANUAL:
-				log_warning(_("this node is marked as inactive and will be passively monitored only"));
-				log_hint(_("%s"), hint);
-				break;
+				case FAILOVER_MANUAL:
+					log_warning(_("this node is marked as inactive and will be passively monitored only"));
+					log_hint(_("%s"), hint);
+					break;
+			}
 		}
 	}
 
