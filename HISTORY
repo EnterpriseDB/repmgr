@@ -1,4 +1,4 @@
-5.3.0   2021-??-??
+5.3.0   2021-10-12
         standby switchover: improve handling of node rejoin failure (Ian)
         repmgrd: prefix all shared library functions with "repmgr_" to
           minimize the risk of clashes with other shared libraries (Ian)
