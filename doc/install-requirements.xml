@@ -112,6 +112,20 @@
         </thead>
 
         <tbody>
+          <row>
+            <entry>
+              &repmgr; 5.3
+            </entry>
+            <entry>
+              YES
+            </entry>
+            <entry>
+              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+            </entry>
+            <entry>
+              9.4, 9.5, 9.6, 10, 11, 12, 13, 14
+            </entry>
+          </row>
 
           <row>
             <entry>
@@ -121,7 +135,7 @@
               YES
             </entry>
             <entry>
-              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+              <link linkend="release-5.2.0">5.2.0</link> (2020-10-22)
             </entry>
             <entry>
               9.4, 9.5, 9.6, 10, 11, 12, 13
