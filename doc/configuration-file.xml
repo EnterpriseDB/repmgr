@@ -262,7 +262,7 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
 
     <indexterm>
       <primary>repmgr.conf</primary>
-      <secondary>ostgreSQL major version upgrades</secondary>
+      <secondary>PostgreSQL major version upgrades</secondary>
     </indexterm>
 
     <para>
