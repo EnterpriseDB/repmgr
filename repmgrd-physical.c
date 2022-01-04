@@ -3067,7 +3067,6 @@ do_primary_failover(void)
 
 				t_node_info new_primary = T_NODE_INFO_INITIALIZER;
 				RecordStatus record_status = RECORD_NOT_FOUND;
-				PGconn	   *new_primary_conn;
 
 				record_status = get_node_record(local_conn, new_primary_id, &new_primary);
 
@@ -3079,6 +3078,7 @@ do_primary_failover(void)
 				else
 				{
 					PQExpBufferData event_details;
+					PGconn	   *new_primary_conn;
 
 					initPQExpBuffer(&event_details);
 					appendPQExpBuffer(&event_details,
@@ -3099,7 +3099,6 @@ do_primary_failover(void)
 											  event_details.data);
 					close_connection(&new_primary_conn);
 					termPQExpBuffer(&event_details);
-
 				}
 				failover_state = FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER;
 			}
