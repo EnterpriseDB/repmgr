@@ -16,6 +16,31 @@
   </para>
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.3.1">
+    <title>Release 5.3.1</title>
+    <para><emphasis>??? ?? ???, 2022</emphasis></para>
+    <para>
+      &repmgr; 5.3.1 is a minor release.
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+           <listitem>
+             <para>
+               &repmgrd;: ensure potentially open connections are closed.
+             </para>
+             <para>
+                In some cases, when recovering from degraded state in local node monitoring,
+                new connection was opened to the local node without closing
+                the old one, which will result in memory leakage.
+             </para>
+           </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-5.3.0">
     <title id="release-current">Release 5.3.0</title>
     <para><emphasis>Tue 12 October, 2021</emphasis></para>
