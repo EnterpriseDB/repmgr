@@ -585,6 +585,7 @@ monitor_streaming_primary(void)
 
 			if (is_server_available(local_node_info.conninfo) == true)
 			{
+				close_connection(&local_conn);
 				local_conn = establish_db_connection(local_node_info.conninfo, false);
 
 				if (PQstatus(local_conn) != CONNECTION_OK)
@@ -1813,7 +1814,10 @@ monitor_streaming_standby(void)
 			if (upstream_check_result == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
+				{
+					close_connection(&upstream_conn);
 					upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
+				}
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
@@ -2546,8 +2550,10 @@ monitor_streaming_witness(void)
 			if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo, NULL) == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
+				{
+					close_connection(&primary_conn);
 					primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
-
+				}
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
 					PQExpBufferData event_details;
