@@ -28,6 +28,11 @@
         <itemizedlist>
            <listitem>
              <para>
+               Fix upgrade path from &repmgr; 4.2 and 4.3 to &repmgr; 5.3.
+             </para>
+           </listitem>
+           <listitem>
+             <para>
                &repmgrd;: ensure potentially open connections are closed.
              </para>
              <para>
