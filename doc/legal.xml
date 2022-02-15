@@ -1,9 +1,9 @@
 <!-- doc/legal.xml -->
 
-<date>2017</date>
+<date>2022</date>
 
 <copyright>
- <year>2010-2021</year>
+ <year>2010-2022</year>
  <holder>EnterpriseDB Corporation</holder>
 </copyright>
 
@@ -11,8 +11,8 @@
  <title>Legal Notice</title>
 
  <para>
-  <productname>repmgr</productname> is Copyright &copy; 2010-2021
-  by EnterpriseDB Corporation All rights reserved.
+  <productname>repmgr</productname> is Copyright &copy; 2010-2022
+  by EDB All rights reserved.
  </para>
 
  <para>

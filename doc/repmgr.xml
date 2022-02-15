@@ -18,7 +18,7 @@
  <title>repmgr &repmgrversion; Documentation</title>
 
  <bookinfo>
-  <corpauthor>EnterpriseDB Corporation</corpauthor>
+  <corpauthor>EDB</corpauthor>
   <productname>repmgr</productname>
   <productnumber>&repmgrversion;</productnumber>
   &legal;
@@ -38,19 +38,18 @@
 
    <para>
     &repmgr; is developed by
-    <ulink url="https://2ndquadrant.com">2ndQuadrant (EDB)</ulink>
+    <ulink url="https://www.enterprisedb.com/">EDB</ulink>
     along with contributions from other individuals and organisations.
     Contributions from the community are appreciated and welcome - get
     in touch via <ulink url="https://github.com/EnterpriseDB/repmgr">github</ulink>
     or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</ulink>.
-    Multiple 2ndQuadrant (EDB) customers contribute funding
-    to make repmgr development possible.
+    Multiple EDB customers contribute funding to make &repmgr; development possible.
    </para>
 
    <para>
-     &repmgr; is fully supported by 2ndQuadrant (EDB)'s
-     <ulink url="https://www.2ndquadrant.com/en/support/support-postgresql/">24/7 Production Support</ulink>.
-     EnterpriseDB Corporation, a Major Sponsor of the PostgreSQL project, continues to maintain &repmgr;.
+     &repmgr; is fully supported by EDB's
+     <ulink url="https://www.enterprisedb.com/support/postgresql-support-overview-get-the-most-out-of-postgresql">24/7 Production Support</ulink>.
+     EDB, a Major Sponsor of the PostgreSQL project, continues to maintain &repmgr;.
      We welcome participation from other organisations and individual developers.
    </para>
   </abstract>
