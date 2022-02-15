@@ -15,7 +15,7 @@
 
    <para>
     <xref linkend="repmgr-standby-clone"/> can use
-    <ulink url="https://www.2ndquadrant.com/">2ndQuadrant</ulink>'s
+    <ulink url="https://www.enterprisedb.com/">EDB</ulink>'s
     <ulink url="https://www.pgbarman.org/">Barman</ulink> application
     to clone a standby (and also as a fallback source for WAL files).
    </para>
@@ -299,7 +299,7 @@ description = "Main cluster"
      build up indefinitely, possibly leading to server failure.
     </simpara>
     <simpara>
-     As an alternative we recommend using 2ndQuadrant's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
+     As an alternative we recommend using EDB's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
      which offloads WAL management to a separate server, removing the requirement to use a replication
      slot for each individual standby to reserve WAL. See section <xref linkend="cloning-from-barman"/>
      for more details on using &repmgr; together with Barman.

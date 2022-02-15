@@ -50,18 +50,18 @@
       <title>CentOS repositories</title>
 
       <para>
-        &repmgr; packages are available from the public 2ndQuadrant repository, and also the
-        PostgreSQL community repository. The 2ndQuadrant repository is updated immediately
+        &repmgr; packages are available from the public EDB repository, and also the
+        PostgreSQL community repository. The EDB repository is updated immediately
         after each &repmgr; release.
       </para>
 
       <table id="centos-2ndquadrant-repository">
-        <title>2ndQuadrant public repository</title>
+        <title>EDB public repository</title>
         <tgroup cols="2">
           <tbody>
             <row>
               <entry>Repository URL:</entry>
-              <entry><ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink></entry>
+              <entry><ulink url="https://dl.enterprisedb.com/">https://dl.enterprisedb.com/</ulink></entry>
             </row>
             <row>
               <entry>Repository documentation:</entry>
@@ -252,7 +252,7 @@
     </indexterm>
 
     <para>
-      &repmgr; <literal>.deb</literal> packages are provided by 2ndQuadrant as well as the
+      &repmgr; <literal>.deb</literal> packages are provided by EDB as well as the
       PostgreSQL Community APT repository, and are available for each community-supported
       PostgreSQL version, currently supported Debian releases, and currently supported
       Ubuntu LTS releases.
@@ -262,12 +262,12 @@
       <title>APT repositories</title>
 
       <table id="apt-2ndquadrant-repository">
-        <title>2ndQuadrant public repository</title>
+        <title>EDB public repository</title>
         <tgroup cols="2">
           <tbody>
             <row>
               <entry>Repository URL:</entry>
-              <entry><ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink></entry>
+              <entry><ulink url="https://dl.enterprisedb.com/">https://dl.enterprisedb.com/</ulink></entry>
             </row>
             <row>
               <entry>Repository documentation:</entry>
@@ -401,7 +401,7 @@
     </indexterm>
 
     <para>
-      For testing new features and bug fixes, from time to time 2ndQuadrant provides
+      For testing new features and bug fixes, from time to time EDB provides
       so-called &quot;snapshot packages&quot; via its public repository. These packages
       are built from the &repmgr; source at a particular point in time, and are not formal
       releases.
@@ -413,22 +413,22 @@
       </para>
     </note>
     <para>
-      To install a snapshot package, it's necessary to install the 2ndQuadrant public snapshot repository,
-      following the instructions here: <ulink url="https://dl.2ndquadrant.com/default/release/site/">https://dl.2ndquadrant.com/default/release/site/</ulink> but replace <literal>release</literal> with <literal>snapshot</literal>
+      To install a snapshot package, it's necessary to install the EDB public snapshot repository,
+      following the instructions here: <ulink url="https://dl.enterprisedb.com/default/release/site/">https://dl.enterprisedb.com/default/release/site/</ulink> but replace <literal>release</literal> with <literal>snapshot</literal>
       in the appropriate URL.
     </para>
     <para>
       For example, to install the snapshot RPM repository for PostgreSQL 9.6, execute (as <literal>root</literal>):
       <programlisting>
-curl https://dl.2ndquadrant.com/default/snapshot/get/9.6/rpm | bash</programlisting>
+curl https://dl.enterprisedb.com/default/snapshot/get/9.6/rpm | bash</programlisting>
 
       or as a normal user with root sudo access:
       <programlisting>
-curl https://dl.2ndquadrant.com/default/snapshot/get/9.6/rpm | sudo bash</programlisting>
+curl https://dl.enterprisedb.com/default/snapshot/get/9.6/rpm | sudo bash</programlisting>
     </para>
     <para>
       Alternatively you can browse the repository here:
-      <ulink url="https://dl.2ndquadrant.com/default/snapshot/browse/">https://dl.2ndquadrant.com/default/snapshot/browse/</ulink>.
+      <ulink url="https://dl.enterprisedb.com/default/snapshot/browse/">https://dl.enterprisedb.com/default/snapshot/browse/</ulink>.
     </para>
     <para>
       Once the repository is installed, installing or updating &repmgr; will result in the latest snapshot
@@ -492,32 +492,6 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
         <programlisting>
           yum install repmgr96-4.0.6-1.rhel6</programlisting>
       </para>
-
-      <sect3 id="packages-old-versions-rhel-centos-repmgr3">
-        <title>repmgr 3 packages</title>
-        <para>
-          Old &repmgr; 3 RPM packages (<literal>3.2</literal> and later) can be retrieved from the
-          (deprecated) 2ndQuadrant repository at
-          <ulink url="http://packages.2ndquadrant.com/repmgr/yum/">http://packages.2ndquadrant.com/repmgr/yum/</ulink>
-          by installing the appropriate repository RPM:
-        </para>
-
-        <itemizedlist spacing="compact" mark="bullet">
-
-          <listitem>
-            <simpara>
-              <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
-            </simpara>
-          </listitem>
-
-          <listitem>
-            <simpara>
-              <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
-            </simpara>
-          </listitem>
-
-        </itemizedlist>
-      </sect3>
 
     </sect2>
   </sect1>

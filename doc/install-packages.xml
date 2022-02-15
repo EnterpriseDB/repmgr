@@ -22,16 +22,15 @@
 
   <para>
 	&repmgr; RPM packages for RedHat/CentOS variants and Fedora are available from the
-	<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
-	<ulink url="https://dl.2ndquadrant.com/">public repository</ulink>; see following
+	<ulink url="https://www.enterprisedb.com">EDB</ulink>
+	<ulink url="https://dl.enterprisedb.com/">public repository</ulink>; see following
 	section for details.
   </para>
   <note>
     <para>
-      Currently the <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
-	  <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> provides
-      support for RedHat/CentOS versions 5, 6 and 7. Support for version 8 is
-      available via the PGDG repository; see below for details.
+      Currently the <ulink url="https://www.enterprisedb.com">EDB</ulink>
+	  <ulink url="https://dl.enterprisedb.com/">public repository</ulink> provides
+      support for RedHat/CentOS versions 6,7 and 8.
     </para>
   </note>
   <para>
@@ -45,7 +44,7 @@
   <note>
     <para>
       &repmgr; RPM packages are designed to be compatible with the community-provided PostgreSQL packages
-      and 2ndQuadrant's <ulink url="https://www.2ndquadrant.com/en/resources/2ndqpostgres/">2ndQPostgres</ulink>.
+      and EDB's PostgreSQL Extended Server (formerly 2ndQPostgres).
       They may not work with vendor-specific packages such as those provided by RedHat for RHEL
       customers, as the PostgreSQL filesystem layout may be different to the community RPMs.
       Please contact your support vendor for assistance.
@@ -64,16 +63,16 @@
 
 
   <sect3 id="installation-packages-redhat-2ndq">
-    <title>2ndQuadrant public RPM yum repository</title>
+    <title>EDB public RPM yum repository</title>
 
     <para>
-      <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
-      <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> for 2ndQuadrant software,
+      <ulink url="https://www.enterprisedb.com/">EDB</ulink> provides a dedicated <literal>yum</literal>
+      <ulink url="https://dl.enterprisedb.com/">public repository</ulink> for EDB software,
       including &repmgr;. We recommend using this for all future &repmgr; releases.
     </para>
     <para>
       General instructions for using this repository can be found on its
-      <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
+      <ulink url="https://dl.enterprisedb.com/">homepage</ulink>. Specific instructions
       for installing &repmgr; follow below.
     </para>
     <para>
@@ -83,25 +82,25 @@
 	<listitem>
 	  <para>
 	    Locate the repository RPM for your PostgreSQL version from the list at:
-	    <ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink>
+	    <ulink url="https://dl.enterprisedb.com/">https://dl.enterprisedb.com/</ulink>
 	  </para>
 	</listitem>
 
-        <listitem>
-          <para>
-            Install the repository definition for your distribution and PostgreSQL version
-	    (this enables the 2ndQuadrant repository as a source of &repmgr; packages).
+    <listitem>
+      <para>
+        Install the repository definition for your distribution and PostgreSQL version
+	    (this enables the EDB repository as a source of &repmgr; packages).
 	  </para>
 	  <para>
 	    For example, for PostgreSQL 11 on CentOS, execute:
 	    <programlisting>
-curl https://dl.2ndquadrant.com/default/release/get/11/rpm | sudo bash</programlisting>
+curl https://dl.enterprisedb.com/default/release/get/11/rpm | sudo bash</programlisting>
 	  </para>
 
 	  <para>
 	    For PostgreSQL 9.6 on CentOS, execute:
 	    <programlisting>
-curl https://dl.2ndquadrant.com/default/release/get/9.6/rpm | sudo bash</programlisting>
+curl https://dl.enterprisedb.com/default/release/get/9.6/rpm | sudo bash</programlisting>
 	  </para>
 
 
@@ -145,7 +144,7 @@ yum search repmgr</programlisting>
       <emphasis>Compatibility with PGDG Repositories</emphasis>
     </para>
     <para>
-      The 2ndQuadrant &repmgr; yum repository packages use the same definitions and file system layout as the
+      The EDB &repmgr; yum repository packages use the same definitions and file system layout as the
       main PGDG repository.
     </para>
     <para>
@@ -154,7 +153,7 @@ yum search repmgr</programlisting>
       the packages are installed from.
     </para>
     <para>
-      To ensure the 2ndQuadrant repository is always prioritised, install <literal>yum-plugin-priorities</literal>
+      To ensure the EDB repository is always prioritised, install <literal>yum-plugin-priorities</literal>
       and set the repository priorities accordingly.
     </para>
 
@@ -217,16 +216,16 @@ repmgr11.x86_64                        4.4-1.el7                             2nd
   </para>
 
   <sect3 id="installation-packages-debian-ubuntu-2ndq">
-    <title>2ndQuadrant public apt repository for Debian/Ubuntu</title>
+    <title>EDB public apt repository for Debian/Ubuntu</title>
 
     <para>
-      <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a
-      <ulink url="https://dl.2ndquadrant.com/">public apt repository</ulink> for 2ndQuadrant software,
+      <ulink url="https://www.enterprisedb.com/">EDB</ulink> provides a
+      <ulink url="https://dl.enterprisedb.com/">public apt repository</ulink> for EDB software,
       including &repmgr;.
     </para>
     <para>
       General instructions for using this repository can be found on its
-      <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
+      <ulink url="https://dl.enterprisedb.com/">homepage</ulink>. Specific instructions
       for installing &repmgr; follow below.
     </para>
 
@@ -239,9 +238,9 @@ repmgr11.x86_64                        4.4-1.el7                             2nd
 	    <listitem>
 	      <para>
             Install the repository definition for your distribution and PostgreSQL version
-	        (this enables the 2ndQuadrant repository as a source of &repmgr; packages) by executing:
+	        (this enables the EDB repository as a source of &repmgr; packages) by executing:
             <programlisting>
-              curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlisting>
+              curl https://dl.enterprisedb.com/default/release/get/deb | sudo bash</programlisting>
 	      </para>
           <note>
             <para>
