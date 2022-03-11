@@ -92,47 +92,36 @@
 	    (this enables the EDB repository as a source of &repmgr; packages).
 	  </para>
 	  <para>
-	    For example, for PostgreSQL 11 on CentOS, execute:
+	    For example, for PostgreSQL 11 on Rocky Linux 8, execute:
 	    <programlisting>
-curl https://dl.enterprisedb.com/default/release/get/11/rpm | sudo bash</programlisting>
+curl https://dl.enterprisedb.com/default/release/get/14/rpm | sudo bash</programlisting>
 	  </para>
-
-	  <para>
-	    For PostgreSQL 9.6 on CentOS, execute:
-	    <programlisting>
-curl https://dl.enterprisedb.com/default/release/get/9.6/rpm | sudo bash</programlisting>
-	  </para>
-
 
 	  <para>
 	    Verify that the repository is installed with:
 	    <programlisting>
-sudo yum repolist</programlisting>
+sudo dnf repolist</programlisting>
 	    The output should contain two entries like this:
 	    <programlisting>
-2ndquadrant-dl-default-release-pg11/7/x86_64         2ndQuadrant packages (PG11) for 7 - x86_64               18
-2ndquadrant-dl-default-release-pg11-debug/7/x86_64   2ndQuadrant packages (PG11) for 7 - x86_64 - Debug        8</programlisting>
+2ndquadrant-dl-default-release-pg14                  2ndQuadrant packages (PG14) for 8 - x86_64
+2ndquadrant-dl-default-release-pg14-debug            2ndQuadrant packages (PG14) for 8 - x86_64 - Debug</programlisting>
 	  </para>
 	</listitem>
 
         <listitem>
           <para>
-            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr14</literal>):
             <programlisting>
-sudo yum install repmgr11</programlisting>
+sudo dnf install repmgr14</programlisting>
           </para>
-          <note>
-            <para>
-              For packages for PostgreSQL 9.6 and earlier, the package name does not contain
-              a period between major and minor version numbers, e.g.
-              <literal>repmgr96</literal>.
-            </para>
-          </note>
           <tip>
             <para>
               To determine the names of available packages, execute:
               <programlisting>
-yum search repmgr</programlisting>
+dnf search repmgr</programlisting>
+            </para>
+            <para>
+              In CentOS 7 and earlier, use <literal>yum</literal> instead of <literal>dnf</literal>.
             </para>
           </tip>
 
@@ -153,36 +142,42 @@ yum search repmgr</programlisting>
       the packages are installed from.
     </para>
     <para>
-      To ensure the EDB repository is always prioritised, install <literal>yum-plugin-priorities</literal>
-      and set the repository priorities accordingly.
+      To ensure the EDB repository is always prioritised, set the <literal>priority</literal> option
+      in the repository configuration file (e.g. <filename>/etc/yum.repos.d/2ndquadrant-dl-default-release-pg14.repo</filename>
+      accordingly.
     </para>
+    <note>
+      <para>
+        With CentOS 7 and earlier, the package <literal>yum-plugin-priorities</literal> must be installed
+        to be able to set the repository priority.
+      </para>
+    </note>
 
     <para>
       <emphasis>Installing a specific package version</emphasis>
     </para>
     <para>
-      To install a specific package version, execute <command>yum --showduplicates list</command>
+      To install a specific package version, execute <command>dnf --showduplicates list</command>
       for the package in question:
       <programlisting>
-[root@localhost ~]# yum --showduplicates list repmgr11
-Loaded plugins: fastestmirror
-Loading mirror speeds from cached hostfile
- * base: ftp.tsukuba.wide.ad.jp
- * epel: nrt.edge.kernel.org
- * extras: ftp.tsukuba.wide.ad.jp
- * updates: ftp.tsukuba.wide.ad.jp
+[root@localhost ~]# dnf --showduplicates list repmgr10
+Last metadata expiration check: 0:09:15 ago on Fri 11 Mar 2022 01:09:19 AM UTC.
 Installed Packages
-repmgr11.x86_64                        4.4.0-1.rhel7                         @pgdg11
+repmgr10.x86_64                            5.3.1-1.el8                              @2ndquadrant-dl-default-release-pg10
 Available Packages
-repmgr11.x86_64                        4.2-1.el7                             2ndquadrant-dl-default-release-pg11
-repmgr11.x86_64                        4.2-2.el7                             2ndquadrant-dl-default-release-pg11
-repmgr11.x86_64                        4.3-1.el7                             2ndquadrant-dl-default-release-pg11
-repmgr11.x86_64                        4.4-1.el7                             2ndquadrant-dl-default-release-pg11</programlisting>
+repmgr10.x86_64                            5.0.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.1.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.1.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.1.0-2.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.2.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.2.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.2.1-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.3.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.3.1-1.el8                              2ndquadrant-dl-default-release-pg10</programlisting>
       then append the appropriate version number to the package name with a hyphen, e.g.:
       <programlisting>
-[root@localhost ~]# yum install repmgr11-4.3-1.el7</programlisting>
+[root@localhost ~]# dnf install repmgr10-5.3.0-1.el8</programlisting>
     </para>
-
     <para>
       <emphasis>Installing old packages</emphasis>
     </para>
@@ -190,7 +185,6 @@ repmgr11.x86_64                        4.4-1.el7                             2nd
       See appendix <link linkend="packages-old-versions-rhel-centos">Installing old package versions</link>
       for details on how to retrieve older package versions.
     </para>
-
   </sect3>
 
  </sect2>
