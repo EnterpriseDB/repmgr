@@ -79,13 +79,17 @@
    as otherwise if the primary server fails due to hardware issues, the witness
    server will be lost too.
  </para>
- <note>
+ <important>
    <simpara>
-     &repmgr; 3.3 and earlier provided a <command>repmgr create witness</command>
-     command, which would automatically create a PostgreSQL instance. However
-     this often resulted in an unsatisfactory, hard-to-customise instance.
+     A PostgreSQL instance can only accommodate a single witness server.
    </simpara>
- </note>
+   <simpara>
+     If you are planning to use a single server to support more than one
+     witness server, a separate PostgreSQL instance is required for each
+     witness server in use.
+   </simpara>
+ </important>
+
  <para>
    The witness server should be configured in the same way as a normal
    &repmgr; node; see section <xref linkend="configuration"/>.
