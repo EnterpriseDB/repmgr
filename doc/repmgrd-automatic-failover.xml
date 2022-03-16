@@ -79,7 +79,7 @@
    as otherwise if the primary server fails due to hardware issues, the witness
    server will be lost too.
  </para>
- <important>
+ <note>
    <simpara>
      A PostgreSQL instance can only accommodate a single witness server.
    </simpara>
@@ -88,7 +88,7 @@
      witness server, a separate PostgreSQL instance is required for each
      witness server in use.
    </simpara>
- </important>
+ </note>
 
  <para>
    The witness server should be configured in the same way as a normal
