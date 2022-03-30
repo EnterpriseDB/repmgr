@@ -92,7 +92,7 @@
 	    (this enables the EDB repository as a source of &repmgr; packages).
 	  </para>
 	  <para>
-	    For example, for PostgreSQL 11 on Rocky Linux 8, execute:
+	    For example, for PostgreSQL 14 on Rocky Linux 8, execute:
 	    <programlisting>
 curl https://dl.enterprisedb.com/default/release/get/14/rpm | sudo bash</programlisting>
 	  </para>
