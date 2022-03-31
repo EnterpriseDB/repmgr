@@ -398,7 +398,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #
 # Debian/Ubuntu users: use "sudo pg_ctlcluster" to execute service control commands.
 #
-# For more details, see: https://repmgr.org/docs/current/configuration-service-commands.html
+# For more details, see: https://repmgr.org/docs/current/configuration-file-service-commands.html
 
 #service_start_command = ''
 #service_stop_command = ''
