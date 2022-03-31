@@ -197,7 +197,7 @@ description = "Main cluster"
    <para>
     As a fallback in case streaming replication is interrupted, PostgreSQL can optionally
     retrieve WAL files from an archive, such as that provided by Barman. This is done by
-    setting <varname>restore_command</varname> in <filename>recovery.conf</filename> to
+    setting <varname>restore_command</varname> in the replication configuration to
     a valid shell command which can retrieve a specified WAL file from the archive.
    </para>
    <para>
@@ -328,9 +328,9 @@ description = "Main cluster"
     &repmgr; supports cascading replication. When cloning a standby,
     set the command-line parameter <literal>--upstream-node-id</literal> to the
     <varname>node_id</varname> of the server the standby should connect to, and
-    &repmgr; will create <filename>recovery.conf</filename> to point to it. Note
+    &repmgr; will create a replication configuration file to point to it. Note
     that if <literal>--upstream-node-id</literal> is not explicitly provided,
-    &repmgr; will set the standby's <filename>recovery.conf</filename> to
+    &repmgr; will set the standby's replication configuration to
     point to the primary node.
    </para>
    <para>
@@ -392,7 +392,7 @@ description = "Main cluster"
      does not yet exist. In this case you can clone from the primary (or
      another upstream node); provide the parameter <literal>--upstream-conninfo</literal>
      to explicitly set the upstream's <varname>primary_conninfo</varname> string
-     in <filename>recovery.conf</filename>.
+     in the replication configuration.
     </simpara>
    </tip>
  </sect1>
@@ -491,12 +491,12 @@ description = "Main cluster"
     </note>
 
     <para>
-     If, for whatever reason, you wish to include the password in <filename>recovery.conf</filename>,
+     If, for whatever reason, you wish to include the password in the replication configuration file,
      set <varname>use_primary_conninfo_password</varname> to <literal>true</literal> in
      <filename>repmgr.conf</filename>. This will read a password set in <varname>PGPASSWORD</varname>
      (but not <filename>~/.pgpass</filename>) and place it into the <varname>primary_conninfo</varname>
-     string in <filename>recovery.conf</filename>. Note that <varname>PGPASSWORD</varname>
-     will need to be set during any action which causes <filename>recovery.conf</filename> to be
+     string in the replication configuration. Note that <varname>PGPASSWORD</varname>
+     will need to be set during any action which causes the replication configuration file to be
      rewritten, e.g. <xref linkend="repmgr-standby-follow"/>.
     </para>
    </sect2>
@@ -508,7 +508,7 @@ description = "Main cluster"
      user (in addition to the user who manages the &repmgr; metadata). In this case,
      the replication user should be set in <filename>repmgr.conf</filename> via the parameter
      <varname>replication_user</varname>; &repmgr; will use this value when making
-     replication connections and generating <filename>recovery.conf</filename>. This
+     replication connections and generating the replication configuration. This
      value will also be stored in the parameter <literal>repmgr.nodes</literal>
      table for each node; it no longer needs to be explicitly specified when
      cloning a node or executing <xref linkend="repmgr-standby-follow"/>.
