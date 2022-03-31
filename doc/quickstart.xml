@@ -405,9 +405,10 @@
   </programlisting>
   <para>
    This has cloned the PostgreSQL data directory files from the primary <literal>node1</literal>
-   using PostgreSQL's <command>pg_basebackup</command> utility. A <filename>recovery.conf</filename>
-   file containing the correct parameters to start streaming from this primary server will be created
-   automatically.
+   using PostgreSQL's <command>pg_basebackup</command> utility. Replication configuration
+   containing the correct parameters to start streaming from this primary server will be
+   automatically appended to <filename>postgresql.auto.conf</filename>. (In PostgreSQL 11
+   and earlier the file <filename>recovery.conf</filename> will be created).
   </para>
   <note>
    <simpara>
@@ -481,9 +482,10 @@
     sender_port           | 5432
     conninfo              | user=repmgr dbname=replication host=node1 application_name=node2
    </programlisting>
-   Note that the <varname>conninfo</varname> value is that generated in <filename>recovery.conf</filename>
-   and will differ slightly from the primary's <varname>conninfo</varname> as set in <filename>repmgr.conf</filename> -
-   among others it will contain the connecting node's name as <varname>application_name</varname>.
+   Note that the <varname>conninfo</varname> value is that generated in <filename>postgresql.auto.conf</filename>
+   (PostgreSQL 11 and earlier: <filename>recovery.conf</filename>) and will differ slightly from the primary's
+   <varname>conninfo</varname> as set in <filename>repmgr.conf</filename> - among others it will contain the
+   connecting node's name as <varname>application_name</varname>.
   </para>
  </sect1>
 
