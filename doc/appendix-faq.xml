@@ -249,16 +249,16 @@
         For a standby which has been manually cloned or recovered from an external
         backup manager such as Barman, the command
         <command><link linkend="repmgr-standby-clone">repmgr standby clone --replication-conf-only</link></command>
-        can be used to create the correct <filename>recovery.conf</filename> file for
+        can be used to create the correct replication configuration file for
         use with &repmgr; (and will create a replication slot if required). Once this has been done,
         <link linkend="repmgr-standby-register">register the node</link> as usual.
       </para>
     </sect2>
 
     <sect2 id="faq-repmgr-recovery-conf" >
-      <title>What does &repmgr; write in <filename>recovery.conf</filename>, and what options can be set there?</title>
+      <title>What does &repmgr; write in the replication configuration, and what options can be set there?</title>
       <para>
-        See section <link linkend="repmgr-standby-clone-recovery-conf">Customising recovery.conf</link>.
+        See section <link linkend="repmgr-standby-clone-recovery-conf">Customising replication configuration</link>.
       </para>
     </sect2>
 
@@ -366,11 +366,11 @@
       </para>
     </sect2>
 
-    <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in recovery.conf">
-      <title>Why are some values in <filename>recovery.conf</filename> surrounded by pairs of single quotes?</title>
+    <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in replication configuration">
+      <title>Why are some values in the replication configuration file surrounded by pairs of single quotes?</title>
       <para>
-        This is to ensure that user-supplied values which are written as parameter values in <filename>recovery.conf</filename>
-        are escaped correctly and do not cause errors when <filename>recovery.conf</filename> is parsed.
+        This is to ensure that user-supplied values which are written as parameter values in the replication configuration
+        are escaped correctly and do not cause errors when the file is parsed.
       </para>
       <para>
         The escaping is performed by an internal PostgreSQL routine, which leaves strings consisting
@@ -419,7 +419,7 @@
       <para>
         &repmgrd; can monitor delayed standbys - those set up with
         <varname>recovery_min_apply_delay</varname> set to a non-zero value
-        in <filename>recovery.conf</filename> - but as it's not currently possible
+        in the replication configuration - but as it's not currently possible
         to directly examine the value applied to the standby, &repmgrd;
         may not be able to properly evaluate the node as a promotion candidate.
       </para>
