@@ -81,11 +81,15 @@
  </para>
  <note>
    <simpara>
-     &repmgr; 3.3 and earlier provided a <command>repmgr create witness</command>
-     command, which would automatically create a PostgreSQL instance. However
-     this often resulted in an unsatisfactory, hard-to-customise instance.
+     A PostgreSQL instance can only accommodate a single witness server.
+   </simpara>
+   <simpara>
+     If you are planning to use a single server to support more than one
+     witness server, a separate PostgreSQL instance is required for each
+     witness server in use.
    </simpara>
  </note>
+
  <para>
    The witness server should be configured in the same way as a normal
    &repmgr; node; see section <xref linkend="configuration"/>.
@@ -586,7 +590,7 @@ INFO:  node 3 received notification to rerun promotion candidate election
   <sect2 id="repmgrd-primary-child-disconnection-caveats">
 	<title>Standby disconnections monitoring caveats</title>
 	<para>
-	  The follwing caveats should be considered if you are intending to use this functionality.
+	  The following caveats should be considered if you are intending to use this functionality.
 	</para>
 	<para>
 	  <itemizedlist mark="bullet">

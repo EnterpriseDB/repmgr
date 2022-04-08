@@ -3,7 +3,7 @@
  *
  * Implements standby actions for the repmgr command line utility
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
  */
 
 #include <sys/stat.h>
+#include <time.h>
 
 #include "repmgr.h"
 #include "dirutil.h"
@@ -1307,6 +1308,64 @@ _do_create_replication_conf(void)
 		PQExpBufferData msg;
 		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 
+		/*
+		 * Check the node record has slot_name set; if not we'll need to
+		 * update it.
+		 */
+		if (local_node_record.slot_name[0] == '\0')
+		{
+			PGconn	   *primary_conn = NULL;
+
+			create_slot_name(local_node_record.slot_name, local_node_record.node_id);
+
+			/* Check we can connect to the primary so we can update the record */
+
+			if (get_recovery_type(upstream_conn) == RECTYPE_PRIMARY)
+			{
+				primary_conn = upstream_conn;
+			}
+			else
+			{
+				primary_conn = establish_primary_db_connection(upstream_conn, false);
+
+				if (primary_conn == NULL)
+				{
+					log_error(_("unable to connect to primary to update slot name for node \"%s\" (ID: %i)"),
+							  local_node_record.node_name,
+							  local_node_record.node_id);
+					PQfinish(upstream_conn);
+					termPQExpBuffer(&msg);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+			if (runtime_options.dry_run == true)
+			{
+				log_info(_("would set \"slot_name\" for node \"%s\" (ID: %i) to \"%s\""),
+						  local_node_record.node_name,
+						  local_node_record.node_id,
+						  local_node_record.slot_name);
+			}
+			else
+			{
+				bool success = update_node_record_slot_name(primary_conn,
+															local_node_record.node_id,
+															local_node_record.slot_name);
+
+				if (primary_conn != upstream_conn)
+					PQfinish(primary_conn);
+
+				if (success == false)
+				{
+					log_error(_("unable to update slot name for node \"%s\" (ID: %i)"),
+							  local_node_record.node_name,
+							  local_node_record.node_id);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+		}
+
 		record_status = get_slot_record(upstream_conn, local_node_record.slot_name, &slot_info);
 
 		/* check if replication slot exists*/
@@ -1939,7 +1998,7 @@ do_standby_register(void)
 	/*
 	 * If --upstream-node-id not provided, we're defaulting to the primary as
 	 * upstream node. If local node is available, double-check that it's attached
-	 * to the primary, in case --upstream-node-id was an accidental ommission.
+	 * to the primary, in case --upstream-node-id was an accidental omission.
 	 *
 	 * Currently we'll only do this for newly registered nodes.
 	 */
@@ -1948,7 +2007,7 @@ do_standby_register(void)
 		/* only do this if record does not exist */
 		if (record_status != RECORD_FOUND)
 		{
-			log_warning(_("--upstream-node-id not supplied, assuming upstream node is primary (node ID %i)"),
+			log_warning(_("--upstream-node-id not supplied, assuming upstream node is primary (node ID: %i)"),
 						primary_node_id);
 
 			/* check our standby is connected */
@@ -3402,7 +3461,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 					goto cleanup;
 				}
 
-				/* In the unlikley event that fails, we'll fall back to a restart */
+				/* In the unlikely event that fails, we'll fall back to a restart */
 				log_warning(_("unable to reload server configuration"));
 			}
 
@@ -3593,8 +3652,9 @@ do_standby_switchover(void)
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 	PQExpBufferData node_rejoin_options;
-	PQExpBufferData errmsg;
+	PQExpBufferData logmsg;
 	PQExpBufferData detailmsg;
+	PQExpBufferData event_details;
 
 	int			r,
 				i;
@@ -3610,6 +3670,9 @@ do_standby_switchover(void)
 
 	/* store list of configuration files on the demotion candidate */
 	KeyValueList remote_config_files = {NULL, NULL};
+
+	/* temporary log file for "repmgr node rejoin" on the demotion candidate */
+	char		node_rejoin_log[MAXPGPATH] = "";
 
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
@@ -3633,7 +3696,7 @@ do_standby_switchover(void)
 	 * SANITY CHECKS
 	 *
 	 * We'll be doing a bunch of operations on the remote server (primary to
-	 * be demoted) - careful checks needed before proceding.
+	 * be demoted) - careful checks needed before proceeding.
 	 */
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
@@ -3753,24 +3816,24 @@ do_standby_switchover(void)
 	 * the demotion candidate as the rejoin will fail if we are unable to to write to that.
 	 */
 
-	initPQExpBuffer(&errmsg);
+	initPQExpBuffer(&logmsg);
 	initPQExpBuffer(&detailmsg);
 
 	if (check_replication_config_owner(PQserverVersion(local_conn),
 									   config_file_options.data_directory,
-									   &errmsg, &detailmsg) == false)
+									   &logmsg, &detailmsg) == false)
 	{
-		log_error("%s", errmsg.data);
+		log_error("%s", logmsg.data);
 		log_detail("%s", detailmsg.data);
 
-		termPQExpBuffer(&errmsg);
+		termPQExpBuffer(&logmsg);
 		termPQExpBuffer(&detailmsg);
 
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	termPQExpBuffer(&errmsg);
+	termPQExpBuffer(&logmsg);
 	termPQExpBuffer(&detailmsg);
 
 	/* check remote server connection and retrieve its record */
@@ -4115,7 +4178,7 @@ do_standby_switchover(void)
 
 	if (command_success == false || command_output.data[0] == '0')
 	{
-		log_error(_("expected configuration file not found on the demotion candiate \"%s\" (ID: %i)"),
+		log_error(_("expected configuration file not found on the demotion candidate \"%s\" (ID: %i)"),
 				  remote_node_record.node_name,
 				  remote_node_record.node_id);
 		log_detail(_("registered configuration file is \"%s\""),
@@ -4215,7 +4278,7 @@ do_standby_switchover(void)
 				else if (remote_error == REMOTE_ERROR_CONNINFO_PARSE)
 				{
 					/* highly unlikely */
-					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"rempgr.conf\" on node \"%s\" (ID: %i)"),
+					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"repmgr.conf\" on node \"%s\" (ID: %i)"),
 							   remote_node_record.node_name,
 							   remote_node_record.node_id);
 				}
@@ -4718,6 +4781,7 @@ do_standby_switchover(void)
 
 		repmgrd_info = (RepmgrdInfo **) pg_malloc0(sizeof(RepmgrdInfo *) * all_nodes.node_count);
 
+		log_notice(_("attempting to pause repmgrd on %i nodes"), all_nodes.node_count);
 		for (cell = all_nodes.head; cell; cell = cell->next)
 		{
 			repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
@@ -4746,7 +4810,7 @@ do_standby_switchover(void)
 					unreachable_node_count++;
 
 					item_list_append_format(&repmgrd_connection_errors,
-											_("unable to connect to node \"%s\" (ID %i):\n%s"),
+											_("unable to connect to node \"%s\" (ID: %i):\n%s"),
 											cell->node_info->node_name,
 											cell->node_info->node_id,
 											PQerrorMessage(cell->node_info->conn));
@@ -4777,8 +4841,9 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&msg);
 			appendPQExpBuffer(&msg,
-							  _("unable to connect to %i node(s), unable to pause all repmgrd instances"),
-							  unreachable_node_count);
+							  _("unable to connect to %i of %i node(s), unable to pause all repmgrd instances"),
+							  unreachable_node_count,
+							  all_nodes.node_count);
 
 			initPQExpBuffer(&detail);
 
@@ -4829,7 +4894,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->pg_running == false)
 				{
-					log_warning(_("node \"%s\" (ID %i) unreachable, unable to pause repmgrd"),
+					log_warning(_("node \"%s\" (ID: %i) unreachable, unable to pause repmgrd"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4842,7 +4907,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->running == false)
 				{
-					log_warning(_("repmgrd not running on node \"%s\" (ID %i)"),
+					log_notice(_("repmgrd not running on node \"%s\" (ID: %i), not pausing"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4863,14 +4928,14 @@ do_standby_switchover(void)
 
 				if (runtime_options.dry_run == true)
 				{
-					log_info(_("would pause repmgrd on node \"%s\" (ID %i)"),
+					log_info(_("would pause repmgrd on node \"%s\" (ID: %i)"),
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
 				else
 				{
 					/* XXX check result  */
-					log_debug("pausing repmgrd on node \"%s\" (ID %i)",
+					log_debug("pausing repmgrd on node \"%s\" (ID: %i)",
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 
@@ -5171,6 +5236,18 @@ do_standby_switchover(void)
 			  format_lsn(remote_last_checkpoint_lsn));
 
 	/*
+	 * optionally add a delay before promoting the standby; this is mainly
+	 * useful for testing (e.g. for reappearance of the original primary) and
+	 * is not documented.
+	 */
+	if (config_file_options.promote_delay > 0)
+	{
+		log_debug("sleeping %i seconds before promoting standby",
+				  config_file_options.promote_delay);
+		sleep(config_file_options.promote_delay);
+	}
+
+	/*
 	 * Promote standby (local node).
 	 *
 	 * If PostgreSQL 12 or later, and -S/--superuser provided, we will provide
@@ -5295,6 +5372,21 @@ do_standby_switchover(void)
 		pfree(conninfo_normalized);
 	}
 
+	/* */
+	snprintf(node_rejoin_log, MAXPGPATH,
+#if defined(__i386__) || defined(__i386)
+			 "/tmp/node-rejoin.%u.log",
+			 (unsigned)time(NULL)
+#else
+			 "/tmp/node-rejoin.%lu.log",
+			 (unsigned long)time(NULL)
+#endif
+		);
+
+	appendPQExpBuffer(&remote_command_str,
+					  " > %s 2>&1 && echo \"1\" || echo \"0\"",
+					  node_rejoin_log);
+
 	termPQExpBuffer(&node_rejoin_options);
 
 	log_debug("executing:\n  %s", remote_command_str.data);
@@ -5308,77 +5400,160 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&remote_command_str);
 
-	/* TODO: verify this node's record was updated correctly */
+	initPQExpBuffer(&logmsg);
+	initPQExpBuffer(&detailmsg);
 
+	/* This is failure to execute the ssh command */
 	if (command_success == false)
 	{
 		log_error(_("rejoin failed with error code %i"), r);
+		switchover_success = false;
 
-		create_event_notification_extended(local_conn,
-										   &config_file_options,
-										   config_file_options.node_id,
-										   "standby_switchover",
-										   false,
-										   command_output.data,
-										   &event_info);
+		appendPQExpBuffer(&logmsg,
+						  _("unable to execute \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i)"),
+						  remote_node_record.node_name,
+						  remote_node_record.node_id);
+		appendPQExpBufferStr(&detailmsg,
+							 command_output.data);
+
 	}
 	else
 	{
-		PQExpBufferData event_details;
-		standy_join_status join_success = check_standby_join(local_conn,
-															 &local_node_record,
-															 &remote_node_record);
+		standy_join_status join_success = JOIN_UNKNOWN;
 
-		initPQExpBuffer(&event_details);
-
-		switch (join_success) {
-			case JOIN_FAIL_NO_PING:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not beome available"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-				switchover_success = false;
-
-				break;
-			case JOIN_FAIL_NO_REPLICATION:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not connect to the new primary"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-				switchover_success = false;
-				break;
-			case JOIN_SUCCESS:
-				appendPQExpBuffer(&event_details,
-								  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
-								  config_file_options.node_name,
-								  config_file_options.node_id,
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
-		}
-
-		create_event_notification_extended(local_conn,
-										   &config_file_options,
-										   config_file_options.node_id,
-										   "standby_switchover",
-										   switchover_success,
-										   event_details.data,
-										   &event_info);
-		if (switchover_success == true)
+		/* "rempgr node rejoin" failed on the demotion candidate */
+		if (command_output.data[0] == '0')
 		{
-			log_notice("%s", event_details.data);
+			appendPQExpBuffer(&logmsg,
+							  _("execution of \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i) failed"),
+							  remote_node_record.node_name,
+							  remote_node_record.node_id);
+
+			/*
+			 * Speculatively check if the demotion candidate has been restarted, e.g. by
+			 * an external watchdog process which isn't aware a switchover is happening.
+			 * This falls into the category "thing outside of our control which shouldn't
+			 * happen, but if it does, make it easier to find out what happened".
+			 */
+			remote_conn = establish_db_connection(remote_node_record.conninfo, false);
+
+			if (PQstatus(remote_conn) == CONNECTION_OK)
+			{
+				if (get_recovery_type(remote_conn) == RECTYPE_PRIMARY)
+				{
+					appendPQExpBuffer(&detailmsg,
+									  _("PostgreSQL instance on demotion candidate \"%s\" (ID: %i) is running as a primary\n"),
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					log_warning("%s", detailmsg.data);
+				}
+			}
+			PQfinish(remote_conn);
+
+			appendPQExpBuffer(&detailmsg,
+							  "check log file \"%s\" on \"%s\" for details",
+							  node_rejoin_log,
+							  remote_node_record.node_name);
+
+			switchover_success = false;
+			join_success = JOIN_COMMAND_FAIL;
 		}
 		else
 		{
-			log_error("%s", event_details.data);
+			join_success = check_standby_join(local_conn,
+											  &local_node_record,
+											  &remote_node_record);
+
+
+
+			switch (join_success) {
+				case JOIN_FAIL_NO_PING:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not become available"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+
+					switchover_success = false;
+
+					break;
+				case JOIN_FAIL_NO_REPLICATION:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not connect to the new primary"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					switchover_success = false;
+					break;
+				case JOIN_SUCCESS:
+					appendPQExpBuffer(&logmsg,
+									  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
+									  config_file_options.node_name,
+									  config_file_options.node_id,
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					break;
+				/* check_standby_join() does not return this */
+				case JOIN_COMMAND_FAIL:
+					break;
+				/* should never happen*/
+				case JOIN_UNKNOWN:
+					appendPQExpBuffer(&logmsg,
+									  "unable to determine success of node rejoin action for demotion candidate \"%s\" (ID: %i)",
+									  remote_node_record.node_name,
+									  remote_node_record.node_id);
+					switchover_success = false;
+					break;
+			}
+
+			if (switchover_success == false)
+			{
+				appendPQExpBuffer(&detailmsg,
+								  "check the PostgreSQL log file on  demotion candidate \"%s\" (ID: %i)",
+								  remote_node_record.node_name,
+								  remote_node_record.node_id);
+			}
 		}
-		termPQExpBuffer(&event_details);
 	}
 
+	if (switchover_success == true)
+	{
+		/* TODO: verify demotion candidates's node record was updated correctly */
+
+		log_notice("%s", logmsg.data);
+	}
+	else
+	{
+		log_error("%s", logmsg.data);
+	}
+
+	initPQExpBuffer(&event_details);
+
+	appendPQExpBufferStr(&event_details, logmsg.data);
+
+	if (detailmsg.data[0] != '\0')
+	{
+		log_detail("%s", detailmsg.data);
+		appendPQExpBuffer(&event_details, "\n%s",
+						  detailmsg.data);
+	}
+
+
+	create_event_notification_extended(local_conn,
+									   &config_file_options,
+									   config_file_options.node_id,
+									   "standby_switchover",
+									   switchover_success,
+									   event_details.data,
+									   &event_info);
+
+	termPQExpBuffer(&event_details);
+	termPQExpBuffer(&logmsg);
+	termPQExpBuffer(&detailmsg);
 	termPQExpBuffer(&command_output);
+
 
 	/*
 	 * If --siblings-follow specified, attempt to make them follow the new
@@ -5492,7 +5667,7 @@ do_standby_switchover(void)
 
 				if (repmgrd_info[i]->paused == true && runtime_options.repmgrd_force_unpause == false)
 				{
-					log_debug("repmgrd on node \"%s\" (ID %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
+					log_debug("repmgrd on node \"%s\" (ID: %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id);
 
@@ -5500,7 +5675,7 @@ do_standby_switchover(void)
 					continue;
 				}
 
-				log_debug("unpausing repmgrd on node \"%s\" (ID %i)",
+				log_debug("unpausing repmgrd on node \"%s\" (ID: %i)",
 						  cell->node_info->node_name,
 						  cell->node_info->node_id);
 
@@ -5511,7 +5686,7 @@ do_standby_switchover(void)
 					if (repmgrd_pause(cell->node_info->conn, false) == false)
 					{
 						item_list_append_format(&repmgrd_unpause_errors,
-												_("unable to unpause node \"%s\" (ID %i)"),
+												_("unable to unpause node \"%s\" (ID: %i)"),
 												cell->node_info->node_name,
 												cell->node_info->node_id);
 						error_node_count++;
@@ -5520,7 +5695,7 @@ do_standby_switchover(void)
 				else
 				{
 					item_list_append_format(&repmgrd_unpause_errors,
-											_("unable to connect to node \"%s\" (ID %i):\n%s"),
+											_("unable to connect to node \"%s\" (ID: %i):\n%s"),
 											cell->node_info->node_name,
 											cell->node_info->node_id,
 											PQerrorMessage(cell->node_info->conn));
@@ -7544,7 +7719,7 @@ stop_backup:
 						if (record_status == RECORD_FOUND)
 						{
 							log_verbose(LOG_INFO,
-										_("replication slot \"%s\" aleady exists on upstream node %i"),
+										_("replication slot \"%s\" already exists on upstream node %i"),
 										local_node_record->slot_name,
 										upstream_node_id);
 						}
@@ -8999,7 +9174,7 @@ do_standby_help(void)
 	printf(_("  --dry-run                           perform checks etc. but don't actually execute switchover\n"));
 	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
 	printf(_("  --force-rewind[=VALUE]              use \"pg_rewind\" to reintegrate the old primary if necessary\n"));
-	printf(_("                                        (9.3 and 9.4 - provide \"pg_rewind\" path)\n"));
+	printf(_("                                        (PostgreSQL 9.4 - provide \"pg_rewind\" path)\n"));
 
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));

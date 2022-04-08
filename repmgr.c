@@ -1,7 +1,7 @@
 /*
  * repmgr.c - repmgr extension
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This is the actual extension code; see repmgr-client.c for the code which
  * generates the repmgr binary
@@ -88,59 +88,24 @@ void		_PG_fini(void);
 
 static void repmgr_shmem_startup(void);
 
-Datum		set_local_node_id(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(set_local_node_id);
-
-Datum		get_local_node_id(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_local_node_id);
-
-Datum		standby_set_last_updated(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(standby_set_last_updated);
-
-Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(standby_get_last_updated);
-
-Datum		set_upstream_last_seen(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(set_upstream_last_seen);
-
-Datum		get_upstream_last_seen(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_upstream_last_seen);
-
-Datum		get_upstream_node_id(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_upstream_node_id);
-
-Datum		set_upstream_node_id(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(set_upstream_node_id);
-
-Datum		notify_follow_primary(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(notify_follow_primary);
-
-Datum		get_new_primary(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_new_primary);
-
-Datum		reset_voting_status(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(reset_voting_status);
-
-Datum		set_repmgrd_pid(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(repmgr_set_local_node_id);
+PG_FUNCTION_INFO_V1(repmgr_get_local_node_id);
+PG_FUNCTION_INFO_V1(repmgr_standby_set_last_updated);
+PG_FUNCTION_INFO_V1(repmgr_standby_get_last_updated);
+PG_FUNCTION_INFO_V1(repmgr_set_upstream_last_seen);
+PG_FUNCTION_INFO_V1(repmgr_get_upstream_last_seen);
+PG_FUNCTION_INFO_V1(repmgr_get_upstream_node_id);
+PG_FUNCTION_INFO_V1(repmgr_set_upstream_node_id);
+PG_FUNCTION_INFO_V1(repmgr_notify_follow_primary);
+PG_FUNCTION_INFO_V1(repmgr_get_new_primary);
+PG_FUNCTION_INFO_V1(repmgr_reset_voting_status);
 PG_FUNCTION_INFO_V1(set_repmgrd_pid);
-
-Datum		get_repmgrd_pid(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_repmgrd_pid);
-
-Datum		get_repmgrd_pidfile(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_repmgrd_pidfile);
-
-Datum		repmgrd_is_running(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_is_running);
-
-Datum		repmgrd_pause(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_pause);
-
-Datum		repmgrd_is_paused(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_is_paused);
-
-Datum		get_wal_receiver_pid(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_wal_receiver_pid);
+PG_FUNCTION_INFO_V1(repmgr_get_wal_receiver_pid);
 
 
 /*
@@ -194,7 +159,7 @@ repmgr_shmem_startup(void)
 	shared_state = NULL;
 
 	/*
-	 * Create or attach to the shared memory state, including hash table
+	 * Create or attach to the shared memory state
 	 */
 	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
 
@@ -233,7 +198,7 @@ repmgr_shmem_startup(void)
 /* ==================== */
 
 Datum
-set_local_node_id(PG_FUNCTION_ARGS)
+repmgr_set_local_node_id(PG_FUNCTION_ARGS)
 {
 	int			local_node_id = UNKNOWN_NODE_ID;
 	int			stored_node_id = UNKNOWN_NODE_ID;
@@ -303,7 +268,7 @@ set_local_node_id(PG_FUNCTION_ARGS)
 
 
 Datum
-get_local_node_id(PG_FUNCTION_ARGS)
+repmgr_get_local_node_id(PG_FUNCTION_ARGS)
 {
 	int			local_node_id = UNKNOWN_NODE_ID;
 
@@ -320,7 +285,7 @@ get_local_node_id(PG_FUNCTION_ARGS)
 
 /* update and return last updated with current timestamp */
 Datum
-standby_set_last_updated(PG_FUNCTION_ARGS)
+repmgr_standby_set_last_updated(PG_FUNCTION_ARGS)
 {
 	TimestampTz last_updated = GetCurrentTimestamp();
 
@@ -337,7 +302,7 @@ standby_set_last_updated(PG_FUNCTION_ARGS)
 
 /* get last updated timestamp */
 Datum
-standby_get_last_updated(PG_FUNCTION_ARGS)
+repmgr_standby_get_last_updated(PG_FUNCTION_ARGS)
 {
 	TimestampTz last_updated;
 
@@ -354,7 +319,7 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 
 
 Datum
-set_upstream_last_seen(PG_FUNCTION_ARGS)
+repmgr_set_upstream_last_seen(PG_FUNCTION_ARGS)
 {
 	int			upstream_node_id = UNKNOWN_NODE_ID;
 
@@ -377,7 +342,7 @@ set_upstream_last_seen(PG_FUNCTION_ARGS)
 
 
 Datum
-get_upstream_last_seen(PG_FUNCTION_ARGS)
+repmgr_get_upstream_last_seen(PG_FUNCTION_ARGS)
 {
 	long		secs;
 	int			microsecs;
@@ -411,7 +376,7 @@ get_upstream_last_seen(PG_FUNCTION_ARGS)
 
 
 Datum
-get_upstream_node_id(PG_FUNCTION_ARGS)
+repmgr_get_upstream_node_id(PG_FUNCTION_ARGS)
 {
 	int			upstream_node_id = UNKNOWN_NODE_ID;
 
@@ -426,7 +391,7 @@ get_upstream_node_id(PG_FUNCTION_ARGS)
 }
 
 Datum
-set_upstream_node_id(PG_FUNCTION_ARGS)
+repmgr_set_upstream_node_id(PG_FUNCTION_ARGS)
 {
 	int			upstream_node_id = UNKNOWN_NODE_ID;
 	int			local_node_id = UNKNOWN_NODE_ID;
@@ -462,7 +427,7 @@ set_upstream_node_id(PG_FUNCTION_ARGS)
 
 
 Datum
-notify_follow_primary(PG_FUNCTION_ARGS)
+repmgr_notify_follow_primary(PG_FUNCTION_ARGS)
 {
 	int			primary_node_id = UNKNOWN_NODE_ID;
 
@@ -505,7 +470,7 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 
 
 Datum
-get_new_primary(PG_FUNCTION_ARGS)
+repmgr_get_new_primary(PG_FUNCTION_ARGS)
 {
 	int			new_primary_node_id = UNKNOWN_NODE_ID;
 
@@ -527,7 +492,7 @@ get_new_primary(PG_FUNCTION_ARGS)
 
 
 Datum
-reset_voting_status(PG_FUNCTION_ARGS)
+repmgr_reset_voting_status(PG_FUNCTION_ARGS)
 {
 	if (!shared_state)
 		PG_RETURN_NULL();
@@ -735,7 +700,7 @@ repmgrd_is_paused(PG_FUNCTION_ARGS)
 
 
 Datum
-get_wal_receiver_pid(PG_FUNCTION_ARGS)
+repmgr_get_wal_receiver_pid(PG_FUNCTION_ARGS)
 {
 	int wal_receiver_pid;
 

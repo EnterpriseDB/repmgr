@@ -1,7 +1,7 @@
 TODO
 ====
 
-This file contains a list of improvements which are desireable and/or have
+This file contains a list of improvements which are desirable and/or have
 been requested, and which we aim to address/implement when time and resources
 permit.
 
@@ -17,4 +17,4 @@ repmgrd nodes to prevent unintended failover; this is obviously inconvenient.
 We'll need to implement some way of notifying each repmgrd to suspend automatic
 failover until further notice.
 
-Requested in GitHub #410 ( https://github.com/2ndQuadrant/repmgr/issues/410 )
+Requested in GitHub #410 ( https://github.com/EnterpriseDB/repmgr/issues/410 )

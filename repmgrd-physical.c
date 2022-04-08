@@ -1,7 +1,7 @@
 /*
  * repmgrd-physical.c - physical (streaming) replication functionality for repmgrd
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -169,45 +169,126 @@ handle_sigint_physical(SIGNAL_ARGS)
 /* perform some sanity checks on the node's configuration */
 
 void
-do_physical_node_check(void)
+do_physical_node_check(PGconn *conn)
 {
 	/*
-	 * Check if node record is active - if not, and `failover=automatic`, the
-	 * node won't be considered as a promotion candidate; this often happens
-	 * when a failed primary is recloned and the node was not re-registered,
-	 * giving the impression failover capability is there when it's not. In
-	 * this case abort with an error and a hint about registering.
+	 * If node record is "inactive"; if not, attempt to set it to "active".
 	 *
-	 * If `failover=manual`, repmgrd can continue to passively monitor the
-	 * node, but we should nevertheless issue a warning and the same hint.
+	 * Usually it will have become inactive due to e.g. a standby being shut down
+	 * while repmgrd was running in an unpaused state. In this case it's
+	 * perfectly reasonable to automatically mark the node as "active".
 	 */
 
 	if (local_node_info.active == false)
 	{
 		char	   *hint = "Check that \"repmgr (primary|standby) register\" was executed for this node";
+		RecoveryType recovery_type = get_recovery_type(conn);
 
-		switch (config_file_options.failover)
+		/*
+		 * If the local node's recovery status is incompatible with its registered
+		 * status, e.g. registered as primary but running as a standby, refuse to start.
+		 *
+		 * This typically happens when a failed primary is recloned but the node was not
+		 * re-registered, leaving the cluster in a potentially ambiguous state. In
+		 * this case it would not be possible or desirable to attempt to set the
+		 * node to active; the user should ensure the cluster is in the correct state.
+		 */
+		if (recovery_type != RECTYPE_UNKNOWN && local_node_info.type != UNKNOWN)
 		{
-			/* "failover" is an enum, all values should be covered here */
+			bool	require_reregister = false;
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
 
-			case FAILOVER_AUTOMATIC:
-				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
+			if (recovery_type == RECTYPE_STANDBY && local_node_info.type != STANDBY)
+			{
+				appendPQExpBuffer(&event_details,
+								  _("node is registered as a %s but running as a standby"),
+								  get_node_type_string(local_node_info.type));
+
+				require_reregister = true;
+			}
+			else if (recovery_type == RECTYPE_PRIMARY && local_node_info.type == STANDBY)
+			{
+				log_error(_("node is registered as a standby but running as a %s"), get_node_type_string(local_node_info.type));
+				require_reregister = true;
+			}
+
+			if (require_reregister == true)
+			{
+				log_error("%s", event_details.data);
 				log_hint(_("%s"), hint);
 
 				create_event_notification(NULL,
 										  &config_file_options,
 										  config_file_options.node_id,
-										  "repmgrd_shutdown",
+										  "repmgrd_start",
 										  false,
-										  "node is inactive and cannot be used as a failover target");
+										  event_details.data);
 
+				termPQExpBuffer(&event_details);
 				terminate(ERR_BAD_CONFIG);
-				break;
+			}
 
-			case FAILOVER_MANUAL:
-				log_warning(_("this node is marked as inactive and will be passively monitored only"));
-				log_hint(_("%s"), hint);
-				break;
+			termPQExpBuffer(&event_details);
+		}
+
+		/*
+		 * Attempt to set node record active (unless explicitly configured not to)
+		 */
+		log_notice(_("setting node record for node \"%s\" (ID: %i) to \"active\""),
+				   local_node_info.node_name,
+				   local_node_info.node_id);
+
+		if (config_file_options.repmgrd_exit_on_inactive_node == false)
+		{
+			PGconn *primary_conn = get_primary_connection(conn, NULL, NULL);
+			bool	success = true;
+
+			if (PQstatus(primary_conn) != CONNECTION_OK)
+			{
+				log_error(_("unable to connect to the primary node to activate the node record"));
+				success = false;
+			}
+			else
+			{
+				success = update_node_record_set_active(primary_conn, local_node_info.node_id, true);
+				PQfinish(primary_conn);
+			}
+
+			if (success == true)
+			{
+				local_node_info.active = true;
+			}
+		}
+
+		/*
+		 * Corner-case where it was not possible to set the node to "active"
+		 */
+		if (local_node_info.active == false)
+		{
+			switch (config_file_options.failover)
+			{
+				/* "failover" is an enum, all values should be covered here */
+
+				case FAILOVER_AUTOMATIC:
+					log_error(_("this node is marked as inactive and cannot be used as a failover target"));
+					log_hint(_("%s"), hint);
+
+					create_event_notification(NULL,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_start",
+											  false,
+											  "node is inactive and cannot be used as a failover target");
+
+					terminate(ERR_BAD_CONFIG);
+					break;
+
+				case FAILOVER_MANUAL:
+					log_warning(_("this node is marked as inactive and will be passively monitored only"));
+					log_hint(_("%s"), hint);
+					break;
+			}
 		}
 	}
 
@@ -504,6 +585,7 @@ monitor_streaming_primary(void)
 
 			if (is_server_available(local_node_info.conninfo) == true)
 			{
+				close_connection(&local_conn);
 				local_conn = establish_db_connection(local_node_info.conninfo, false);
 
 				if (PQstatus(local_conn) != CONNECTION_OK)
@@ -737,7 +819,7 @@ check_primary_status(int degraded_monitoring_elapsed)
 			/* refresh our copy of the node record from the primary */
 			record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
 
-			/* this is unlikley to happen */
+			/* this is unlikely to happen */
 			if (record_status != RECORD_FOUND)
 			{
 				log_warning(_("unable to retrieve local node record from primary node %i"), primary_node_id);
@@ -1111,7 +1193,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 	/* calculate number of connected child nodes */
 	for (cell = db_child_node_records->head; cell; cell = cell->next)
 	{
-		/* exclude witness server from total, if necessay */
+		/* exclude witness server from total, if necessary */
 		if (config_file_options.child_nodes_connected_include_witness == false &&
 			cell->node_info->type == WITNESS)
 			continue;
@@ -1149,7 +1231,7 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 				instr_time  current_time = current_time_base;
 				int seconds_since_detached;
 
-				/* exclude witness server from calculatin if neccessary */
+				/* exclude witness server from calculation, if requested */
 				if (config_file_options.child_nodes_connected_include_witness == false &&
 					child_node_rec->type == WITNESS)
 					continue;
@@ -1732,7 +1814,10 @@ monitor_streaming_standby(void)
 			if (upstream_check_result == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
+				{
+					close_connection(&upstream_conn);
 					upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
+				}
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
@@ -1813,6 +1898,7 @@ monitor_streaming_standby(void)
 						int			former_upstream_node_id = local_node_info.upstream_node_id;
 						NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 						PQExpBufferData event_details;
+						t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 						update_node_record_set_primary(local_conn,  local_node_info.node_id);
 						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -1825,12 +1911,16 @@ monitor_streaming_standby(void)
 						initPQExpBuffer(&event_details);
 						appendPQExpBufferStr(&event_details,
 											 _("promotion command failed but promotion completed successfully"));
-						create_event_notification(local_conn,
-												  &config_file_options,
-												  local_node_info.node_id,
-												  "repmgrd_failover_promote",
-												  true,
-												  event_details.data);
+
+						event_info.node_id = former_upstream_node_id;
+
+						create_event_notification_extended(local_conn,
+														   &config_file_options,
+														   local_node_info.node_id,
+														   "repmgrd_failover_promote",
+														   true,
+														   event_details.data,
+														   &event_info);
 
 						termPQExpBuffer(&event_details);
 
@@ -2460,8 +2550,10 @@ monitor_streaming_witness(void)
 			if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo, NULL) == true)
 			{
 				if (config_file_options.connection_check_type != CHECK_QUERY)
+				{
+					close_connection(&primary_conn);
 					primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
-
+				}
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
 					PQExpBufferData event_details;
@@ -2975,7 +3067,6 @@ do_primary_failover(void)
 
 				t_node_info new_primary = T_NODE_INFO_INITIALIZER;
 				RecordStatus record_status = RECORD_NOT_FOUND;
-				PGconn	   *new_primary_conn;
 
 				record_status = get_node_record(local_conn, new_primary_id, &new_primary);
 
@@ -2987,6 +3078,7 @@ do_primary_failover(void)
 				else
 				{
 					PQExpBufferData event_details;
+					PGconn	   *new_primary_conn;
 
 					initPQExpBuffer(&event_details);
 					appendPQExpBuffer(&event_details,
@@ -3007,7 +3099,6 @@ do_primary_failover(void)
 											  event_details.data);
 					close_connection(&new_primary_conn);
 					termPQExpBuffer(&event_details);
-
 				}
 				failover_state = FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER;
 			}
@@ -3254,7 +3345,7 @@ update_monitoring_history(void)
  *
  * Attach cascaded standby to another node, currently the primary.
  *
- * Note that in contrast to a primary failover, where one of the downstrean
+ * Note that in contrast to a primary failover, where one of the downstream
  * standby nodes will become a primary, a cascaded standby failover (where the
  * upstream standby has gone away) is "just" a case of attaching the standby to
  * another node.
@@ -3674,6 +3765,7 @@ promote_self(void)
 
 	{
 		PQExpBufferData event_details;
+		t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 		/* update own internal node record */
 		record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -3690,13 +3782,16 @@ promote_self(void)
 						  failed_primary.node_name,
 						  failed_primary.node_id);
 
+		event_info.node_id = failed_primary.node_id;
+
 		/* local_conn is now the primary connection */
-		create_event_notification(local_conn,
-								  &config_file_options,
-								  local_node_info.node_id,
-								  "repmgrd_failover_promote",
-								  true,
-								  event_details.data);
+		create_event_notification_extended(local_conn,
+										   &config_file_options,
+										   local_node_info.node_id,
+										   "repmgrd_failover_promote",
+										   true,
+										   event_details.data,
+										   &event_info);
 
 		termPQExpBuffer(&event_details);
 	}

@@ -93,7 +93,7 @@
     <table id="repmgr-compatibility-matrix">
       <title>&repmgr; compatibility matrix</title>
 
-      <tgroup cols="3">
+      <tgroup cols="4">
         <thead>
           <row>
             <entry>
@@ -112,16 +112,30 @@
         </thead>
 
         <tbody>
-
           <row>
             <entry>
-              &repmgr; 5.2
+              &repmgr; 5.3
             </entry>
             <entry>
               YES
             </entry>
             <entry>
               <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+            </entry>
+            <entry>
+              9.4, 9.5, 9.6, 10, 11, 12, 13, 14
+            </entry>
+          </row>
+
+          <row>
+            <entry>
+              &repmgr; 5.2
+            </entry>
+            <entry>
+              NO
+            </entry>
+            <entry>
+              <link linkend="release-5.2.1">5.2.1</link> (2020-12-07)
             </entry>
             <entry>
               9.4, 9.5, 9.6, 10, 11, 12, 13

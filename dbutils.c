@@ -1,7 +1,7 @@
 /*
  * dbutils.c - Database connection/management functions
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -729,6 +729,8 @@ validate_conninfo_string(const char *conninfo_str, char **errmsg)
 
 	if (connOptions == NULL)
 		return false;
+
+	PQconninfoFree(connOptions);
 
 	return true;
 }
@@ -4240,7 +4242,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						}
 						break;
 					case 'p':
-						/* %p: primary id ("standby_switchover": former primary id) */
+						/* %p: primary id ("standby_switchover"/"repmgrd_failover_promote": former primary id) */
 						src_ptr++;
 						if (event_info->node_id != UNKNOWN_NODE_ID)
 						{
@@ -4825,7 +4827,7 @@ cancel_query(PGconn *conn, int timeout)
  * Wait until current query finishes, ignoring any results.
  * Usually this will be an async query or query cancellation.
  *
- * Returns 1 for success; 0 if any error ocurred; -1 if timeout reached.
+ * Returns 1 for success; 0 if any error occurred; -1 if timeout reached.
  */
 int
 wait_connection_availability(PGconn *conn, int timeout)
@@ -6004,6 +6006,43 @@ is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
 	PQclear(res);
 
 	return is_paused;
+}
+
+/* repmgrd status functions */
+
+CheckStatus
+get_repmgrd_status(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	CheckStatus	repmgrd_status = CHECK_STATUS_CRITICAL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 " SELECT "
+						 " CASE "
+						 "   WHEN repmgr.repmgrd_is_running() "
+						 "   THEN "
+						 "     CASE "
+						 "       WHEN repmgr.repmgrd_is_paused() THEN 1 ELSE 0 "
+						 "     END "
+						 "   ELSE 2 "
+						 " END AS repmgrd_status");
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute repmgrd status query"));
+	}
+	else
+	{
+		repmgrd_status = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+	return repmgrd_status;
 }
 
 

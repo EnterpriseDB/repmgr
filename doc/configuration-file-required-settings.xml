@@ -96,6 +96,9 @@
   </variablelist>
  </para>
 
+ <para>
+   See <xref linkend="configuration-file-optional-settings"/> for further configuration options.
+ </para>
 
 
 </sect1>

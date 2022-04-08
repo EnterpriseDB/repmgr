@@ -1,7 +1,7 @@
 /*
  * strutil.c
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -367,7 +367,6 @@ check_status_list_free(CheckStatusList *list)
 		cell = next_cell;
 	}
 }
-
 
 
 const char *

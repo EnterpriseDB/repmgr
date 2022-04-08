@@ -1,6 +1,6 @@
 /*
  * repmgr.h
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,6 +135,7 @@
 #define DEFAULT_ASYNC_QUERY_TIMEOUT          60  /* seconds */
 #define DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT 60  /* seconds */
 #define DEFAULT_REPMGRD_STANDBY_STARTUP_TIMEOUT -1 /*seconds */
+#define DEFAULT_REPMGRD_EXIT_ON_INACTIVE_NODE false,
 #define DEFAULT_STANDBY_DISCONNECT_ON_FAILOVER false
 #define DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT 30 /* seconds */
 #define DEFAULT_CONNECTION_CHECK_TYPE        CHECK_PING

@@ -1,7 +1,7 @@
 /*
  * dbutils.h
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -601,6 +601,9 @@ void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
 int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
+
+/* repmgrd status functions */
+CheckStatus	get_repmgrd_status(PGconn *conn);
 
 /* miscellaneous debugging functions */
 const char *print_node_status(NodeStatus node_status);

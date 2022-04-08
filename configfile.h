@@ -1,7 +1,7 @@
 /*
  * configfile.h
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -206,6 +206,7 @@ typedef struct
 	int			primary_notification_timeout;
 	int			repmgrd_standby_startup_timeout;
 	char		repmgrd_pid_file[MAXPGPATH];
+	bool		repmgrd_exit_on_inactive_node;
 	bool		standby_disconnect_on_failover;
 	int			sibling_nodes_disconnect_timeout;
 	ConnectionCheckType connection_check_type;
@@ -249,7 +250,7 @@ typedef struct
 	/*
 	 * undocumented settings
 	 *
-	 * These settings are for testing or experimential features
+	 * These settings are for testing or experimental features
 	 * and may be changed without notice.
 	 */
 

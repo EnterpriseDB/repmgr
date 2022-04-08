@@ -3,7 +3,7 @@
  *
  * Implements actions available for any kind of node
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 static bool copy_file(const char *src_file, const char *dest_file);
 static void format_archive_dir(PQExpBufferData *archive_dir);
 static t_server_action parse_server_action(const char *action);
+static const char *output_repmgrd_status(CheckStatus status);
 
 static void exit_optformat_error(const char *error, int errcode);
 
@@ -52,8 +53,10 @@ static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_repmgrd(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_config_owner(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_db_connection(PGconn *conn, OutputMode mode);
+
 
 /*
  * NODE STATUS
@@ -937,6 +940,16 @@ do_node_check(void)
 												   runtime_options.output_mode,
 												   &node_info,
 												   NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
+
+	if (runtime_options.repmgrd == true)
+	{
+		return_code = do_node_check_repmgrd(conn,
+											runtime_options.output_mode,
+											&node_info,
+											NULL);
 		PQfinish(conn);
 		exit(return_code);
 	}
@@ -2024,7 +2037,6 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 	return status;
 }
 
-
 CheckStatus
 do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
 {
@@ -2155,6 +2167,53 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 	}
 
 	termPQExpBuffer(&details);
+
+	return status;
+}
+
+CheckStatus
+do_node_check_repmgrd(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --repmgrd option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	status = get_repmgrd_status(conn);
+	switch (mode)
+	{
+		case OM_OPTFORMAT:
+			printf("--repmgrd=%s\n",
+				   output_check_status(status));
+			break;
+		case OM_NAGIOS:
+			printf("REPMGRD %s: %s\n",
+				   output_check_status(status),
+				   output_repmgrd_status(status));
+
+			break;
+		case OM_CSV:
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "repmgrd",
+									  status,
+									  output_repmgrd_status(status));
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   output_repmgrd_status(status));
+			}
+		default:
+			break;
+	}
 
 	return status;
 }
@@ -2611,6 +2670,13 @@ do_node_rejoin(void)
 		PQfinish(upstream_conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	/*
+	 * Emit a notice about the identity of the rejoin target
+	 */
+	log_notice(_("rejoin target is node \"%s\" (ID: %i)"),
+			   primary_node_record.node_name,
+			   primary_node_record.node_id);
 
 	/* connect to registered primary and check it's not in recovery */
 	primary_conn = establish_db_connection(primary_node_record.conninfo, false);
@@ -3563,6 +3629,25 @@ copy_file(const char *src_file, const char *dest_file)
 }
 
 
+static const char *
+output_repmgrd_status(CheckStatus status)
+{
+	switch (status)
+	{
+		case CHECK_STATUS_OK:
+			return "repmgrd running";
+		case CHECK_STATUS_WARNING:
+			return "repmgrd running but paused";
+		case CHECK_STATUS_CRITICAL:
+			return "repmgrd not running";
+		case CHECK_STATUS_UNKNOWN:
+			return "repmgrd status unknown";
+	}
+
+	return "UNKNOWN";
+}
+
+
 void
 do_node_help(void)
 {
@@ -3600,11 +3685,12 @@ do_node_help(void)
 	printf(_("  Following options check an individual status:\n"));
 	printf(_("    --archive-ready           number of WAL files ready for archiving\n"));
 	printf(_("    --downstream              whether all downstream nodes are connected\n"));
-	printf(_("    --uptream                 whether the node is connected to its upstream\n"));
+	printf(_("    --upstream                whether the node is connected to its upstream\n"));
 	printf(_("    --replication-lag         replication lag in seconds (standbys only)\n"));
 	printf(_("    --role                    check node has expected role\n"));
 	printf(_("    --slots                   check for inactive replication slots\n"));
 	printf(_("    --missing-slots           check for missing replication slots\n"));
+	printf(_("    --repmgrd                 check if repmgrd is running\n"));
 	printf(_("    --data-directory-config   check repmgr's data directory configuration\n"));
 
 	puts("");
@@ -3618,7 +3704,7 @@ do_node_help(void)
 	printf(_("    --dry-run               check that the prerequisites are met for rejoining the node\n" \
 			 "                              (including usability of \"pg_rewind\" if requested)\n"));
 	printf(_("    --force-rewind[=VALUE]  execute \"pg_rewind\" if necessary\n"));
-	printf(_("                              (9.3 and 9.4 - provide full \"pg_rewind\" path)\n"));
+	printf(_("                              (PostgreSQL 9.4 - provide full \"pg_rewind\" path)\n"));
 
 	printf(_("    --config-files          comma-separated list of configuration files to retain\n" \
 			 "                            after executing \"pg_rewind\"\n"));

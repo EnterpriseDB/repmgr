@@ -15,7 +15,7 @@
 
    <para>
     <xref linkend="repmgr-standby-clone"/> can use
-    <ulink url="https://www.2ndquadrant.com/">2ndQuadrant</ulink>'s
+    <ulink url="https://www.enterprisedb.com/">EDB</ulink>'s
     <ulink url="https://www.pgbarman.org/">Barman</ulink> application
     to clone a standby (and also as a fallback source for WAL files).
    </para>
@@ -299,7 +299,7 @@ description = "Main cluster"
      build up indefinitely, possibly leading to server failure.
     </simpara>
     <simpara>
-     As an alternative we recommend using 2ndQuadrant's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
+     As an alternative we recommend using EDB's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
      which offloads WAL management to a separate server, removing the requirement to use a replication
      slot for each individual standby to reserve WAL. See section <xref linkend="cloning-from-barman"/>
      for more details on using &repmgr; together with Barman.
@@ -319,7 +319,7 @@ description = "Main cluster"
     Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
     to replicate from another standby server rather than directly from the primary,
     meaning replication changes "cascade" down through a hierarchy of servers. This
-    can be used to reduce load on the primary and minimize bandwith usage between
+    can be used to reduce load on the primary and minimize bandwidth usage between
     sites. For more details, see the
     <ulink url="https://www.postgresql.org/docs/current/warm-standby.html#CASCADING-REPLICATION">
     PostgreSQL cascading replication documentation</ulink>.
@@ -391,7 +391,7 @@ description = "Main cluster"
      cluster, you may wish to clone a downstream standby whose upstream node
      does not yet exist. In this case you can clone from the primary (or
      another upstream node); provide the parameter <literal>--upstream-conninfo</literal>
-     to explictly set the upstream's <varname>primary_conninfo</varname> string
+     to explicitly set the upstream's <varname>primary_conninfo</varname> string
      in <filename>recovery.conf</filename>.
     </simpara>
    </tip>

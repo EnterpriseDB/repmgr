@@ -2,11 +2,11 @@
  * controldata.c - functions for reading the pg_control file
  *
  * The functions provided here enable repmgr to read a pg_control file
- * in a version-indepent way, even if the PostgreSQL instance is not
+ * in a version-independent way, even if the PostgreSQL instance is not
  * running. For that reason we can't use on the pg_control_*() functions
  * provided in PostgreSQL 9.6 and later.
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California

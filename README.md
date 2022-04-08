@@ -7,10 +7,10 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-The most recent `repmgr` version (5.2.0) supports all PostgreSQL versions from
+The most recent `repmgr` version (5.2.1) supports all PostgreSQL versions from
 9.5 to 13. PostgreSQL 9.4 is also supported, with some restrictions.
 
-`repmgr` is distributed under the GNU GPL 3 and maintained by 2ndQuadrant.
+`repmgr` is distributed under the GNU GPL 3 and maintained by EnterpriseDB.
 
 Documentation
 -------------
@@ -21,7 +21,7 @@ The full `repmgr` documentation is available here:
 
 The old `README` file for `repmgr` 3.x is available here:
 
-> https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
+> https://github.com/EnterpriseDB/repmgr/blob/REL3_3_STABLE/README.md
 
 Note that the `repmgr` 3.x series is no longer supported and contains known bugs;
 please upgrade to the [current repmgr version](https://repmgr.org/docs/current/appendix-release-notes.html)
@@ -55,11 +55,11 @@ Directories
 Support and Assistance
 ----------------------
 
-2ndQuadrant provides 24x7 production support for `repmgr`, including
+EnterpriseDB provides 24x7 production support for `repmgr`, including
 configuration assistance, installation verification and training for
 running a robust replication cluster. For further details see:
 
-* https://2ndquadrant.com/en/support/
+* [EDB Support Services](https://www.enterprisedb.com/support/postgresql-support-overview-get-the-most-out-of-postgresql)
 
 There is a mailing list/forum to discuss contributions or issues:
 
@@ -69,21 +69,12 @@ The IRC channel #repmgr is registered with freenode.
 
 Please report bugs and other issues to:
 
-* https://github.com/2ndQuadrant/repmgr
+* https://github.com/EnterpriseDB/repmgr
 
 Further information is available at https://repmgr.org/
 
 We'd love to hear from you about how you use repmgr. Case studies and
-news are always welcome. Send us an email at info@2ndQuadrant.com, or
-send a postcard to
-
-    repmgr
-    c/o 2ndQuadrant
-    7200 The Quorum
-    Oxford Business Park North
-    Oxford
-    OX4 2JZ
-    United Kingdom
+news are always welcome.
 
 Thanks from the repmgr core team.
 

@@ -7,20 +7,20 @@
   </indexterm>
 
   <para>
-    <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides 24x7
+    <ulink url="https://www.enterprisedb.com/">EDB</ulink> provides 24x7
     production support for &repmgr; and other PostgreSQL
     products, including configuration assistance, installation
     verification and training for running a robust replication cluster.
   </para>
   <para>
-    For further details see: <ulink url="https://2ndquadrant.com/en/support/">https://2ndquadrant.com/en/support/</ulink>
+    For further details see: <ulink url="https://www.enterprisedb.com/support/postgresql-support-overview-get-the-most-out-of-postgresql">Support Center</ulink>
   </para>
 
   <para>
     A mailing list/forum is provided via Google groups to discuss contributions or issues: <ulink url="https://groups.google.com/group/repmgr">https://groups.google.com/group/repmgr</ulink>.
   </para>
   <para>
-    Please report bugs and other issues to: <ulink url="https://github.com/2ndQuadrant/repmgr">https://github.com/2ndQuadrant/repmgr</ulink>.
+    Please report bugs and other issues to: <ulink url="https://github.com/EnterpriseDB/repmgr">https://github.com/EnterpriseDB/repmgr</ulink>.
   </para>
 
   <important>
@@ -64,7 +64,7 @@
 
      <listitem>
       <simpara>
-        <filename>repmpgr.conf</filename> files (suitably anonymized if necessary)
+        <filename>repmgr.conf</filename> files (suitably anonymized if necessary)
       </simpara>
      </listitem>
 

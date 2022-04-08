@@ -1,7 +1,7 @@
 /*
  * configdata.c - contains structs with parsed configuration data
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -580,6 +580,16 @@ struct ConfigFileSetting config_file_settings[] =
 		{},
 		{ .strmaxlen = sizeof(config_file_options.repmgrd_pid_file) },
 		{ .postprocess_func = &repmgr_canonicalize_path }
+	},
+	/* repmgrd_exit_on_inactive_node */
+	{
+		"repmgrd_exit_on_inactive_node",
+		CONFIG_BOOL,
+		{ .boolptr = &config_file_options.repmgrd_exit_on_inactive_node},
+		{ .booldefault = DEFAULT_REPMGRD_EXIT_ON_INACTIVE_NODE },
+		{},
+		{},
+		{}
 	},
 	/* standby_disconnect_on_failover */
 	{

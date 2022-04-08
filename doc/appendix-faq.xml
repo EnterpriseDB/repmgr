@@ -62,7 +62,7 @@
 
       <tip>
         <para>
-          2ndQuadrant's recommended configuration is to configure
+          Our recommended configuration is to configure
           <ulink url="https://www.pgbarman.org/">Barman</ulink> as a fallback
           source of WAL files, rather than maintain replication slots for
           each standby. See also: <link linkend="cloning-from-barman-restore-command">Using Barman as a WAL file source</link>.
@@ -127,7 +127,7 @@
         filesystem layouts.
       </para>
       <para>
-        Either use PostgreSQL packages provided by the community or 2ndQuadrant; if this
+        Either use PostgreSQL packages provided by the community or EnterpriseDB; if this
         is not possible, contact your vendor for assistance.
       </para>
     </sect2>
@@ -170,7 +170,7 @@
       <para>
         If different &quot;minor&quot; &repmgr; versions (e.g. 4.1.1 and 4.1.6) are installed,
         &repmgr; will function, but we strongly recommend always running the same version
-        to ensure there are no unexpected suprises, e.g. a newer version behaving slightly
+        to ensure there are no unexpected surprises, e.g. a newer version behaving slightly
         differently to the older version.
       </para>
       <para>
@@ -212,11 +212,11 @@
       </para>
     </sect2>
 
-    <sect2 id="faq-third-party-packages" xreflabel="Compatability with third party vendor packages">
+    <sect2 id="faq-third-party-packages" xreflabel="Compatibility with third party vendor packages">
       <title>Are &repmgr; packages compatible with <literal>$third_party_vendor</literal>'s packages?</title>
       <para>
-        &repmgr; packages provided by 2ndQuadrant are compatible with the community-provided PostgreSQL
-        packages and any software provided by 2ndQuadrant.
+        &repmgr; packages provided by EnterpriseDB are compatible with the community-provided PostgreSQL
+        packages and specified software provided by EnterpriseDB.
       </para>
       <para>
         A number of other vendors provide their own versions of PostgreSQL packages, often with different
@@ -311,7 +311,7 @@
       </para>
     </sect2>
 
-    <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
+    <sect2 id="faq-repmgr-shared-preload-libraries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
       <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
         in <filename>postgresql.conf</filename> if I'm not using &repmgrd;?</title>
       <para>
@@ -459,7 +459,7 @@
       </title>
       <para>
         <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
-        so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
+        so &repmgr; will not apply <option>pg_bindir</option> even if executing &repmgr;. Always provide the full
         path; see <xref linkend="repmgrd-automatic-failover-configuration"/> for more details.
       </para>
     </sect2>
@@ -479,7 +479,7 @@
         is out-of-date, which may lead to incorrect failover behaviour.
       </para>
       <para>
-        The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
+        The onus is therefore on the administrator to manually set the cluster to a stable, healthy state before
         starting &repmgrd;.
       </para>
     </sect2>

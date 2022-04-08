@@ -1,6 +1,6 @@
 /*
  * repmgr-client-global.h
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,6 +120,7 @@ typedef struct
 	bool		missing_slots;
 	bool		has_passfile;
 	bool		replication_connection;
+	bool		repmgrd;
 	bool		data_directory_config;
 	bool		replication_config_owner;
 	bool		db_connection;
@@ -175,7 +176,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	false, false, false, false, \
+		false, false, false, false, false, false, false, false,	false, false, false, false, false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \
@@ -219,7 +220,9 @@ typedef enum
 
 typedef enum
 {
+	JOIN_UNKNOWN = -1,
 	JOIN_SUCCESS,
+	JOIN_COMMAND_FAIL,
 	JOIN_FAIL_NO_PING,
 	JOIN_FAIL_NO_REPLICATION
 } standy_join_status;

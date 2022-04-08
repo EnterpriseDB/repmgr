@@ -13,6 +13,7 @@ DATA = \
   repmgr--unpackaged--4.0.sql \
   repmgr--unpackaged--5.1.sql \
   repmgr--unpackaged--5.2.sql \
+  repmgr--unpackaged--5.3.sql \
   repmgr--4.0.sql \
   repmgr--4.0--4.1.sql \
   repmgr--4.1.sql \
@@ -27,7 +28,11 @@ DATA = \
   repmgr--5.0--5.1.sql \
   repmgr--5.1.sql \
   repmgr--5.1--5.2.sql \
-  repmgr--5.2.sql
+  repmgr--5.2.sql \
+  repmgr--5.2--5.3.sql \
+  repmgr--5.3.sql \
+  repmgr--5.3--5.4.sql \
+  repmgr--5.4.sql
 
 REGRESS = repmgr_extension
 

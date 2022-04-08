@@ -27,7 +27,9 @@
   <note>
     <para>
       If using <application>systemd</application>, ensure you have <varname>RemoveIPC</varname> set to <literal>off</literal>.
-      See the <ulink url="https://wiki.postgresql.org/wiki/Systemd">systemd</ulink>
+      See the <ulink url="https://www.postgresql.org/docs/current/index.html">PostgreSQL documentation</ulink> section
+      <ulink url="https://www.postgresql.org/docs/current/kernel-resources.html#SYSTEMD-REMOVEIPC">systemd RemoveIPC</ulink>
+      and also the <ulink url="https://wiki.postgresql.org/wiki/Systemd">systemd</ulink>
       entry in the <ulink url="https://wiki.postgresql.org/wiki/Main_Page">PostgreSQL wiki</ulink> for details.
     </para>
   </note>

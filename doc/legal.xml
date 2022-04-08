@@ -1,18 +1,18 @@
 <!-- doc/legal.xml -->
 
-<date>2017</date>
+<date>2022</date>
 
 <copyright>
- <year>2010-2020</year>
- <holder>2ndQuadrant, Ltd.</holder>
+ <year>2010-2022</year>
+ <holder>EDB</holder>
 </copyright>
 
 <legalnotice id="legalnotice">
  <title>Legal Notice</title>
 
  <para>
-  <productname>repmgr</productname> is Copyright &copy; 2010-2020
-  by 2ndQuadrant, Ltd. All rights reserved.
+  <productname>repmgr</productname> is Copyright &copy; 2010-2022
+  by EDB All rights reserved.
  </para>
 
  <para>

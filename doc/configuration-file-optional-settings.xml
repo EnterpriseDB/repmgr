@@ -7,6 +7,14 @@
     <secondary>optional settings</secondary>
   </indexterm>
 
+  <note>
+    <simpara>
+      This section documents a subset of optional configuration settings; for a full
+      for a full and annotated view of all configuration options see the
+      see the <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">sample repmgr.conf file</ulink>
+    </simpara>
+  </note>
+
   <variablelist>
 
 
@@ -132,5 +140,50 @@ ssh_options='-q -o ConnectTimeout=10'</programlisting>
       </listitem>
     </varlistentry>
 
+    <varlistentry id="repmgr-conf-pg-bindir" xreflabel="pg_bindir">
+      <term><varname>pg_bindir</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>pg_bindir</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          Path to the PostgreSQL binary directory (location of <application>pg_ctl</application>,
+          <application>pg_basebackup</application> etc.). Only required
+	  if these are not in the system <varname>PATH</varname>.
+        </para>
+        <tip>
+          <para>
+            When &repmgr; is executed via <application>SSH</application> (e.g. when running
+            <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
+            <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command> or
+            <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>,
+            or if it is executed as cronjob), a login shell will not be used and only the
+            default system <varname>PATH</varname> will be set. Therefore it's recommended to set
+            <varname>pg_bindir</varname> so &repmgr; can correctly invoke binaries on a remote
+            system and avoid potential path issues.
+          </para>
+        </tip>
+
+        <para>
+          Debian/Ubuntu users: you will probably need to  set this to the directory where
+          <application>pg_ctl</application> is located, e.g. <filename>/usr/lib/postgresql/9.6/bin/</filename>.
+        </para>
+        <para>
+          <emphasis>NOTE</emphasis>: <varname>pg_bindir</varname> is only used when &repmgr; directly
+	  executes PostgreSQL binaries; any user-defined scripts
+	  <emphasis>must</emphasis> be specified with the full path.
+        </para>
+
+      </listitem>
+    </varlistentry>
   </variablelist>
+
+  <tip>
+    <simpara>
+      See the <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">sample repmgr.conf file</ulink>
+      for a full and annotated view of all configuration options.
+    </simpara>
+  </tip>
+
 </sect1>

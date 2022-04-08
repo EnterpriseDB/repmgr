@@ -1,6 +1,6 @@
 /*
  * repmgr-client.h
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,6 +100,7 @@
 #define OPT_DB_CONNECTION				   1047
 #define OPT_VERIFY_BACKUP				   1048
 #define OPT_RECOVERY_MIN_APPLY_DELAY       1049
+#define OPT_REPMGRD						   1050
 
 /* These options are for internal use only */
 #define OPT_CONFIG_ARCHIVE_DIR			   2001
@@ -193,6 +194,7 @@ static struct option long_options[] =
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},
 	{"missing-slots", no_argument, NULL, OPT_MISSING_SLOTS},
+	{"repmgrd", no_argument, NULL, OPT_REPMGRD},
 	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
 	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
 	{"data-directory-config", no_argument, NULL, OPT_DATA_DIRECTORY_CONFIG},

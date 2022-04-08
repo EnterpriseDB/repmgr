@@ -16,9 +16,148 @@
   </para>
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.3.1">
+    <title id="release-current">Release 5.3.1</title>
+    <para><emphasis>Tue 15 February, 2022</emphasis></para>
+    <para>
+      &repmgr; 5.3.1 is a minor release.
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+           <listitem>
+             <para>
+               Fix upgrade path from &repmgr; 4.2 and 4.3 to &repmgr; 5.3.
+             </para>
+           </listitem>
+           <listitem>
+             <para>
+               &repmgrd;: ensure potentially open connections are closed.
+             </para>
+             <para>
+                In some cases, when recovering from degraded state in local node monitoring,
+                new connection was opened to the local node without closing
+                the old one, which will result in memory leakage.
+             </para>
+           </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="release-5.3.0">
+    <title>Release 5.3.0</title>
+    <para><emphasis>Tue 12 October, 2021</emphasis></para>
+    <para>
+      &repmgr; 5.3.0 is a major release.
+    </para>
+    <para>
+      This release provides support for <ulink url="https://www.postgresql.org/docs/14/release-14.html">PostgreSQL 14</ulink>,
+      released in September 2021.
+    </para>
+    <sect2>
+      <title>Improvements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Improve handling of node rejoin failure on the demotion candidate.
+            </para>
+            <para>
+              Previously &repmgr; did not check whether <command>repmgr node rejoin</command> actually
+              succeeded on the demotion candidate, and would always wait up to <varname>node_rejoin_timeout</varname>
+              seconds for it to attach to the promotion candidate, even if this would never happen.
+            </para>
+            <para>
+              This makes it easier to identify unexpected events during a switchover operation, such as
+              the demotion candidate being unexpectedly restarted by an external process.
+            </para>
+            <para>
+              Note that the output of the <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link>
+              operation on the demotion candidate will now be logged to a temporary file on that node;
+              the location of the file will be reported in the error message, if one is emitted.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: at startup, if node record is marked as "inactive", attempt
+              to set it to "active".
+            </para>
+            <para>
+              This behaviour can be overridden by setting the configuration parameter
+              <varname>repmgrd_exit_on_inactive_node</varname> to <literal>true</literal>.
+            </para>
+          </listitem>
+           <listitem>
+             <para>
+               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
+               emit rejoin target note information as <literal>NOTICE</literal>.
+             </para>
+             <para>
+               This makes it clearer what &repmgr; is trying to do.
+             </para>
+           </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check">repmgr node check</link>:
+              option <option>--repmgrd</option> added to check &repmgrd;
+              status.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add <literal>%p</literal> <link linkend="event-notifications">event notification parameter</link>
+              providing the node ID of the former primary for the <literal>repmgrd_failover_promote</literal> event.
+            </para>
+          </listitem>
+
+        </itemizedlist>
+
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+           <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+              if using <option>--replication-conf-only</option> on a node
+              which was set up without replication slots, but the &repmgr; configuration
+              was since changed to <option>use_replication_slots=1</option>,
+              &repmgr; will now set <varname>slot_name</varname> in the
+              node record, if it was previously empty.
+            </para>
+           </listitem>
+
+
+           <listitem>
+            <para>
+              &repmgrd;: rename internal shared library functions to minimize the
+              risk of clashes with other shared libraries.
+            </para>
+            <para>
+              This does not affect user-facing SQL functions. Howe
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgrd;: ensure short option <option>-s</option> is accepted.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
 
   <sect1 id="release-5.2.1">
-    <title id="release-current">Release 5.2.1</title>
+    <title>Release 5.2.1</title>
     <para><emphasis>Mon 7 December, 2020</emphasis></para>
 
     <para>
@@ -1199,7 +1338,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             </para>
             <para>
               Possible values are <literal>ping</literal> (default; uses <command>PQping()</command> to
-              determine server availability), <literal>connection</literal> (attempst to make a new connection to
+              determine server availability), <literal>connection</literal> (attempts to make a new connection to
               the upstream node), and <literal>query</literal> (determines server availability
               by executing an SQL statement on the node via the existing connection).
             </para>

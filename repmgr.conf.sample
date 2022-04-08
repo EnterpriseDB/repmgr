@@ -69,7 +69,7 @@
 #------------------------------------------------------------------------------
 
 #replication_user='repmgr'	 # User to make replication connections with, if not set
-				 #  defaults to the user defined in "conninfo".
+				 # defaults to the user defined in "conninfo".
 
 #replication_type='physical'	 # Must "physical" (the default).
 
@@ -238,7 +238,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 #primary_follow_timeout=60		# The max length of time (in seconds) to wait
 					# for the new primary to become available
-#standby_follow_timeout=15		# The max length of time (in seconds) to wait
+#standby_follow_timeout=30		# The max length of time (in seconds) to wait
 					# for the standby to connect to the primary
 #standby_follow_restart=false		# Restart the standby instead of sending a SIGHUP
 					# (only for PostgreSQL 13 and later)
@@ -301,7 +301,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 #connection_check_type=ping		# How to check availability of the upstream node; valid options:
 					#  'ping': use PQping() to check if the node is accepting connections
-					#  'connection': execute a throwaway query on the current connection
+					#  'connection': attempt to make a new connection to the node
 					#  'query': execute an SQL statement on the node via the existing connection
 #reconnect_attempts=6			# Number of attempts which will be made to reconnect to an unreachable
 					# primary (or other upstream node)
@@ -314,7 +314,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #follow_command=''			# command repmgrd executes when instructing a standby to follow a new primary;
 					# use something like:
 					#
-					#     repmgr standby follow -f /etc/repmgr.conf -W --upstream-node-id=%n
+					#     repmgr standby follow -f /etc/repmgr.conf --upstream-node-id=%n
 					#
 #primary_notification_timeout=60	# Interval (in seconds) which repmgrd on a standby
 					# will wait for a notification from the new primary,
@@ -323,7 +323,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# for the the local node to restart and become ready to accept connections after
 					# executing "follow_command" (defaults to the value set in "standby_reconnect_timeout")
 
-#monitoring_history=no			# Whether to write monitoring data to the "montoring_history" table
+#monitoring_history=no			# Whether to write monitoring data to the "monitoring_history" table
 #monitor_interval_secs=2		# Interval (in seconds) at which to write monitoring data
 #degraded_monitoring_timeout=-1		# Interval (in seconds) after which repmgrd will terminate if the
 					# server(s) being monitored are no longer available. -1 (default)
@@ -337,6 +337,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# "--no-pid-file" will force PID file creation to be skipped.
 					# Note: there is normally no need to set this, particularly if
 					# repmgr was installed from packages.
+#repmgrd_exit_on_inactive_node=false	# If "true", and the node record is marked as "inactive", abort repmgrd startup
 #standby_disconnect_on_failover=false	# If "true", in a failover situation wait for all standbys to
 					# disconnect their WAL receivers before electing a new primary
 					# (PostgreSQL 9.5 and later only; repmgr user must be a superuser for this)

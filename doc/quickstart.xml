@@ -284,7 +284,7 @@
 
   <tip>
    <simpara>
-    For Debian-based distributions we recommend explictly setting
+    For Debian-based distributions we recommend explicitly setting
     <option>pg_bindir</option> to the directory where <command>pg_ctl</command> and other binaries
     not in the standard path are located. For PostgreSQL 9.6 this would be <filename>/usr/lib/postgresql/9.6/bin/</filename>.
    </simpara>
@@ -302,7 +302,7 @@
 
   <para>
    See the file
-   <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>
+   <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>
     for details of all available configuration parameters.
   </para>
 

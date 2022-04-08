@@ -1,7 +1,7 @@
 /*
  * repmgrd.c - Replication manager daemon
  *
- * Copyright (c) 2ndQuadrant, 2010-2020
+ * Copyright (c) EnterpriseDB Corporation, 2010-2021
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -131,7 +131,7 @@ main(int argc, char **argv)
 
 	memset(pid_file, 0, MAXPGPATH);
 
-	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:m", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:sm", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -249,7 +249,7 @@ main(int argc, char **argv)
 	/*
 	 * Parse the configuration file, if provided (if no configuration file was
 	 * provided, an attempt will be made to find one in one of the default
-	 * locations). If no conifguration file is available, or it can't be parsed
+	 * locations). If no configuration file is available, or it can't be parsed
 	 * parse_config() will abort anyway, with an appropriate message.
 	 */
 	load_config(config_file, verbose, false, argv[0]);
@@ -307,7 +307,7 @@ main(int argc, char **argv)
 	}
 
 
-	/* Some configuration file items can be overriden by command line options */
+	/* Some configuration file items can be overridden by command line options */
 
 	/*
 	 * Command-line parameter -L/--log-level overrides any setting in config
@@ -512,7 +512,7 @@ main(int argc, char **argv)
 		log_debug("node id is %i, upstream node id is %i",
 				  local_node_info.node_id,
 				  local_node_info.upstream_node_id);
-		do_physical_node_check();
+		do_physical_node_check(local_conn);
 	}
 
 	if (daemonize == true)

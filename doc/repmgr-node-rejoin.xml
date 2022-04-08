@@ -22,6 +22,10 @@
       This can optionally use <application>pg_rewind</application> to re-integrate
       a node which has diverged from the rest of the cluster, typically a failed primary.
     </para>
+    <para>
+      Note that <command>repmgr node rejoin</command> can only be used to attach
+      a standby to the current primary, not another standby.
+    </para>
 
     <tip>
       <para>
@@ -281,6 +285,7 @@
       <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose --dry-run
+    NOTICE: rejoin target is node "node3" (node ID: 3)
     INFO: replication connection to the rejoin target node was successful
     INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652184002263212600
@@ -339,6 +344,7 @@
         <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind --dry-run
+    NOTICE: rejoin target is node "node3" (node ID: 3)
     INFO: replication connection to the rejoin target node was successful
     INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652460429293670710
@@ -449,15 +455,16 @@
      </para>
      <para>
        Currently it is not possible to resolve this situation using <application>pg_rewind</application>.
-       A <ulink url="https://www.postgresql.org/message-id/flat/CABvVfJU-LDWvoz4-Yow3Ay5LZYTuPD7eSjjE4kGyNZpXC6FrVQ@mail.gmail.com">patch</ulink>
-       has been submitted and will hopefully be included in a forthcoming PostgreSQL minor release.
+       A <ulink url="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=2b4f3130382fe2f8705863e4d38589d4d69cd695">patch</ulink>
+       has been successfully submitted and will be included the next PostgreSQL minor release round, scheduled for
+       February 2021.
      </para>
      <para>
        As a workaround, start the primary server the standby was previously attached to,
        and ensure the standby can be attached to it. If <application>pg_rewind</application> was actually executed,
        it will have copied in the <filename>.history</filename> file from the target primary server; this must
        be removed. <command>repmgr node rejoin</command> can then be used to attach the standby to the original
-       primary. Ensure any changes pending on the primary have propogated to the standby. Then shut down the primary
+       primary. Ensure any changes pending on the primary have propagated to the standby. Then shut down the primary
        server <emphasis>first</emphasis>, before shutting down the standby. It should then be possible to
        use <command>repmgr node rejoin</command> to attach the standby to the new primary.
      </para>

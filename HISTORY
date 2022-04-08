@@ -1,3 +1,16 @@
+5.3.1   2022-??-??
+        repmgrd: fixes for potential connection leaks (hslightdb)
+
+5.3.0   2021-10-12
+        standby switchover: improve handling of node rejoin failure (Ian)
+        repmgrd: prefix all shared library functions with "repmgr_" to
+          minimize the risk of clashes with other shared libraries (Ian)
+        repmgrd: at startup, if node record is marked as "inactive", attempt
+          to set it to "active" (Ian)
+        standby clone: set "slot_name" in node record if required (Ian)
+        node rejoin: emit rejoin target note information as NOTICE (Ian)
+        repmgrd: ensure short option "-s" is accepted (Ian)
+
 5.2.1   2020-12-07
         config: fix parsing of "replication_type"; GitHub #672 (Ian)
         standby clone: handle missing "postgresql.auto.conf" (Ian)
@@ -43,7 +56,7 @@
         repmgr: ensure postgresql.auto.conf is created with correct permissions (Ian)
         repmgr: minimize requirement to check upstream data directory location
           during "standby clone" (Ian)
-        repmgr: warn about missing pg_rewind prerequisites when excuting
+        repmgr: warn about missing pg_rewind prerequisites when executing
           "standby clone" (Ian)
         repmgr: add --upstream option to "node check"
         repmgr: report error code on follow/rejoin failure due to non-available
