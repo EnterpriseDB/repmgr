@@ -367,9 +367,9 @@
     </sect2>
 
     <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in replication.conf">
-      <title>Why are some values in the filename>recovery.conf</filename> (PostgreSQL 11 and earlier) surrounded by pairs of single quotes?</title>
+      <title>Why are some values in <filename>recovery.conf</filename> (PostgreSQL 11 and earlier) surrounded by pairs of single quotes?</title>
       <para>
-        This is to ensure that user-supplied values which are written as parameter values in filename>recovery.conf</filename>
+        This is to ensure that user-supplied values which are written as parameter values in <filename>recovery.conf</filename>
         are escaped correctly and do not cause errors when the file is parsed.
       </para>
       <para>
