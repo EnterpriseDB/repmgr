@@ -61,6 +61,8 @@ static ReplSlotStatus _verify_replication_slot(PGconn *conn, char *slot_name, PQ
 
 static bool _create_event(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info, bool send_notification);
 
+static NodeAttached _is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state, bool quiet);
+
 /*
  * This provides a standardized way of logging database errors. Note
  * that the provided PGconn can be a normal or a replication connection;
@@ -5792,6 +5794,19 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 NodeAttached
 is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 {
+	return _is_downstream_node_attached(conn, node_name, node_state, false);
+}
+
+NodeAttached
+is_downstream_node_attached_quiet(PGconn *conn, char *node_name, char **node_state)
+{
+	return _is_downstream_node_attached(conn, node_name, node_state, true);
+}
+
+NodeAttached
+_is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state, bool quiet)
+{
+
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 
@@ -5826,9 +5841,12 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 	 */
 	if (PQntuples(res) > 1)
 	{
-		log_error(_("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
-				  node_name);
-		log_hint(_("verify that a unique node name is configured for each node"));
+		if (quiet == false)
+		{
+			log_error(_("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
+					  node_name);
+			log_hint(_("verify that a unique node name is configured for each node"));
+		}
 
 		PQclear(res);
 
@@ -5837,7 +5855,8 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 
 	if (PQntuples(res) == 0)
 	{
-		log_warning(_("node \"%s\" not found in \"pg_stat_replication\""), node_name);
+		if (quiet == false)
+			log_warning(_("node \"%s\" not found in \"pg_stat_replication\""), node_name);
 
 		PQclear(res);
 
@@ -5863,9 +5882,10 @@ is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state)
 
 		if (strcmp(state, "streaming") != 0)
 		{
-			log_warning(_("node \"%s\" attached in state \"%s\""),
-						node_name,
-						state);
+			if (quiet == false)
+				log_warning(_("node \"%s\" attached in state \"%s\""),
+							node_name,
+							state);
 
 			PQclear(res);
 
