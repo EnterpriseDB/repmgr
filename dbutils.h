@@ -597,6 +597,7 @@ int			get_replication_lag_seconds(PGconn *conn);
 TimeLineID	get_node_timeline(PGconn *conn, char *timeline_id_str);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 NodeAttached is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state);
+NodeAttached is_downstream_node_attached_quiet(PGconn *conn, char *node_name, char **node_state);
 void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
 int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 

@@ -1327,7 +1327,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, t_node_info *node_info, 
 			continue;
 		}
 
-		if (is_downstream_node_attached(conn, cell->node_info->node_name, NULL) != NODE_ATTACHED)
+		if (is_downstream_node_attached_quiet(conn, cell->node_info->node_name, NULL) != NODE_ATTACHED)
 		{
 			missing_nodes_count++;
 			item_list_append_format(&missing_nodes,
