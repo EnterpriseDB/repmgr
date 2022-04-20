@@ -1395,49 +1395,32 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, t_node_info *node_info, 
 	{
 		case OM_NAGIOS:
 			{
-				printf("REPMGR_DOWNSTREAM_SERVERS %s: %s | ",
-					   output_check_status(status),
-					   details.data);
-
 				if (missing_nodes_count)
 				{
 					ItemListCell *missing_cell = NULL;
 					bool		first = true;
 
-					printf("missing: ");
+					appendPQExpBufferStr(&details, " (missing: ");
+
 					for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
 					{
 						if (first == false)
-							printf(", ");
+							appendPQExpBufferStr(&details, ", ");
 						else
 							first = false;
 
 						if (first == false)
-							printf("%s", missing_cell->string);
+							appendPQExpBufferStr(&details, missing_cell->string);
 					}
+
+					appendPQExpBufferChar(&details, ')');
 				}
 
-				if (expected_nodes_count - missing_nodes_count)
-				{
-					ItemListCell *attached_cell = NULL;
-					bool		first = true;
-
-					if (missing_nodes_count)
-						printf("; ");
-					printf("attached: ");
-					for (attached_cell = attached_nodes.head; attached_cell; attached_cell = attached_cell->next)
-					{
-						if (first == false)
-							printf(", ");
-						else
-							first = false;
-
-						if (first == false)
-							printf("%s", attached_cell->string);
-					}
-				}
-				printf("\n");
-
+				printf("REPMGR_DOWNSTREAM_SERVERS %s: %s | attached=%i, missing=%i\n",
+					   output_check_status(status),
+					   details.data,
+					   expected_nodes_count - missing_nodes_count,
+					   missing_nodes_count);
 			}
 			break;
 		case OM_CSV:
