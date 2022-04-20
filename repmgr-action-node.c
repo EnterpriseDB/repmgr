@@ -1535,7 +1535,7 @@ do_node_check_upstream(PGconn *conn, OutputMode mode, t_node_info *node_info, Ch
 	{
 		case OM_NAGIOS:
 			{
-				printf("REPMGR_UPSTREAM_SERVER %s: %s | ",
+				printf("REPMGR_UPSTREAM_SERVER %s: %s\n",
 					   output_check_status(status),
 					   details.data);
 			}
