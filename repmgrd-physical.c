@@ -2381,7 +2381,17 @@ monitor_streaming_witness(void)
 		{
 			log_warning(_("unable to retrieve node record from primary"));
 		}
+		/* refresh record for this node from the local database */
+		record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("no metadata record found for this node - terminating"));
+			log_hint(_("execute \"ltcluster witness register --force\" to sync the local node records"));
+			close_connection(&primary_conn);
+			close_connection(&local_conn);
+			terminate(ERR_BAD_CONFIG);
+		}
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
