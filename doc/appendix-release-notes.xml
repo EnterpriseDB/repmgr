@@ -17,9 +17,13 @@
   <sect1 id="release-5.3.2">
     <title id="release-current">Release 5.3.2</title>
     <para><emphasis>??? ??? ???, 2022</emphasis></para>
-     <para>
+    <para>
       &repmgr; 5.3.2 is a minor release.
     </para>
+    <para>
+      If upgrading from &repmgr; 5.2.1 or earlier, a PostgreSQL restart <emphasis>is</emphasis> required.
+    </para>
+
     <sect2>
       <title>Bug fixes</title>
       <para>
@@ -53,6 +57,12 @@
     <para><emphasis>Tue 15 February, 2022</emphasis></para>
     <para>
       &repmgr; 5.3.1 is a minor release.
+    </para>
+    <para>
+      If &repmgrd; is in use, it should be restarted on all nodes where it is running.
+    </para>
+    <para>
+      If upgrading from &repmgr; 5.2.1 or earlier, a PostgreSQL restart <emphasis>is</emphasis> required.
     </para>
     <sect2>
       <title>Bug fixes</title>
@@ -88,6 +98,11 @@
       This release provides support for <ulink url="https://www.postgresql.org/docs/14/release-14.html">PostgreSQL 14</ulink>,
       released in September 2021.
     </para>
+    <para>
+      Note that this release includes changes to the &repmgr; shared library module, meaning a
+      PostgreSQL restart <emphasis>is</emphasis> required on all nodes where &repmgr; is installed.
+    </para>
+
     <sect2>
       <title>Improvements</title>
       <para>
