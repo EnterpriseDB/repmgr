@@ -1291,21 +1291,16 @@ get_cluster_size(PGconn *conn, char *size)
 	initPQExpBuffer(&query);
 	appendPQExpBufferStr(&query,
 						 "SELECT pg_catalog.pg_size_pretty(pg_catalog.sum(pg_catalog.pg_database_size(oid))::bigint) "
-						 "	 FROM pg_catalog.pg_database ");
+						 "  FROM pg_catalog.pg_database ");
 
 	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_db_error(conn, query.data, _("get_cluster_size(): unable to execute query"));
 		success = false;
-	}
 	else
-	{
 		snprintf(size, MAXLEN, "%s", PQgetvalue(res, 0, 0));
-	}
 
 	termPQExpBuffer(&query);
 	PQclear(res);
