@@ -1,6 +1,10 @@
-5.3.1   2022-??-??
-        repmgrd: fixes for potential connection leaks (hslightdb)
+5.3.2   2022-??-??
         standby clone: don't error out if unable to determine cluster size (Ian)
+        node check: fix --downstream --nagios output; GitHub #749 (Ian)
+
+5.3.1   2022-02-15
+        repmgrd: fixes for potential connection leaks (hslightdb)
+        repmgr: fix upgrade path from repmgr 4.2 and 4.3 to repmgr 5.3 (Ian)
 
 5.3.0   2021-10-12
         standby switchover: improve handling of node rejoin failure (Ian)
