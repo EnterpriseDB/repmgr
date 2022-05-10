@@ -14,10 +14,35 @@
   <para>
     See also: <xref linkend="upgrading-repmgr"/>
   </para>
+  <sect1 id="release-5.3.2">
+    <title id="release-current">Release 5.3.2</title>
+    <para><emphasis>??? ??? ???, 2022</emphasis></para>
+     <para>
+      &repmgr; 5.3.2 is a minor release.
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+              don't treat inability to determine the cluster size as a fatal error.
+            </para>
+            <para>
+              The cluster size is displayed for informational purposes and is not essential
+              for execution of the clone operation. As the &repmgr; user may not have permissions
+              for all databases in the cluster, ignore the cluster size query if it fails.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
 
 <!-- remember to update the release date in ../repmgr_version.h.in -->
   <sect1 id="release-5.3.1">
-    <title id="release-current">Release 5.3.1</title>
+    <title>Release 5.3.1</title>
     <para><emphasis>Tue 15 February, 2022</emphasis></para>
     <para>
       &repmgr; 5.3.1 is a minor release.

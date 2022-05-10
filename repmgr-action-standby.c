@@ -5783,20 +5783,18 @@ check_source_server()
 	}
 
 	/*
-	 * If a connection was established, perform some sanity checks on the
-	 * provided upstream connection.
+	 * The server version check will also serve as a sanity-check that we can
+	 * actually execute queries on this connection.
 	 */
-
 	source_server_version_num = check_server_version(source_conn, "primary", true, NULL);
 
 	/*
-	 * It's not essential to know the cluster size, but useful to sanity-check
-	 * we can actually run a query before going any further.
+	 * The cluster size is nice to have, but not essential to know, so only display
+	 * something if the user has sufficient permissions to retrieve the size of
+	 * all databases.
 	 */
-	if (get_cluster_size(source_conn, cluster_size) == false)
-		exit(ERR_DB_QUERY);
-
-	log_detail(_("current installation size is %s"),
+	if (get_cluster_size(source_conn, cluster_size) == true)
+		log_detail(_("current installation size is %s"),
 			   cluster_size);
 
 	/*
