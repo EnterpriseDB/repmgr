@@ -26,6 +26,13 @@
         <itemizedlist>
           <listitem>
             <para>
+              <command><link linkend="repmgr-node-status">repmgr node status</link></command>:
+              fix output with <option>--downstream</option> <option>--nagios</option> option combination.
+              GitHub #749.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
               don't treat inability to determine the cluster size as a fatal error.
             </para>
