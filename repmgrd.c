@@ -479,7 +479,7 @@ main(int argc, char **argv)
 		switch (config_file_options.replication_type)
 		{
 			case REPLICATION_TYPE_PHYSICAL:
-				log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
+				log_hint(_("check that 'repmgr (primary|standby|witness) register' was executed for this node"));
 				break;
 		}
 
