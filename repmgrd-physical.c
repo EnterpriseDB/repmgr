@@ -2382,6 +2382,18 @@ monitor_streaming_witness(void)
 			log_warning(_("unable to retrieve node record from primary"));
 		}
 
+		/* refresh local node record from the primary */
+		record_status = get_node_record(primary_conn, config_file_options.node_id, &local_node_info);
+
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("no metadata record found for this node on the current primary - terminating"));
+			log_hint(_("check that 'repmgr witness register' was executed for this node"));
+			close_connection(&primary_conn);
+			close_connection(&local_conn);
+			terminate(ERR_BAD_CONFIG);
+		}
+
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,

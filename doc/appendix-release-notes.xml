@@ -46,6 +46,13 @@
               for all databases in the cluster, ignore the cluster size query if it fails.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: ensure the witness node record on the primary is always marked
+              as <literal>active</literal> if previously marked <literal>inactive</literal>.
+              GitHub #754.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>
