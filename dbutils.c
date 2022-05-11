@@ -2139,7 +2139,13 @@ server_in_exclusive_backup_mode(PGconn *conn)
 {
 	BackupState backup_state = BACKUP_STATE_UNKNOWN;
 	const char *sqlquery = "SELECT pg_catalog.pg_is_in_backup()";
-	PGresult   *res = PQexec(conn, sqlquery);
+	PGresult   *res = NULL;
+
+	/* Exclusive backup removed from PostgreSQL 15 */
+	if (PQserverVersion(conn) >= 150000)
+		return BACKUP_STATE_NO_BACKUP;
+
+	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
