@@ -7,19 +7,186 @@
   </indexterm>
 
   <para>
-    &repmgr; requires that the database defined in the <varname>conninfo</varname>
-    setting contains the <literal>repmgr</literal> extension. The database user defined in the
-    <varname>conninfo</varname> setting must be able to access this database and
-    the database objects contained within the extension.
-  </para>
-  <para>
-    The <literal>repmgr</literal> extension can only be installed by a superuser.
-    If the &repmgr; user is a superuser, &repmgr; will create the extension automatically.
+    If the &repmgr; database user (the PostgreSQL user defined in the
+    <varname>conninfo</varname> setting is a superuser, no further user permissions need
+    to be granted.
   </para>
 
-  <para>
-    Alternatively, the extension can be created manually by a superuser
-    (with &quot;<command>CREATE EXTENSION repmgr</command>&quot;) before executing
-    <link linkend="repmgr-primary-register">repmgr primary register</link>.
-  </para>
+  <sect2 id="configuration-permissions-no-superuser" xreflabel="Non-super user permissions">
+    <title>repmgr user as a non-superuser</title>
+    <para>
+      In principle the &repmgr; database user does not need to be a superuser.
+      In this case the &repmgr; will need to be granted execution permissions on certain
+      functions, and membership of certain roles. However be aware that &repmgr; does
+      expect to be able to execute certain commands which are restricted to superusers;
+      in this case either a superuser must be specified with the <option>-S</option>/<option>--superuser</option>
+      (where available) option, or the corresponding action should be executed manually as a superuser.
+    </para>
+    <para>
+      The following sections describe the actions needed to use &repmgr; with a non-superuser,
+      and relevant caveats.
+    </para>
+    <sect3 id="configuration-permissions-replication" xreflabel="Replication role">
+      <title>Replication role</title>
+      <para>
+        &repmgr; requires a database user with the <literal>REPLICATION</literal> role
+        to be able to create a replication connection and (if configured) to administer
+        replication slots.
+      </para>
+      <para>
+        By default this is the database user defined in the <varname>conninfo</varname>
+        setting. This user can be:
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              a superuser
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              a non-superuser with the <literal>REPLICATION</literal> role
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              another user defined in the <filename>repmgr.conf</filename> parameter <varname>replication_user</varname> with the <literal>REPLICATION</literal> role
+            </simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect3>
+
+    <sect3 id="configuration-permissions-roles" xreflabel="Database roles for non-superusers">
+      <title>Database roles</title>
+      <para>
+        A non-superuser &repmgr; database user should be a member of the following
+        <ulink url="https://www.postgresql.org/docs/current/predefined-roles.html">predefined roles</ulink>
+        (PostgreSQL 10 and later):
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              <varname>pg_read_all_stats</varname>
+              (to read the <varname>status</varname> column of <literal>pg_stat_replication</literal>
+              and execute <function>pg_database_size()</function> on all databases)
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              <varname>pg_read_all_settings</varname> (to access the <varname>data_directory</varname> setting)
+            </simpara>
+          </listitem>
+        </itemizedlist>
+        Alternatively the meta-role <varname>pg_monitor</varname> can be granted, which includes membership
+        of the above predefined roles.
+      </para>
+      <para>
+        Membership of these roles can be granted with e.g. <command>GRANT pg_read_all_stats TO repmgr</command>.
+      </para>
+      <para>
+        Users of PostgreSQL 9.6 or earlier should upgrade to a supported PostgreSQL version, or provide
+        the <option>-S</option>/<option>--superuser</option> where available.
+      </para>
+    </sect3>
+
+    <sect3 id="configuration-permissions-extension" xreflabel="Extension creation">
+      <title>Extension creation</title>
+      <para>
+        &repmgr; requires that the database defined in the <varname>conninfo</varname>
+        setting contains the <literal>repmgr</literal> extension. The database user defined in the
+        <varname>conninfo</varname> setting must be able to access this database and
+        the database objects contained within the extension.
+      </para>
+      <para>
+        The <literal>repmgr</literal> extension can only be installed by a superuser.
+        If the &repmgr; user is a superuser, &repmgr; will create the extension automatically.
+      </para>
+
+      <para>
+        Alternatively, the extension can be created manually by a superuser
+        (with &quot;<command>CREATE EXTENSION repmgr</command>&quot;) before executing
+        <link linkend="repmgr-primary-register">repmgr primary register</link>.
+      </para>
+    </sect3>
+
+
+    <sect3 id="configuration-permissions-functions" xreflabel="Function permissions for non-superusers">
+      <title>Function permissions</title>
+      <para>
+        If the &repmgr; database user is not a superuser, <literal>EXECUTE</literal> permission should be
+        granted on the following function:
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              <function>pg_wal_replay_resume()</function> (required by &repmgrd; during failover operations;
+              if permission is not granted, the failoved process may not function reliably if a node
+              has WAL replay paused)
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              <function>pg_promote()</function> (PostgreSQL 12 and later; if permission is not granted,
+              &repmgr; will fall back to <command>pg_ctl promote</command>)
+            </simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+      <para>
+        <literal>EXECUTE</literal> permission on functions can be granted with e.g.:
+        <command>GRANT EXECUTE ON FUNCTION pg_catalog.pg_wal_replay_resume() TO repmgr</command>.
+      </para>
+    </sect3>
+
+    <sect3 id="configuration-permissions-superuser-required" xreflabel="repmgr actions requiring a superuser">
+      <title>repmgr actions requiring a superuser</title>
+      <para>
+        In some circumstances, &repmgr; may need to perform an operation which cannot be delegated to a
+        non-superuser.
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              The <command>CHECKPOINT</command> command is executed by
+              <link linkend="repmgr-standby-switchover">repmgr standby switchover</link>. This can only
+              be executed by a superuser; if the &repmgr; user is not a superuser,
+              the <option>-S</option>/<option>--superuser</option> should be used.
+            </simpara>
+            <simpara>
+              If &repmgr; is not able to execute <command>CHECKPOINT</command>,
+              there is a risk that the demotion candidate may not  be able to shut down as smoothly as might otherwise
+              have been the case.
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              The <command>ALTER SYSTEM</command> is executed by &repmgrd; if
+              <varname>standby_disconnect_on_failover</varname> is set to <literal>true</literal> in
+              <filename>repmgr.conf</filename>. <command>ALTER SYSTEM</command> can only be executed by
+              a superuser; if the &repmgr; user is not a superuser, this functionality will not be available.
+            </simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect3>
+
+    <sect3 id="configuration-permissions-superuser-option" xreflabel="repmgr commands with --superuser option">
+      <title>repmgr commands with --superuser option</title>
+      <para>
+        The following repmgr commands provide the <option>-S</option>/<option>--superuser</option> option:
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara><link linkend="repmgr-standby-clone">repmgr standby clone</link> (to be able to copy configuration files outside of the data directory if <option>--copy-external-config-files</option> provided)</simpara>
+          </listitem>
+          <listitem>
+            <simpara><link linkend="repmgr-standby-switchover">repmgr standby switchover</link> (to execute <command>CHECKPOINT</command>)</simpara>
+          </listitem>
+          <listitem>
+            <simpara><link linkend="repmgr-node-check">repmgr node check</link> (to execute <command>repmgr node check --data-directory-config</command>; note this is also called by <link linkend="repmgr-standby-switchover">repmgr standby switchover</link>)</simpara>
+          </listitem>
+          <listitem>
+            <simpara><link linkend="repmgr-node-service">repmgr node service</link> (to execute <command>CHECKPOINT</command> via the <option>--checkpoint</option>; note this is also called by <link linkend="repmgr-standby-switchover">repmgr standby switchover</link>)</simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect3>
+
+  </sect2>
 </sect1>
