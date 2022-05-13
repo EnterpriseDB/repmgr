@@ -5701,7 +5701,7 @@ get_node_timeline(PGconn *conn, char *timeline_id_str)
 	TimeLineID timeline_id  = UNKNOWN_TIMELINE_ID;
 
 	/*
-	 * PG_control_checkpoint() was introduced in PostgreSQL 9.6
+	 * pg_control_checkpoint() was introduced in PostgreSQL 9.6
 	 */
 	if (PQserverVersion(conn) >= 90600)
 	{
