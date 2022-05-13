@@ -95,6 +95,8 @@ static char barman_command_buf[MAXLEN] = "";
  * be run and which of the available users, which will be one
  * of the repmgr user, the replication user (if available) or
  * the superuser (if available).
+ *
+ * This is determined in check_source_server().
  */
 static t_user_type SettingsUser = REPMGR_USER;
 
