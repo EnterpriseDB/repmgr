@@ -399,7 +399,7 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
       </varlistentry>
 
       <varlistentry>
-        <term><option>--superuser</option></term>
+        <term><option>-S</option>/<option>--superuser</option></term>
         <listitem>
           <para>
             If the &repmgr; user is not a superuser, the name of a valid superuser must
