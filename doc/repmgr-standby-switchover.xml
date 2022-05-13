@@ -64,6 +64,13 @@
 
   <refsect1>
     <title>User permission requirements</title>
+    <para><emphasis>data_directory</emphasis></para>
+    <para>
+      &repmgr; needs to be able to determine the location of the data directory on the
+      demotion candidate. If the &repmgr; is not a superuser or member of the <varname>pg_read_all_settings</varname>
+      <ulink url="https://www.postgresql.org/docs/current/predefined-roles.html">predefined roles</ulink>,
+      the name of a superuser should be provided with the <option>-S</option>/<option>--superuser</option> option.
+    </para>
     <para><emphasis>CHECKPOINT</emphasis></para>
     <para>
       &repmgr; executes <command>CHECKPOINT</command> on the demotion candidate as part of the shutdown
@@ -72,7 +79,7 @@
     <para>
       Note that <command>CHECKPOINT</command> requires database superuser permissions to execute.
       If the <literal>repmgr</literal> user is not a superuser, the name of a superuser should be
-      provided with the <option>-S</option>/<option>--superuser</option>.
+      provided with the <option>-S</option>/<option>--superuser</option> option.
     </para>
     <para>
       If &repmgr; is unable to execute the <command>CHECKPOINT</command> command, the switchover
