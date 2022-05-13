@@ -332,6 +332,12 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
             node to the same path on the standby (default) or to the
             PostgreSQL data directory.
           </para>
+          <para>
+            Note that to be able to use this option, the &repmgr; user must be a superuser or
+            member of the <literal>pg_read_all_settings</literal> predefined role.
+            If this is not the case, provide a valid superuser with the
+            <option>-S</option>/<option>--superuser</option> option.
+          </para>
         </listitem>
       </varlistentry>
 
@@ -402,8 +408,12 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
         <term><option>-S</option>/<option>--superuser</option></term>
         <listitem>
           <para>
-            If the &repmgr; user is not a superuser, the name of a valid superuser must
-            be provided with this option.
+            The name of a valid PostgreSQL superuser can  be provided with this option.
+          </para>
+          <para>
+            This is only required if the <option>--copy-external-config-files</option> was provided
+            and the &repmgr; user is not a superuser or member of the <literal>pg_read_all_settings</literal>
+            predefined role.
           </para>
         </listitem>
       </varlistentry>
