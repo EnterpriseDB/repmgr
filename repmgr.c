@@ -80,12 +80,17 @@ typedef struct repmgrdSharedState
 
 static repmgrdSharedState *shared_state = NULL;
 
+#if (PG_VERSION_NUM >= 150000)
+static shmem_request_hook_type prev_shmem_request_hook = NULL;
+#endif
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
-
 
 void		_PG_init(void);
 void		_PG_fini(void);
 
+#if (PG_VERSION_NUM >= 150000)
+static void repmgr_shmem_request(void);
+#endif
 static void repmgr_shmem_startup(void);
 
 PG_FUNCTION_INFO_V1(repmgr_set_local_node_id);
@@ -117,6 +122,7 @@ _PG_init(void)
 	if (!process_shared_preload_libraries_in_progress)
 		return;
 
+#if (PG_VERSION_NUM < 150000)
 	RequestAddinShmemSpace(MAXALIGN(sizeof(repmgrdSharedState)));
 
 #if (PG_VERSION_NUM >= 90600)
@@ -124,12 +130,19 @@ _PG_init(void)
 #else
 	RequestAddinLWLocks(1);
 #endif
+#endif
 
 	/*
 	 * Install hooks.
 	 */
+#if (PG_VERSION_NUM >= 150000)
+	prev_shmem_request_hook = shmem_request_hook;
+	shmem_request_hook = repmgr_shmem_request;
+#endif
+
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = repmgr_shmem_startup;
+
 }
 
 
@@ -140,12 +153,31 @@ void
 _PG_fini(void)
 {
 	/* Uninstall hook */
+#if (PG_VERSION_NUM >= 150000)
+	shmem_request_hook = prev_shmem_request_hook;
+#endif
+
 	shmem_startup_hook = prev_shmem_startup_hook;
 }
 
+#if (PG_VERSION_NUM >= 150000)
+/*
+ * shmem_requst_hook: request shared memory
+ */
+static void
+repmgr_shmem_request(void)
+{
+	if (prev_shmem_request_hook)
+		prev_shmem_request_hook();
+
+	RequestAddinShmemSpace(MAXALIGN(sizeof(repmgrdSharedState)));
+
+	RequestNamedLWLockTranche(TRANCHE_NAME, 1);
+}
+#endif
 
 /*
- * shmem_startup hook: allocate or attach to shared memory,
+ * shmem_ hook: allocate or attach to shared memory,
  */
 static void
 repmgr_shmem_startup(void)
