@@ -3192,6 +3192,11 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 								 " --exclude=pg_xlog/* --exclude=pg_log/*");
 		}
 
+		/*
+		 * From PostgreSQL 15, the core server no longer uses pg_stat_tmp,
+		 * but some extensions (e.g. pg_stat_statements) may still do, so
+		 * keep excluding it.
+		 */
 		appendPQExpBufferStr(&rsync_flags,
 							 " --exclude=pg_stat_tmp/*");
 
