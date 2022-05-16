@@ -4610,17 +4610,17 @@ drop_replication_slot_replprot(PGconn *repl_conn, char *slot_name)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "DROP_REPLICATION_SLOT %s",
+					  "DROP_REPLICATION_SLOT %s;",
 					  slot_name);
 
 	log_verbose(LOG_DEBUG, "drop_replication_slot_replprot():\n  %s", query.data);
 
 	res = PQexec(repl_conn, query.data);
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
 	{
 		log_db_error(repl_conn, query.data,
-					 _("drop_replication_slot_sql(): unable to drop replication slot \"%s\""),
+					 _("drop_replication_slot_replprot(): unable to drop replication slot \"%s\""),
 					 slot_name);
 
 		success = false;
