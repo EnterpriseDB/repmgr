@@ -97,13 +97,14 @@ static t_user_type ReplicationSlotUser = USER_TYPE_UNKNOWN;
 static ItemList cli_errors = {NULL, NULL};
 static ItemList cli_warnings = {NULL, NULL};
 
-static PGconn *_get_replication_slot_connection(PGconn *conn,
-												char *replication_user,
-												bool *use_replication_protocol);
 
 static void _determine_replication_slot_user(PGconn *conn,
 											 t_node_info *upstream_node_record,
 											 char **replication_user);
+
+static PGconn *_get_replication_slot_connection(PGconn *conn,
+												char *replication_user,
+												bool *use_replication_protocol);
 
 int
 main(int argc, char **argv)
@@ -3755,7 +3756,7 @@ create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_nod
 			case USER_TYPE_UNKNOWN:
 				log_error("unable to determine user for replication slot creation");
 				return false;
-			case  REPMGR_USER:
+			case REPMGR_USER:
 				log_info(_("replication slots will be created by user \"%s\""),
 						 PQuser(conn));
 				return true;
@@ -3874,6 +3875,10 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 		bool use_replication_protocol = false;
 		PGconn *slot_conn = NULL;
 
+		slot_conn = _get_replication_slot_connection(conn,
+													 replication_user,
+													 &use_replication_protocol);
+
 		if (use_replication_protocol == true)
 		{
 			success = drop_replication_slot_replprot(conn, slot_name);
@@ -3954,6 +3959,15 @@ _determine_replication_slot_user(PGconn *conn, t_node_info *upstream_node_record
 		{
 			ReplicationSlotUser = REPLICATION_USER_NODE;
 			*replication_user = upstream_node_record->repluser;
+		}
+		else
+		{
+			/* This should never happen */
+			log_error("unable to determine replication slot user");
+			if (upstream_node_record != NULL)
+				log_debug("%i %s %s", upstream_node_record->node_id, upstream_node_record->repluser, PQuser(conn));
+			else
+				log_debug("upstream_node_record not provided");
 		}
 	}
 }

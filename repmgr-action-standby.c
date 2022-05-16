@@ -3348,10 +3348,9 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 			update_node_record_slot_name(primary_conn, config_file_options.node_id, local_node_record.slot_name);
 		}
 
-
 		if (create_replication_slot(follow_target_conn,
 									local_node_record.slot_name,
-									NULL,
+									follow_target_node_record,
 									output) == false)
 		{
 			log_error("%s", output->data);
