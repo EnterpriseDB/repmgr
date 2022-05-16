@@ -61,6 +61,12 @@
               &repmgr; is a superuser before attempting to disable the WAL receiver.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              If the &repmgr; user is a non-superuser, and a replication-only user exists,
+              ensure redundant replication slots are dropped correctly.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>
