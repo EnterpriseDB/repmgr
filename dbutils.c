@@ -1823,6 +1823,30 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 }
 
 
+pid_t
+get_wal_receiver_pid(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	pid_t		wal_receiver_pid = UNKNOWN_PID;
+
+	res = PQexec(conn, "SELECT repmgr.get_wal_receiver_pid()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.get_wal_receiver_pid()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		wal_receiver_pid = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return wal_receiver_pid;
+}
+
+
 /* =============================== */
 /* user/role information functions */
 /* =============================== */
@@ -2241,29 +2265,6 @@ repmgrd_pause(PGconn *conn, bool pause)
 	PQclear(res);
 
 	return success;
-}
-
-pid_t
-get_wal_receiver_pid(PGconn *conn)
-{
-	PGresult   *res = NULL;
-	pid_t		wal_receiver_pid = UNKNOWN_PID;
-
-	res = PQexec(conn, "SELECT repmgr.get_wal_receiver_pid()");
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to execute \"SELECT repmgr.get_wal_receiver_pid()\""));
-		log_detail("%s", PQerrorMessage(conn));
-	}
-	else if (!PQgetisnull(res, 0, 0))
-	{
-		wal_receiver_pid = atoi(PQgetvalue(res, 0, 0));
-	}
-
-	PQclear(res);
-
-	return wal_receiver_pid;
 }
 
 

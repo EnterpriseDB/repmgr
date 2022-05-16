@@ -450,6 +450,7 @@ int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
 uint64		system_identifier(PGconn *conn);
 TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
+pid_t		get_wal_receiver_pid(PGconn *conn);
 
 /* user/role information functions */
 bool		can_execute_pg_promote(PGconn *conn);
@@ -467,7 +468,6 @@ pid_t		repmgrd_get_pid(PGconn *conn);
 bool		repmgrd_is_running(PGconn *conn);
 bool		repmgrd_is_paused(PGconn *conn);
 bool		repmgrd_pause(PGconn *conn, bool pause);
-pid_t		get_wal_receiver_pid(PGconn *conn);
 int			repmgrd_get_upstream_node_id(PGconn *conn);
 bool		repmgrd_set_upstream_node_id(PGconn *conn, int node_id);
 
