@@ -2,6 +2,7 @@
         standby clone: don't error out if unable to determine cluster size (Ian)
         node check: fix --downstream --nagios output; GitHub #749 (Ian)
         repmgrd: ensure witness node marked active (hslightdb)
+        repmgrd: improve walsender disable check (Ian)
 
 5.3.1   2022-02-15
         repmgrd: fixes for potential connection leaks (hslightdb)

@@ -454,6 +454,7 @@ pid_t		get_wal_receiver_pid(PGconn *conn);
 
 /* user/role information functions */
 bool		can_execute_pg_promote(PGconn *conn);
+bool		can_disable_walsender(PGconn *conn);
 bool		connection_has_pg_monitor_role(PGconn *conn, const char *subrole);
 bool		is_replication_role(PGconn *conn, char *rolname);
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
