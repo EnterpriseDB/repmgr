@@ -2862,6 +2862,7 @@ do_primary_failover(void)
 	bool final_result = false;
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	int new_primary_id = UNKNOWN_NODE_ID;
+	bool standby_disconnect_on_failover = false;
 
 	/*
 	 * Double-check status of the local connection
@@ -2874,20 +2875,20 @@ do_primary_failover(void)
 	 */
 	if (config_file_options.standby_disconnect_on_failover == true)
 	{
-		NodeInfoListCell *cell = NULL;
-		NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
-		int i;
+		/*
+		 * Determine whether we can actually disable the walsender; this depends
+		 * on PostgreSQL version and user permissions.
+		 */
+		standby_disconnect_on_failover = can_disable_walsender(local_conn);
 
-		bool sibling_node_wal_receiver_connected = false;
+		if (standby_disconnect_on_failover == true)
+		{
+			NodeInfoListCell *cell = NULL;
+			NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+			int i;
 
-		if (PQserverVersion(local_conn) < 90500)
-		{
-			log_warning(_("\"standby_disconnect_on_failover\" specified, but not available for this PostgreSQL version"));
-			/* TODO: format server version */
-			log_detail(_("available from PostgreSQL 9.5, this PostgreSQL version is %i"), PQserverVersion(local_conn));
-		}
-		else
-		{
+			bool sibling_node_wal_receiver_connected = false;
+
 			disable_wal_receiver(local_conn);
 
 			/*
@@ -2971,7 +2972,7 @@ do_primary_failover(void)
 	log_debug("election result: %s", _print_election_result(election_result));
 
 	/* Reenable WAL receiver, if disabled */
-	if (config_file_options.standby_disconnect_on_failover == true)
+	if (standby_disconnect_on_failover == true)
 	{
 		/* adjust "wal_retrieve_retry_interval" but don't wait for WAL receiver to start */
 		enable_wal_receiver(local_conn, false);

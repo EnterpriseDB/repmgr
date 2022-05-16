@@ -53,6 +53,12 @@
               GitHub #754.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              &repmgrd;: if <varname>standby_disconnect_on_failover</varname> is set, verify
+              &repmgr; is a superuser before attempting to disable the WAL receiver.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

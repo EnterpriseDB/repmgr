@@ -1889,6 +1889,42 @@ can_execute_pg_promote(PGconn *conn)
 
 
 /*
+ * Determine if the user associated with the current connection
+ * has sufficient permissions to disable the walsender
+ */
+bool
+can_disable_walsender(PGconn *conn)
+{
+	/*
+	 * Requires PostgreSQL 9.5 or later, because ALTER SYSTEM
+	 */
+	if (PQserverVersion(conn) < 90500)
+	{
+		log_warning(_("\"standby_disconnect_on_failover\" specified, but not available for this PostgreSQL version"));
+		/* TODO: format server version */
+		log_detail(_("available from PostgreSQL 9.5; this PostgreSQL version is %i"), PQserverVersion(conn));
+
+		return false;
+	}
+
+	/*
+	 * Superusers can do anything
+	 */
+	if (is_superuser_connection(conn, NULL) == true)
+		return true;
+
+	/*
+	 * As of PostgreSQL 14, it is not possible for a non-superuser
+	 * to execute ALTER SYSTEM, so further checks are superfluous.
+	 * This will need modifying for PostgreSQL 15.
+	 */
+	log_warning(_("\"standby_disconnect_on_failover\" specified, but repmgr user is not a superuser"));
+	log_detail(_("superuser permission required to disable standbys on failover"));
+
+	return false;
+}
+
+/*
  * Determine if the user associated with the current connection is
  * a member of the "pg_monitor" default role, or optionally one
  * of its three constituent "subroles".
