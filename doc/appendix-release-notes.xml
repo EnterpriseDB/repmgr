@@ -14,6 +14,8 @@
   <para>
     See also: <xref linkend="upgrading-repmgr"/>
   </para>
+
+  <!-- remember to update the release date in ../repmgr_version.h.in -->
   <sect1 id="release-5.3.2">
     <title id="release-current">Release 5.3.2</title>
     <para><emphasis>??? ??? ???, 2022</emphasis></para>
@@ -64,7 +66,6 @@
     </sect2>
   </sect1>
 
-<!-- remember to update the release date in ../repmgr_version.h.in -->
   <sect1 id="release-5.3.1">
     <title>Release 5.3.1</title>
     <para><emphasis>Tue 15 February, 2022</emphasis></para>
