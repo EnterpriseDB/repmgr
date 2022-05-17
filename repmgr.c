@@ -86,7 +86,6 @@ static shmem_request_hook_type prev_shmem_request_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
 void		_PG_init(void);
-void		_PG_fini(void);
 
 #if (PG_VERSION_NUM >= 150000)
 static void repmgr_shmem_request(void);
@@ -143,21 +142,6 @@ _PG_init(void)
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = repmgr_shmem_startup;
 
-}
-
-
-/*
- * Module unload callback
- */
-void
-_PG_fini(void)
-{
-	/* Uninstall hook */
-#if (PG_VERSION_NUM >= 150000)
-	shmem_request_hook = prev_shmem_request_hook;
-#endif
-
-	shmem_startup_hook = prev_shmem_startup_hook;
 }
 
 #if (PG_VERSION_NUM >= 150000)
