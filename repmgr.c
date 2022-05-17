@@ -86,7 +86,6 @@ static shmem_request_hook_type prev_shmem_request_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
 void		_PG_init(void);
-void		_PG_fini(void);
 
 #if (PG_VERSION_NUM >= 150000)
 static void repmgr_shmem_request(void);
@@ -145,21 +144,6 @@ _PG_init(void)
 
 }
 
-
-/*
- * Module unload callback
- */
-void
-_PG_fini(void)
-{
-	/* Uninstall hook */
-#if (PG_VERSION_NUM >= 150000)
-	shmem_request_hook = prev_shmem_request_hook;
-#endif
-
-	shmem_startup_hook = prev_shmem_startup_hook;
-}
-
 #if (PG_VERSION_NUM >= 150000)
 /*
  * shmem_requst_hook: request shared memory
@@ -177,7 +161,7 @@ repmgr_shmem_request(void)
 #endif
 
 /*
- * shmem_ hook: allocate or attach to shared memory,
+ * shmem_startup hook: allocate or attach to shared memory
  */
 static void
 repmgr_shmem_startup(void)
