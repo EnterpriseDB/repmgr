@@ -84,7 +84,6 @@ static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
 
 void		_PG_init(void);
-void		_PG_fini(void);
 
 static void repmgr_shmem_startup(void);
 
@@ -130,17 +129,6 @@ _PG_init(void)
 	 */
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = repmgr_shmem_startup;
-}
-
-
-/*
- * Module unload callback
- */
-void
-_PG_fini(void)
-{
-	/* Uninstall hook */
-	shmem_startup_hook = prev_shmem_startup_hook;
 }
 
 
