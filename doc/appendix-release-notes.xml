@@ -18,7 +18,7 @@
   <!-- remember to update the release date in ../repmgr_version.h.in -->
   <sect1 id="release-5.3.2">
     <title id="release-current">Release 5.3.2</title>
-    <para><emphasis>??? ??? ???, 2022</emphasis></para>
+    <para><emphasis>Wed 25 May, 2022</emphasis></para>
     <para>
       &repmgr; 5.3.2 is a minor release.
     </para>
