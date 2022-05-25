@@ -64,7 +64,8 @@
           <listitem>
             <para>
               If the &repmgr; user is a non-superuser, and a replication-only user exists,
-              ensure redundant replication slots are dropped correctly.
+              ensure redundant replication slots are dropped correctly even
+              if the <option>-S/--superuser</option> option is not provided.
             </para>
           </listitem>
         </itemizedlist>
