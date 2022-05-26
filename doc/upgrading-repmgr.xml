@@ -72,6 +72,12 @@
 	</indexterm>
 
     <para>
+	  A minor release upgrade involves updating &repmgr; from one minor release to another
+	  minor release within the same major release (e.g. <literal>5.3.1</literal> to <literal>5.3.2</literal>).
+	  An upgrade between minor releases of differing major releases (e.g. <literal>5.2.1</literal> to <literal>5.3.2</literal>)
+	  is a <link linkend="upgrading-major-version">major upgrade</link>.
+    </para>
+    <para>
       The process for installing minor version upgrades is quite straightforward:
 
       <itemizedlist spacing="compact" mark="bullet">
@@ -105,15 +111,17 @@
 	</para>
 
 	<para>
-	  A PostgreSQL restart is <emphasis>not</emphasis> required for minor version upgrades.
+	  A PostgreSQL restart is usually <emphasis>not</emphasis> required for minor version upgrades
+	  within the same major version (e.g. <literal>5.3.1</literal> to <literal>5.3.2</literal>).
+	  Be sure to check the <link linkend="appendix-release-notes">release notes</link>.
 	</para>
 
     <note>
 	  <para>
-	    The same &repmgr; &quot;major version&quot; (e.g. <literal>4.2</literal>) must be
-	    installed on all nodes in the replication cluster. While it's possible to have differing
-	    &repmgr; &quot;minor versions&quot; (e.g. <literal>4.2.1</literal>)  on different nodes,
-	    we strongly recommend updating all nodes to the latest minor version.
+		The same &repmgr; &quot;major version&quot; (e.g. <literal>5.3</literal>) must be
+		installed on all nodes in the replication cluster. While it's possible to have differing
+		&repmgr; &quot;minor versions&quot; (e.g. <literal>5.3.1</literal> and <literal>5.3.2</literal>)
+		on different nodes, we strongly recommend updating all nodes to the latest minor version.
 	  </para>
     </note>
 
