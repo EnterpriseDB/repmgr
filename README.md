@@ -7,8 +7,8 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-The most recent `repmgr` version (5.2.1) supports all PostgreSQL versions from
-9.5 to 13. PostgreSQL 9.4 is also supported, with some restrictions.
+The most recent `repmgr` version (5.3.2) supports all PostgreSQL versions from
+9.5 to 14. PostgreSQL 9.4 is also supported, with some restrictions.
 
 `repmgr` is distributed under the GNU GPL 3 and maintained by EnterpriseDB.
 
@@ -18,14 +18,6 @@ Documentation
 The full `repmgr` documentation is available here:
 
 > [repmgr documentation](https://repmgr.org/docs/current/index.html)
-
-The old `README` file for `repmgr` 3.x is available here:
-
-> https://github.com/EnterpriseDB/repmgr/blob/REL3_3_STABLE/README.md
-
-Note that the `repmgr` 3.x series is no longer supported and contains known bugs;
-please upgrade to the [current repmgr version](https://repmgr.org/docs/current/appendix-release-notes.html)
-as soon as possible.
 
 Versions
 --------
@@ -78,7 +70,6 @@ news are always welcome.
 
 Thanks from the repmgr core team.
 
-* Ian Barwick
 * Jaime Casanova
 * Abhijit Menon-Sen
 * Simon Riggs
