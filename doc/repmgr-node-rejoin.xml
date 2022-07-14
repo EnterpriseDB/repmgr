@@ -73,16 +73,16 @@
       </varlistentry>
 
       <varlistentry>
-        <term><option>--force-rewind[=/path/to/pg_rewind]</option></term>
+        <term><option>--force-rewind</option></term>
         <listitem>
           <para>
             Execute <application>pg_rewind</application>.
           </para>
           <para>
-            It is only necessary to provide the <application>pg_rewind</application> path
-            if using PostgreSQL 9.4, and <application>pg_rewind</application>
-            is not installed in the PostgreSQL <filename>bin</filename> directory.
+            See <xref linkend="repmgr-node-rejoin-pg-rewind"/> for more details on using
+            <application>pg_rewind</application>.
           </para>
+
         </listitem>
       </varlistentry>
 
@@ -261,8 +261,6 @@
     <para>
       <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
       node which has diverged from the rest of the cluster, typically a failed primary.
-      <command>pg_rewind</command> is available in PostgreSQL 9.5 and later as part of the core distribution,
-      and can be installed from external sources for PostgreSQL 9.4.
     </para>
     <note>
       <para>
@@ -382,6 +380,29 @@
     DETAIL: node 2 is now attached to node 3</programlisting>
       </para>
     </refsect2>
+
+    <refsect2 id="repmgr-node-rejoin-postgresql-94" xreflabel="pg_rewind and PostgreSQL 9.4">
+
+      <title><command>pg_rewind</command> and PostgreSQL 9.4</title>
+
+      <indexterm>
+        <primary>pg_rewind</primary>
+        <secondary>PostgreSQL 9.4</secondary>
+      </indexterm>
+
+      <para>
+        <application>pg_rewind</application> is available in PostgreSQL 9.5 and later as part of the core distribution.
+        Users of PostgreSQL 9.4 will need to manually install it; the source code is available here:
+        <ulink url="https://github.com/vmware/pg_rewind">https://github.com/vmware/pg_rewind</ulink>.
+        If the <application>pg_rewind</application>
+        binary is not installed in the PostgreSQL <filename>bin</filename> directory, provide
+        its full path  on the demotion candidate  with <option>--force-rewind</option>.
+      </para>
+      <para>
+        Note that building the 9.4 version of <application>pg_rewind</application> requires the PostgreSQL
+        source code.
+      </para>
+    </refsect2>
   </refsect1>
 
   <refsect1 id="repmgr-node-rejoin-caveats" xreflabel="Caveats">
@@ -475,7 +496,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-standby-follow"/>
+     <xref linkend="repmgr-standby-follow"/>, <xref linkend="repmgr-standby-switchover"/>
     </para>
   </refsect1>
 </refentry>
