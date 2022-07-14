@@ -269,6 +269,10 @@
         data checksums were enabled when the cluster was initialized. See the
         <ulink url="https://www.postgresql.org/docs/current/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
       </para>
+      <para>
+        Additionally, <varname>full_page_writes</varname> must be enabled; this is the default and
+        normally should never be disabled.
+      </para>
     </note>
 
     <para>
