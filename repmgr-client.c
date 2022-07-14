@@ -3634,8 +3634,8 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 	/* "full_page_writes" must be on in any case */
 	if (guc_set(conn, "full_page_writes", "=", "off"))
 	{
-		appendPQExpBuffer(reason,
-						  _("\"full_page_writes\" must be set to \"on\""));
+		appendPQExpBufferStr(reason,
+							 _("\"full_page_writes\" must be set to \"on\""));
 
 		can_use = false;
 	}
@@ -3653,18 +3653,18 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 		if (data_checksum_version == UNKNOWN_DATA_CHECKSUM_VERSION)
 		{
 			if (can_use == false)
-				appendPQExpBuffer(reason, "; ");
+				appendPQExpBufferStr(reason, "; ");
 
-			appendPQExpBuffer(reason,
-							  _("\"wal_log_hints\" is set to \"off\" but unable to determine data checksum version"));
+			appendPQExpBufferStr(reason,
+								 _("\"wal_log_hints\" is set to \"off\" but unable to determine data checksum version"));
 			can_use = false;
 		}
 		else if (data_checksum_version == 0)
 		{
 			if (can_use == false)
-				appendPQExpBuffer(reason, "; ");
+				appendPQExpBufferStr(reason, "; ");
 
-			appendPQExpBuffer(reason,
+			appendPQExpBufferStr(reason,
 							  _("\"wal_log_hints\" is set to \"off\" and data checksums are disabled"));
 
 			can_use = false;
