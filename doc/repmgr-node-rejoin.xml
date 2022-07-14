@@ -451,7 +451,7 @@
 
    <warning>
      <para>
-       In all current PostgreSQL versions (as of September 2020), <application>pg_rewind</application>
+       In all PostgreSQL released before February 2021, <application>pg_rewind</application>
        contains a corner-case bug which affects standbys in a very specific situation.
      </para>
      <para>
@@ -481,8 +481,7 @@
      <para>
        Currently it is not possible to resolve this situation using <application>pg_rewind</application>.
        A <ulink url="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=2b4f3130382fe2f8705863e4d38589d4d69cd695">patch</ulink>
-       has been successfully submitted and will be included the next PostgreSQL minor release round, scheduled for
-       February 2021.
+       was submitted and is included in all PostgreSQL versions released in February 2021 or later.
      </para>
      <para>
        As a workaround, start the primary server the standby was previously attached to,
