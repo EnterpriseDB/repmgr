@@ -1587,22 +1587,22 @@ monitor_streaming_standby(void)
 					/* TODO: possibly add pre-action event here */
 					if (upstream_node_info.type == STANDBY)
 					{
-						create_event_record(primary_conn,
-											&config_file_options,
-											config_file_options.node_id,
-											"repmgrd_upstream_disconnect",
-											true,
-											event_details.data);
+						create_event_notification(primary_conn,
+												  &config_file_options,
+												  config_file_options.node_id,
+												  "repmgrd_upstream_disconnect",
+												  true,
+												  event_details.data);
 					}
 					else
 					{
 						/* primary connection lost - script notification only */
-						create_event_record(NULL,
-											&config_file_options,
-											config_file_options.node_id,
-											"repmgrd_upstream_disconnect",
-											true,
-											event_details.data);
+						create_event_notification(NULL,
+												  &config_file_options,
+												  config_file_options.node_id,
+												  "repmgrd_upstream_disconnect",
+												  true,
+												  event_details.data);
 					}
 
 					log_warning("%s", event_details.data);
@@ -2482,12 +2482,12 @@ monitor_streaming_witness(void)
 									  _("unable to connect to primary node \"%s\" (ID: %i)"),
 									  upstream_node_info.node_name, upstream_node_info.node_id);
 
-					create_event_record(NULL,
-										&config_file_options,
-										config_file_options.node_id,
-										"repmgrd_upstream_disconnect",
-										true,
-										event_details.data);
+					create_event_notification(NULL,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_upstream_disconnect",
+											  true,
+											  event_details.data);
 					termPQExpBuffer(&event_details);
 				}
 
