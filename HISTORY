@@ -1,4 +1,8 @@
-5.3.2   2022-??-??
+5.3.3   2022-??-??
+        repmgrd: ensure event notification script is called for event
+          "repmgrd_upstream_disconnect"; GitHub #760 (Ian)
+
+5.3.2   2022-05-25
         standby clone: don't error out if unable to determine cluster size (Ian)
         node check: fix --downstream --nagios output; GitHub #749 (Ian)
         repmgrd: ensure witness node marked active (hslightdb)
