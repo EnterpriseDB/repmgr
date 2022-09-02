@@ -1597,12 +1597,12 @@ monitor_streaming_standby(void)
 					else
 					{
 						/* primary connection lost - script notification only */
-						create_event_record(NULL,
-											&config_file_options,
-											config_file_options.node_id,
-											"repmgrd_upstream_disconnect",
-											true,
-											event_details.data);
+                        create_event_notification(NULL,
+                                                  &config_file_options,
+                                                  config_file_options.node_id,
+                                                  "repmgrd_upstream_disconnect",
+                                                  true,
+                                                  event_details.data);
 					}
 
 					log_warning("%s", event_details.data);
