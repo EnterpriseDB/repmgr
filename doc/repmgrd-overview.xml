@@ -29,7 +29,7 @@
 
        <listitem>
          <simpara>
-           option to execute custom scripts (&quot;<link linkend="event-notifications">event notifications</link>
+           option to execute custom scripts (&quot;<link linkend="event-notifications">event notifications</link>&quot;)
            at different points in the failover sequence
          </simpara>
        </listitem>
