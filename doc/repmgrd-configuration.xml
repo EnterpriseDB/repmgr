@@ -345,14 +345,18 @@
             </indexterm>
 
             <para>
-              Indicates a preferred priority (default: <literal>100</literal>) for promoting nodes;
-			  a value of zero prevents the node being promoted to primary.
+              Indicates a preferred priority (default: <literal>100</literal>) for promoting nodes.
             </para>
             <para>
               Note that the priority setting is only applied if two or more nodes are
               determined as promotion candidates; in that case the node with the
               higher priority is selected.
             </para>
+            <para>
+              A value of zero will always prevent the node being promoted to primary, even if there
+              is no other promotion candidate.
+            </para>
+
           </listitem>
         </varlistentry>
 
