@@ -108,6 +108,9 @@
             <entry>
               Supported PostgreSQL versions
             </entry>
+            <entry>
+              Notes
+            </entry>
           </row>
         </thead>
 
@@ -123,7 +126,10 @@
               <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
             </entry>
             <entry>
-              9.4, 9.5, 9.6, 10, 11, 12, 13, 14
+              9.4, 9.5, 9.6, 10, 11, 12, 13, 14, 15
+            </entry>
+            <entry>
+              PostgreSQL 15 supported from &repmgr; 5.3.3
             </entry>
           </row>
 
@@ -140,6 +146,9 @@
             <entry>
               9.4, 9.5, 9.6, 10, 11, 12, 13
             </entry>
+            <entry>
+              &nbsp;
+            </entry>
           </row>
 
           <row>
@@ -155,6 +164,9 @@
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11, 12
             </entry>
+            <entry>
+              &nbsp;
+            </entry>
           </row>
 
           <row>
@@ -169,6 +181,9 @@
             </entry>
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11, 12
+            </entry>
+            <entry>
+              &nbsp;
             </entry>
           </row>
 
@@ -186,6 +201,9 @@
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11
             </entry>
+            <entry>
+              &nbsp;
+            </entry>
           </row>
 
           <row>
@@ -201,6 +219,9 @@
             <entry>
               9.3, 9.4, 9.5, 9.6
             </entry>
+            <entry>
+              &nbsp;
+            </entry>
           </row>
 
           <row>
@@ -215,6 +236,9 @@
             </entry>
             <entry>
               9.0, 9.1, 9.2, 9.3, 9.4
+            </entry>
+            <entry>
+              &nbsp;
             </entry>
           </row>
         </tbody>
