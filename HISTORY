@@ -1,4 +1,5 @@
-5.3.3   2022-??-??
+5.3.3   2022-10-17
+        Support for PostgreSQL added
         repmgrd: ensure event notification script is called for event
           "repmgrd_upstream_disconnect"; GitHub #760 (Ian)
 
@@ -73,7 +74,7 @@
           "standby clone" (Ian)
         repmgr: add --upstream option to "node check"
         repmgr: report error code on follow/rejoin failure due to non-available
-0          replication slot (Ian)
+          replication slot (Ian)
         repmgr: ensure "node rejoin" checks for available replication slots (Ian)
         repmgr: improve "standby switchover" completion checks (Ian)
         repmgr: add replication configuration file ownership check to

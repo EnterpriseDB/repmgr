@@ -16,8 +16,38 @@
   </para>
 
   <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.3.3">
+    <title id="release-current">Release 5.3.3</title>
+    <para><emphasis>Mon 17 October, 2022</emphasis></para>
+    <para>
+      &repmgr; 5.3.3 is a minor release providing support for
+      <ulink url="https://www.postgresql.org/docs/15/release-15.html">PostgreSQL 15</ulink>
+      and a &repmgrd; bug fix.
+    </para>
+    <para>
+      If upgrading from an earlier &repmgr; version, any running &repmgrd; instances should be restarted.
+    </para>
+    <para>
+      If upgrading from &repmgr; 5.2.1 or earlier, a PostgreSQL restart <emphasis>is</emphasis> required.
+    </para>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              &repmgrd;: ensure <link linkend="event-notifications">event notification</link> script is called for event
+              <literal>repmgrd_upstream_disconnect</literal>.  GitHub #760.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-5.3.2">
-    <title id="release-current">Release 5.3.2</title>
+    <title>Release 5.3.2</title>
     <para><emphasis>Wed 25 May, 2022</emphasis></para>
     <para>
       &repmgr; 5.3.2 is a minor release.

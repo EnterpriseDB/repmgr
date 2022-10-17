@@ -70,6 +70,7 @@ news are always welcome.
 
 Thanks from the repmgr core team.
 
+* Ian Barwick
 * Jaime Casanova
 * Abhijit Menon-Sen
 * Simon Riggs
