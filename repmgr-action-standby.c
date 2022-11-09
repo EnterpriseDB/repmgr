@@ -47,24 +47,6 @@ typedef struct TablespaceDataList
 	TablespaceDataListCell *tail;
 } TablespaceDataList;
 
-
-typedef struct
-{
-	int			reachable_sibling_node_count;
-	int			reachable_sibling_nodes_with_slot_count;
-	int			unreachable_sibling_node_count;
-	int			min_required_wal_senders;
-	int			min_required_free_slots;
-} SiblingNodeStats;
-
-#define T_SIBLING_NODES_STATS_INITIALIZER { \
-	0, \
-	0, \
-	0, \
-	0, \
-	0 \
-}
-
 static PGconn *primary_conn = NULL;
 static PGconn *source_conn = NULL;
 
@@ -99,6 +81,8 @@ static char barman_command_buf[MAXLEN] = "";
  * This is determined in check_source_server().
  */
 static t_user_type SettingsUser = REPMGR_USER;
+
+static void do_standby_switchover_sanity_checks(t_standby_switchover_rec *ssr);
 
 static void _do_standby_promote_internal(PGconn *conn);
 static void _do_create_replication_conf(void);
@@ -3608,132 +3592,57 @@ cleanup:
 
 
 /*
- * Perform a switchover by:
- *
- *  - stopping current primary node
- *  - promoting this standby node to primary
- *  - forcing the previous primary node to follow this node
- *
- * Where running and not already paused, repmgrd will be paused (and
- * subsequently unpaused), unless --repmgrd-no-pause provided.
- *
- * Note that this operation can only be considered to have failed completely
- * ("ERR_SWITCHOVER_FAIL") in these situations:
- *
- *  - the prerequisites for a switchover are not met
- *  - the demotion candidate could not be shut down cleanly
- *  - the promotion candidate could not be promoted
- *
- * All other failures (demotion candidate did not connect to new primary etc.)
- * are considered partial failures ("ERR_SWITCHOVER_INCOMPLETE")
- *
- * TODO:
- *  - make connection test timeouts/intervals configurable (see below)
+ * Perform a number of sanity checks before doing a switchover.
  */
 
-
 void
-do_standby_switchover(void)
+do_standby_switchover_sanity_checks(t_standby_switchover_rec *ssr)
 {
-	PGconn	   *local_conn = NULL;
-	PGconn	   *superuser_conn = NULL;
-	PGconn	   *remote_conn = NULL;
-
-	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
-
-	/* the remote server is the primary to be demoted */
-	char		remote_conninfo[MAXCONNINFO] = "";
-	char		remote_host[MAXLEN] = "";
-	int			remote_node_id = UNKNOWN_NODE_ID;
-	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
-	int 		remote_repmgr_version = UNKNOWN_REPMGR_VERSION_NUM;
-
+	int r;
+	bool		command_success = false;
 	RecordStatus record_status = RECORD_NOT_FOUND;
-	RecoveryType recovery_type = RECTYPE_UNKNOWN;
-	PQExpBufferData remote_command_str;
-	PQExpBufferData command_output;
-	PQExpBufferData node_rejoin_options;
 	PQExpBufferData logmsg;
 	PQExpBufferData detailmsg;
-	PQExpBufferData event_details;
-
-	int			r,
-				i;
-	bool		command_success = false;
-	bool		shutdown_success = false;
-	bool		dry_run_success = true;
-
-	/* this flag will use to generate the final message generated */
-	bool		switchover_success = true;
-
-	XLogRecPtr	remote_last_checkpoint_lsn = InvalidXLogRecPtr;
-	ReplInfo	replication_info;
-
-	/* store list of configuration files on the demotion candidate */
-	KeyValueList remote_config_files = {NULL, NULL};
-
-	/* temporary log file for "repmgr node rejoin" on the demotion candidate */
-	char		node_rejoin_log[MAXPGPATH] = "";
-
-	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
-	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
-
+	PQExpBufferData command_output;
+	PQExpBufferData remote_command_str;
 	/* this will be calculated as max_wal_senders - COUNT(*) FROM pg_stat_replication */
-	int			available_wal_senders = 0;
+	int available_wal_senders = 0;
 
-	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
-	/* used for handling repmgrd pause/unpause */
-	NodeInfoList all_nodes = T_NODE_INFO_LIST_INITIALIZER;
-	RepmgrdInfo **repmgrd_info = NULL;
-	int			repmgrd_running_count = 0;
-
-	/* number of free walsenders required on promotion candidate
-	 * (at least one will be required for the demotion candidate)
-	 */
-	sibling_nodes_stats.min_required_wal_senders = 1;
-
-	/*
-	 * SANITY CHECKS
-	 *
-	 * We'll be doing a bunch of operations on the remote server (primary to
-	 * be demoted) - careful checks needed before proceeding.
-	 */
-
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
+	ssr->local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	(void) check_server_version(local_conn, "standby", true, NULL);
+	(void) check_server_version(ssr->local_conn, "standby", true, NULL);
 
-	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
+	record_status = get_node_record(ssr->local_conn, config_file_options.node_id, &(ssr->local_node_record));
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("unable to retrieve node record for node %i"),
 				  config_file_options.node_id);
 
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 
 		exit(ERR_DB_QUERY);
 	}
 
-	if (!is_streaming_replication(local_node_record.type))
+	if (!is_streaming_replication(ssr->local_node_record.type))
 	{
 		log_error(_("switchover can only performed with streaming replication"));
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (runtime_options.dry_run == true)
 	{
 		log_notice(_("checking switchover on node \"%s\" (ID: %i) in --dry-run mode"),
-				   local_node_record.node_name,
-				   local_node_record.node_id);
+				   ssr->local_node_record.node_name,
+				   ssr->local_node_record.node_id);
 	}
 	else
 	{
 		log_notice(_("executing switchover on node \"%s\" (ID: %i)"),
-				   local_node_record.node_name,
-				   local_node_record.node_id);
+				   ssr->local_node_record.node_name,
+				   ssr->local_node_record.node_id);
 	}
 
 	/*
@@ -3749,23 +3658,23 @@ do_standby_switchover(void)
 					 runtime_options.superuser);
 		}
 
-		superuser_conn = establish_db_connection_with_replacement_param(
+		ssr->superuser_conn = establish_db_connection_with_replacement_param(
 			config_file_options.conninfo,
 			"user",
 			runtime_options.superuser, false);
 
-		if (PQstatus(superuser_conn) != CONNECTION_OK)
+		if (PQstatus(ssr->superuser_conn) != CONNECTION_OK)
 		{
 			log_error(_("unable to connect to local database \"%s\" as provided superuser \"%s\""),
-					  PQdb(superuser_conn),
+					  PQdb(ssr->superuser_conn),
 					  runtime_options.superuser);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if (is_superuser_connection(superuser_conn, NULL) == false)
+		if (is_superuser_connection(ssr->superuser_conn, NULL) == false)
 		{
 			log_error(_("connection established to local database \"%s\" for provided superuser \"%s\" is not a superuser connection"),
-					  PQdb(superuser_conn),
+					  PQdb(ssr->superuser_conn),
 					  runtime_options.superuser);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -3773,7 +3682,7 @@ do_standby_switchover(void)
 		if (runtime_options.dry_run == true)
 		{
 			log_info(_("successfully established connection to local database \"%s\" for provided superuser \"%s\""),
-					 PQdb(superuser_conn),
+					 PQdb(ssr->superuser_conn),
 					 runtime_options.superuser);
 		}
 
@@ -3782,7 +3691,7 @@ do_standby_switchover(void)
 	/*
 	 * Warn if no superuser connection is available.
 	 */
-	if (superuser_conn == NULL && is_superuser_connection(local_conn, NULL) == false)
+	if (ssr->superuser_conn == NULL && is_superuser_connection(ssr->local_conn, NULL) == false)
 	{
 		log_warning(_("no superuser connection available"));
 		log_detail(_("it is recommended to perform switchover operations with a database superuser"));
@@ -3790,16 +3699,16 @@ do_standby_switchover(void)
 	}
 
 	/* Check that this is a standby */
-	recovery_type = get_recovery_type(local_conn);
-	if (recovery_type != RECTYPE_STANDBY)
+	ssr->recovery_type = get_recovery_type(ssr->local_conn);
+	if (ssr->recovery_type != RECTYPE_STANDBY)
 	{
 		log_error(_("switchover must be executed from the standby node to be promoted"));
-		if (recovery_type == RECTYPE_PRIMARY)
+		if (ssr->recovery_type == RECTYPE_PRIMARY)
 		{
 			log_detail(_("this node (ID: %i) is the primary"),
-					   local_node_record.node_id);
+					   ssr->local_node_record.node_id);
 		}
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 
 		exit(ERR_SWITCHOVER_FAIL);
 	}
@@ -3820,7 +3729,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&logmsg);
 	initPQExpBuffer(&detailmsg);
 
-	if (check_replication_config_owner(PQserverVersion(local_conn),
+	if (check_replication_config_owner(PQserverVersion(ssr->local_conn),
 									   config_file_options.data_directory,
 									   &logmsg, &detailmsg) == false)
 	{
@@ -3830,7 +3739,7 @@ do_standby_switchover(void)
 		termPQExpBuffer(&logmsg);
 		termPQExpBuffer(&detailmsg);
 
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -3838,67 +3747,67 @@ do_standby_switchover(void)
 	termPQExpBuffer(&detailmsg);
 
 	/* check remote server connection and retrieve its record */
-	remote_conn = get_primary_connection(local_conn, &remote_node_id, remote_conninfo);
+	ssr->remote_conn = get_primary_connection(ssr->local_conn, &(ssr->remote_node_id), ssr->remote_conninfo);
 
-	if (PQstatus(remote_conn) != CONNECTION_OK)
+	if (PQstatus(ssr->remote_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to connect to current primary node"));
 		log_hint(_("check that the cluster is correctly configured and this standby is registered"));
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 		exit(ERR_DB_CONN);
 	}
 
-	record_status = get_node_record(remote_conn, remote_node_id, &remote_node_record);
+	record_status = get_node_record(ssr->remote_conn, ssr->remote_node_id, &(ssr->remote_node_record));
 
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("unable to retrieve node record for current primary (node %i)"),
-				  remote_node_id);
+				  ssr->remote_node_id);
 
-		PQfinish(local_conn);
-		PQfinish(remote_conn);
+		PQfinish(ssr->local_conn);
+		PQfinish(ssr->remote_conn);
 
 		exit(ERR_DB_QUERY);
 	}
 
-	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
+	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", ssr->remote_node_record.node_name);
 
 	/*
 	 * Check this standby is attached to the demotion candidate
 	 */
 
-	if (local_node_record.upstream_node_id != remote_node_record.node_id)
+	if (ssr->local_node_record.upstream_node_id != ssr->remote_node_record.node_id)
 	{
 		log_error(_("local node \"%s\" (ID: %i) is not a downstream of demotion candidate primary \"%s\" (ID: %i)"),
-				  local_node_record.node_name,
-				  local_node_record.node_id,
-				  remote_node_record.node_name,
-				  remote_node_record.node_id);
+				  ssr->local_node_record.node_name,
+				  ssr->local_node_record.node_id,
+				  ssr->remote_node_record.node_name,
+				  ssr->remote_node_record.node_id);
 
-		if (local_node_record.upstream_node_id == UNKNOWN_NODE_ID)
+		if (ssr->local_node_record.upstream_node_id == UNKNOWN_NODE_ID)
 			log_detail(_("local node has no registered upstream node"));
 		else
 			log_detail(_("registered upstream node ID is %i"),
-					   local_node_record.upstream_node_id);
+					   ssr->local_node_record.upstream_node_id);
 
 		log_hint(_("execute \"repmgr standby register --force\" to update the local node's metadata"));
 
-		PQfinish(local_conn);
-		PQfinish(remote_conn);
+		PQfinish(ssr->local_conn);
+		PQfinish(ssr->remote_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (is_downstream_node_attached(remote_conn, local_node_record.node_name, NULL) != NODE_ATTACHED)
+	if (is_downstream_node_attached(ssr->remote_conn, ssr->local_node_record.node_name, NULL) != NODE_ATTACHED)
 	{
 		log_error(_("local node \"%s\" (ID: %i) is not attached to demotion candidate \"%s\" (ID: %i)"),
-				  local_node_record.node_name,
-				  local_node_record.node_id,
-				  remote_node_record.node_name,
-				  remote_node_record.node_id);
+				  ssr->local_node_record.node_name,
+				  ssr->local_node_record.node_id,
+				  ssr->remote_node_record.node_name,
+				  ssr->remote_node_record.node_id);
 
-		PQfinish(local_conn);
-		PQfinish(remote_conn);
+		PQfinish(ssr->local_conn);
+		PQfinish(ssr->remote_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -3916,15 +3825,15 @@ do_standby_switchover(void)
 	 * the primary completely.
 	 */
 
-	if (PQserverVersion(local_conn) < 130000 && is_wal_replay_paused(local_conn, false) == true)
+	if (PQserverVersion(ssr->local_conn) < 130000 && is_wal_replay_paused(ssr->local_conn, false) == true)
 	{
 		ReplInfo 	replication_info;
 		init_replication_info(&replication_info);
 
-		if (get_replication_info(local_conn, STANDBY, &replication_info) == false)
+		if (get_replication_info(ssr->local_conn, STANDBY, &replication_info) == false)
 		{
 			log_error(_("unable to retrieve replication information from local node"));
-			PQfinish(local_conn);
+			PQfinish(ssr->local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
 		}
 
@@ -3933,15 +3842,14 @@ do_standby_switchover(void)
 				   format_lsn(replication_info.last_wal_replay_lsn),
 				   format_lsn(replication_info.last_wal_receive_lsn));
 
-		if (PQserverVersion(local_conn) >= 100000)
+		if (PQserverVersion(ssr->local_conn) >= 100000)
 			log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
 		else
 			log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
 
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 		exit(ERR_SWITCHOVER_FAIL);
 	}
-
 
 	/*
 	 * Check that there are no exclusive backups running on the primary.
@@ -3951,24 +3859,24 @@ do_standby_switchover(void)
 	 * If the user wants to do the switchover anyway, they should first stop the
 	 * backup that's running.
 	 */
-	if (server_in_exclusive_backup_mode(remote_conn) != BACKUP_STATE_NO_BACKUP)
+	if (server_in_exclusive_backup_mode(ssr->remote_conn) != BACKUP_STATE_NO_BACKUP)
 	{
 		log_error(_("unable to perform a switchover while primary server is in exclusive backup mode"));
 		log_hint(_("stop backup before attempting the switchover"));
 
-		PQfinish(local_conn);
-		PQfinish(remote_conn);
+		PQfinish(ssr->local_conn);
+		PQfinish(ssr->remote_conn);
 
 		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	/* this will fill the %p event notification parameter */
-	event_info.node_id = remote_node_record.node_id;
+	ssr->event_info.node_id = ssr->remote_node_record.node_id;
 
 	/* keep a running total of how many nodes will require a replication slot */
-	if (remote_node_record.slot_name[0] != '\0')
+	if (ssr->remote_node_record.slot_name[0] != '\0')
 	{
-		sibling_nodes_stats.min_required_free_slots++;
+		ssr->sibling_nodes_stats.min_required_free_slots++;
 	}
 
 	/*
@@ -3984,13 +3892,13 @@ do_standby_switchover(void)
 
 		initPQExpBuffer(&reason);
 
-		if (can_use_pg_rewind(remote_conn, config_file_options.data_directory, &reason) == false)
+		if (can_use_pg_rewind(ssr->remote_conn, config_file_options.data_directory, &reason) == false)
 		{
 			log_error(_("--force-rewind specified but pg_rewind cannot be used"));
 			log_detail("%s", reason.data);
 			termPQExpBuffer(&reason);
-			PQfinish(local_conn);
-			PQfinish(remote_conn);
+			PQfinish(ssr->local_conn);
+			PQfinish(ssr->remote_conn);
 
 			exit(ERR_BAD_CONFIG);
 		}
@@ -4010,23 +3918,23 @@ do_standby_switchover(void)
 		}
 		termPQExpBuffer(&msg);
 
-		get_datadir_configuration_files(remote_conn, &remote_config_files);
+		get_datadir_configuration_files(ssr->remote_conn, &(ssr->remote_config_files));
 	}
 
 
 	/*
 	 * Check that we can connect by SSH to the remote (current primary) server
 	 */
-	get_conninfo_value(remote_conninfo, "host", remote_host);
+	get_conninfo_value(ssr->remote_conninfo, "host", ssr->remote_host);
 
-	r = test_ssh_connection(remote_host, runtime_options.remote_user);
+	r = test_ssh_connection(ssr->remote_host, runtime_options.remote_user);
 
 	if (r != 0)
 	{
 		log_error(_("unable to connect via SSH to host \"%s\", user \"%s\""),
-				  remote_host, runtime_options.remote_user);
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+				  ssr->remote_host, runtime_options.remote_user);
+		PQfinish(ssr->remote_conn);
+		PQfinish(ssr->local_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -4038,7 +3946,7 @@ do_standby_switchover(void)
 
 		appendPQExpBuffer(&msg,
 						  _("SSH connection to host \"%s\" succeeded"),
-						  remote_host);
+						  ssr->remote_host);
 
 		if (runtime_options.dry_run == true)
 		{
@@ -4054,7 +3962,7 @@ do_standby_switchover(void)
 
 	/* check remote repmgr binary can be found */
 	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+	make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 	/*
 	 * Here we're executing an arbitrary repmgr command which is guaranteed to
@@ -4063,7 +3971,7 @@ do_standby_switchover(void)
 	 */
 	appendPQExpBufferStr(&remote_command_str, "--version >/dev/null 2>&1 && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
-	command_success = remote_command(remote_host,
+	command_success = remote_command(ssr->remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 config_file_options.ssh_options,
@@ -4076,7 +3984,7 @@ do_standby_switchover(void)
 		PQExpBufferData hint;
 
 		log_error(_("unable to execute \"%s\" on \"%s\""),
-				  progname(), remote_host);
+				  progname(), ssr->remote_host);
 
 		if (strlen(command_output.data) > 2)
 			log_detail("%s", command_output.data);
@@ -4102,8 +4010,8 @@ do_standby_switchover(void)
 
 		termPQExpBuffer(&hint);
 
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+		PQfinish(ssr->remote_conn);
+		PQfinish(ssr->local_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -4114,11 +4022,11 @@ do_standby_switchover(void)
 	 * Now we're sure the binary can be executed, fetch its version number.
 	 */
 	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+	make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 	appendPQExpBufferStr(&remote_command_str, "--version 2>/dev/null");
 	initPQExpBuffer(&command_output);
-	command_success = remote_command(remote_host,
+	command_success = remote_command(ssr->remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 config_file_options.ssh_options,
@@ -4128,31 +4036,31 @@ do_standby_switchover(void)
 
 	if (command_success == true)
 	{
-		remote_repmgr_version = parse_repmgr_version(command_output.data);
-		if (remote_repmgr_version == UNKNOWN_REPMGR_VERSION_NUM)
+		ssr->remote_repmgr_version = parse_repmgr_version(command_output.data);
+		if (ssr->remote_repmgr_version == UNKNOWN_REPMGR_VERSION_NUM)
 		{
 			log_error(_("unable to parse \"%s\"'s reported version on \"%s\""),
-					  progname(), remote_host);
-			PQfinish(remote_conn);
-			PQfinish(local_conn);
+					  progname(), ssr->remote_host);
+			PQfinish(ssr->remote_conn);
+			PQfinish(ssr->local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 		log_debug(_("\"%s\" version on \"%s\" is %i"),
-				  progname(), remote_host, remote_repmgr_version );
+				  progname(), ssr->remote_host, ssr->remote_repmgr_version );
 
 	}
 	else
 	{
 		log_error(_("unable to execute \"%s\" on \"%s\""),
-				  progname(), remote_host);
+				  progname(), ssr->remote_host);
 
 		if (strlen(command_output.data) > 2)
 			log_detail("%s", command_output.data);
 
 		termPQExpBuffer(&command_output);
 
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+		PQfinish(ssr->remote_conn);
+		PQfinish(ssr->local_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -4166,10 +4074,10 @@ do_standby_switchover(void)
 
 	appendPQExpBuffer(&remote_command_str,
 					  "test -f %s && echo 1 || echo 0",
-					  remote_node_record.config_file);
+					  ssr->remote_node_record.config_file);
 	initPQExpBuffer(&command_output);
 
-	command_success = remote_command(remote_host,
+	command_success = remote_command(ssr->remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 config_file_options.ssh_options,
@@ -4180,15 +4088,15 @@ do_standby_switchover(void)
 	if (command_success == false || command_output.data[0] == '0')
 	{
 		log_error(_("expected configuration file not found on the demotion candidate \"%s\" (ID: %i)"),
-				  remote_node_record.node_name,
-				  remote_node_record.node_id);
+				  ssr->remote_node_record.node_name,
+				  ssr->remote_node_record.node_id);
 		log_detail(_("registered configuration file is \"%s\""),
-				   remote_node_record.config_file);
+				   ssr->remote_node_record.config_file);
 		log_hint(_("ensure the configuration file is in the expected location, or re-register \"%s\" to update the configuration file location"),
-				  remote_node_record.node_name);
+				  ssr->remote_node_record.node_name);
 
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+		PQfinish(ssr->remote_conn);
+		PQfinish(ssr->local_conn);
 
 		termPQExpBuffer(&command_output);
 
@@ -4204,7 +4112,7 @@ do_standby_switchover(void)
 	 */
 
 	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+	make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 	/*
 	 * --data-directory-config is available from repmgr 4.3; it will fail
@@ -4214,7 +4122,7 @@ do_standby_switchover(void)
 	appendPQExpBufferStr(&remote_command_str, "node check --data-directory-config --optformat -LINFO 2>/dev/null");
 
 	initPQExpBuffer(&command_output);
-	command_success = remote_command(remote_host,
+	command_success = remote_command(ssr->remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 config_file_options.ssh_options,
@@ -4225,11 +4133,11 @@ do_standby_switchover(void)
 	if (command_success == false)
 	{
 		log_error(_("unable to execute \"%s node check --data-directory-config\" on \"%s\":"),
-				  progname(), remote_host);
+				  progname(), ssr->remote_host);
 		log_detail("%s", command_output.data);
 
-		PQfinish(remote_conn);
-		PQfinish(local_conn);
+		PQfinish(ssr->remote_conn);
+		PQfinish(ssr->local_conn);
 
 		termPQExpBuffer(&command_output);
 
@@ -4245,8 +4153,8 @@ do_standby_switchover(void)
 			if (remote_error != REMOTE_ERROR_NONE)
 			{
 				log_error(_("unable to run data directory check on node \"%s\" (ID: %i)"),
-							remote_node_record.node_name,
-							remote_node_record.node_id);
+							ssr->remote_node_record.node_name,
+							ssr->remote_node_record.node_id);
 
 				if (remote_error == REMOTE_ERROR_DB_CONNECTION)
 				{
@@ -4254,18 +4162,18 @@ do_standby_switchover(void)
 
 					/* can happen if the connection configuration is not consistent across nodes */
 					log_detail(_("an error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
-							   remote_node_record.node_name,
-							   remote_node_record.node_id);
+							   ssr->remote_node_record.node_name,
+							   ssr->remote_node_record.node_id);
 
 					/* output a helpful hint to help diagnose the issue */
 					initPQExpBuffer(&remote_command_str);
-					make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+					make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 					appendPQExpBufferStr(&remote_command_str, "node check --db-connection");
 
 					initPQExpBuffer(&ssh_command);
 
-					make_remote_command(remote_host,
+					make_remote_command(ssr->remote_host,
 										runtime_options.remote_user,
 										remote_command_str.data,
 										config_file_options.ssh_options,
@@ -4280,30 +4188,30 @@ do_standby_switchover(void)
 				{
 					/* highly unlikely */
 					log_detail(_("an error was encountered when parsing the \"conninfo\" parameter in \"repmgr.conf\" on node \"%s\" (ID: %i)"),
-							   remote_node_record.node_name,
-							   remote_node_record.node_id);
+							   ssr->remote_node_record.node_name,
+							   ssr->remote_node_record.node_id);
 				}
 				else
 				{
 					log_detail(_("an unknown error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
-							   remote_node_record.node_name,
-							   remote_node_record.node_id);
+							   ssr->remote_node_record.node_name,
+							   ssr->remote_node_record.node_id);
 				}
 			}
 			else
 			{
 				log_error(_("\"data_directory\" parameter in \"repmgr.conf\" on \"%s\" (ID: %i) is incorrectly configured"),
-						  remote_node_record.node_name,
-						  remote_node_record.node_id);
+						  ssr->remote_node_record.node_name,
+						  ssr->remote_node_record.node_id);
 
 				log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" (ID: %i) to diagnose the issue"),
-						 remote_node_record.node_name,
-						 remote_node_record.node_id);
+						 ssr->remote_node_record.node_name,
+						 ssr->remote_node_record.node_id);
 
 			}
 
-			PQfinish(remote_conn);
-			PQfinish(local_conn);
+			PQfinish(ssr->remote_conn);
+			PQfinish(ssr->local_conn);
 
 			termPQExpBuffer(&command_output);
 
@@ -4317,7 +4225,7 @@ do_standby_switchover(void)
 	{
 		log_info(_("able to execute \"%s\" on remote host \"%s\""),
 				 progname(),
-				 remote_host);
+				 ssr->remote_host);
 	}
 
 	/*
@@ -4330,14 +4238,14 @@ do_standby_switchover(void)
 		CheckStatus status = CHECK_STATUS_UNKNOWN;
 
 		initPQExpBuffer(&remote_command_str);
-		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+		make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 		appendPQExpBuffer(&remote_command_str,
 						  "node check --db-connection --superuser=%s --optformat -LINFO 2>/dev/null",
 						  runtime_options.superuser);
 
 		initPQExpBuffer(&command_output);
-		command_success = remote_command(remote_host,
+		command_success = remote_command(ssr->remote_host,
 										 runtime_options.remote_user,
 										 remote_command_str.data,
 										 config_file_options.ssh_options,
@@ -4348,11 +4256,11 @@ do_standby_switchover(void)
 		if (command_success == false)
 		{
 			log_error(_("unable to execute \"%s node check --db-connection\" on \"%s\":"),
-					  progname(), remote_host);
+					  progname(), ssr->remote_host);
 			log_detail("%s", command_output.data);
 
-			PQfinish(remote_conn);
-			PQfinish(local_conn);
+			PQfinish(ssr->remote_conn);
+			PQfinish(ssr->local_conn);
 
 			termPQExpBuffer(&command_output);
 
@@ -4366,12 +4274,12 @@ do_standby_switchover(void)
 			PQExpBufferData ssh_command;
 			log_error(_("unable to connect locally as superuser \"%s\" on node \"%s\" (ID: %i)"),
 					  runtime_options.superuser,
-					  remote_node_record.node_name,
-					  remote_node_record.node_id);
+					  ssr->remote_node_record.node_name,
+					  ssr->remote_node_record.node_id);
 
 			/* output a helpful hint to help diagnose the issue */
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+			make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 			appendPQExpBuffer(&remote_command_str,
 							  "node check --db-connection --superuser=%s",
@@ -4379,7 +4287,7 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&ssh_command);
 
-			make_remote_command(remote_host,
+			make_remote_command(ssr->remote_host,
 								runtime_options.remote_user,
 								remote_command_str.data,
 								config_file_options.ssh_options,
@@ -4407,15 +4315,15 @@ do_standby_switchover(void)
 	 * enough to have the "node check --replication-config-owner" option.
 	 */
 
-	if (PQserverVersion(local_conn) >= 120000 && remote_repmgr_version >= 50100)
+	if (PQserverVersion(ssr->local_conn) >= 120000 && ssr->remote_repmgr_version >= 50100)
 	{
 		initPQExpBuffer(&remote_command_str);
-		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+		make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 
 		appendPQExpBufferStr(&remote_command_str, "node check --replication-config-owner --optformat -LINFO 2>/dev/null");
 
 		initPQExpBuffer(&command_output);
-		command_success = remote_command(remote_host,
+		command_success = remote_command(ssr->remote_host,
 										 runtime_options.remote_user,
 										 remote_command_str.data,
 										 config_file_options.ssh_options,
@@ -4426,11 +4334,11 @@ do_standby_switchover(void)
 		if (command_success == false)
 		{
 			log_error(_("unable to execute \"%s node check --replication-config-owner\" on \"%s\":"),
-					  progname(), remote_host);
+					  progname(), ssr->remote_host);
 			log_detail("%s", command_output.data);
 
-			PQfinish(remote_conn);
-			PQfinish(local_conn);
+			PQfinish(ssr->remote_conn);
+			PQfinish(ssr->local_conn);
 
 			termPQExpBuffer(&command_output);
 
@@ -4441,12 +4349,12 @@ do_standby_switchover(void)
 		{
 			log_error(_("\"%s\" file on \"%s\" has incorrect ownership"),
 					  PG_AUTOCONF_FILENAME,
-					  remote_node_record.node_name);
+					  ssr->remote_node_record.node_name);
 
 			log_hint(_("check the file has the same owner/group as the data directory"));
 
-			PQfinish(remote_conn);
-			PQfinish(local_conn);
+			PQfinish(ssr->remote_conn);
+			PQfinish(ssr->local_conn);
 
 			termPQExpBuffer(&command_output);
 
@@ -4461,24 +4369,24 @@ do_standby_switchover(void)
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots
 	 */
-	get_node_replication_stats(local_conn, &local_node_record);
+	get_node_replication_stats(ssr->local_conn, &ssr->local_node_record);
 
-	available_wal_senders = local_node_record.max_wal_senders -
-		local_node_record.attached_wal_receivers;
+	available_wal_senders = ssr->local_node_record.max_wal_senders -
+		ssr->local_node_record.attached_wal_receivers;
 
 	/*
 	 * Get list of sibling nodes; if --siblings-follow specified,
 	 * check they're reachable; if not, the list will be used to warn
 	 * about nodes which will remain attached to the demotion candidate
 	 */
-	get_active_sibling_node_records(local_conn,
-									local_node_record.node_id,
-									local_node_record.upstream_node_id,
-									&sibling_nodes);
+	get_active_sibling_node_records(ssr->local_conn,
+									ssr->local_node_record.node_id,
+									ssr->local_node_record.upstream_node_id,
+									&ssr->sibling_nodes);
 
-	if (check_sibling_nodes(&sibling_nodes, &sibling_nodes_stats) == false)
+	if (check_sibling_nodes(&ssr->sibling_nodes, &ssr->sibling_nodes_stats) == false)
 	{
-		PQfinish(local_conn);
+		PQfinish(ssr->local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -4491,11 +4399,11 @@ do_standby_switchover(void)
 	 * performing a switchover in such an unstable environment, they only have
 	 * themselves to blame).
 	 */
-	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats, &dry_run_success) == false)
+	if (check_free_wal_senders(available_wal_senders, &ssr->sibling_nodes_stats, &ssr->dry_run_success) == false)
 	{
 		if (runtime_options.dry_run == false)
 		{
-			PQfinish(local_conn);
+			PQfinish(ssr->local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -4504,14 +4412,14 @@ do_standby_switchover(void)
 	/* check demotion candidate can make replication connection to promotion candidate */
 	{
 		initPQExpBuffer(&remote_command_str);
-		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+		make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 		appendPQExpBuffer(&remote_command_str,
 						  "node check --remote-node-id=%i --replication-connection",
-						  local_node_record.node_id);
+						  ssr->local_node_record.node_id);
 
 		initPQExpBuffer(&command_output);
 
-		command_success = remote_command(remote_host,
+		command_success = remote_command(ssr->remote_host,
 										 runtime_options.remote_user,
 										 remote_command_str.data,
 										 config_file_options.ssh_options,
@@ -4552,20 +4460,20 @@ do_standby_switchover(void)
 
 		/* archive status - check when "archive_mode" is activated */
 
-		if (guc_set(remote_conn, "archive_mode", "!=", "off"))
+		if (guc_set(ssr->remote_conn, "archive_mode", "!=", "off"))
 		{
 			int			files = 0;
 			int			threshold = 0;
 			t_remote_error_type remote_error = REMOTE_ERROR_NONE;
 
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+			make_remote_repmgr_path(&remote_command_str, &ssr->remote_node_record);
 			appendPQExpBufferStr(&remote_command_str,
 								 "node check --terse -LERROR --archive-ready --optformat");
 
 			initPQExpBuffer(&command_output);
 
-			command_success = remote_command(remote_host,
+			command_success = remote_command(ssr->remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
 											 config_file_options.ssh_options,
@@ -4587,23 +4495,23 @@ do_standby_switchover(void)
 						if (runtime_options.force == false || remote_error == REMOTE_ERROR_DB_CONNECTION)
 						{
 							log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-									  remote_node_record.node_name);
+									  ssr->remote_node_record.node_name);
 
 							if (remote_error == REMOTE_ERROR_DB_CONNECTION)
 								log_detail(_("an error was encountered when attempting to connect to PostgreSQL on node \"%s\" (ID: %i)"),
-										   remote_node_record.node_name,
-										   remote_node_record.node_id);
+										   ssr->remote_node_record.node_name,
+										   ssr->remote_node_record.node_id);
 							else
 								log_hint(_("use -F/--force to continue anyway"));
 
-							PQfinish(remote_conn);
-							PQfinish(local_conn);
+							PQfinish(ssr->remote_conn);
+							PQfinish(ssr->local_conn);
 
 							exit(ERR_SWITCHOVER_FAIL);
 						}
 
 						log_warning(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-									remote_node_record.node_name);
+									ssr->remote_node_record.node_name);
 						log_notice(_("-F/--force set, continuing with switchover"));
 					}
 					break;
@@ -4613,18 +4521,18 @@ do_standby_switchover(void)
 						if (runtime_options.force == false)
 						{
 							log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
-									  remote_node_record.node_name);
+									  ssr->remote_node_record.node_name);
 							log_detail(_("%i pending archive files (critical threshold: %i)"),
 									   files, threshold);
 							log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
-							PQfinish(remote_conn);
-							PQfinish(local_conn);
+							PQfinish(ssr->remote_conn);
+							PQfinish(ssr->local_conn);
 
 							exit(ERR_SWITCHOVER_FAIL);
 						}
 
 						log_warning(_("number of pending archive files on demotion candidate \"%s\" exceeds the critical threshold"),
-									remote_node_record.node_name);
+									ssr->remote_node_record.node_name);
 						log_detail(_("%i pending archive files (critical threshold: %i)"),
 								   files, threshold);
 						log_notice(_("-F/--force set, continuing with switchover"));
@@ -4634,7 +4542,7 @@ do_standby_switchover(void)
 				case CHECK_STATUS_WARNING:
 					{
 						log_warning(_("number of pending archive files on demotion candidate \"%s\" exceeds the warning threshold"),
-									remote_node_record.node_name);
+									ssr->remote_node_record.node_name);
 						log_detail(_("%i pending archive files (warning threshold: %i)"),
 								   files, threshold);
 						log_hint(_("PostgreSQL will not shut down until all files are archived"));
@@ -4683,7 +4591,7 @@ do_standby_switchover(void)
 		 * check replication lag on promotion candidate (TODO: check on all
 		 * nodes attached to demotion candidate)
 		 */
-		lag_seconds = get_replication_lag_seconds(local_conn);
+		lag_seconds = get_replication_lag_seconds(ssr->local_conn);
 
 		log_debug("lag is %i ", lag_seconds);
 
@@ -4695,8 +4603,8 @@ do_standby_switchover(void)
 				log_detail(_("lag is %i seconds (critical threshold: %i)"),
 						   lag_seconds, config_file_options.replication_lag_critical);
 				log_hint(_("PostgreSQL on the demotion candidate will not shut down until pending WAL is flushed to the standby; use -F/--force to continue anyway"));
-				PQfinish(remote_conn);
-				PQfinish(local_conn);
+				PQfinish(ssr->remote_conn);
+				PQfinish(ssr->local_conn);
 
 				exit(ERR_SWITCHOVER_FAIL);
 			}
@@ -4718,8 +4626,8 @@ do_standby_switchover(void)
 			{
 				log_error(_("unable to check replication lag on local node"));
 				log_hint(_("use -F/--force to continue anyway"));
-				PQfinish(remote_conn);
-				PQfinish(local_conn);
+				PQfinish(ssr->remote_conn);
+				PQfinish(ssr->local_conn);
 
 				exit(ERR_SWITCHOVER_FAIL);
 			}
@@ -4751,17 +4659,17 @@ do_standby_switchover(void)
 		}
 	}
 
-	PQfinish(remote_conn);
+	PQfinish(ssr->remote_conn);
 
 	/*
 	 * if replication slots are required by demotion candidate and/or siblings,
 	 * check the promotion candidate has sufficient free slots
 	 */
-	if (check_free_slots(&local_node_record, &sibling_nodes_stats, &dry_run_success) == false)
+	if (check_free_slots(&ssr->local_node_record, &ssr->sibling_nodes_stats, &ssr->dry_run_success) == false)
 	{
 		if (runtime_options.dry_run == false)
 		{
-			PQfinish(local_conn);
+			PQfinish(ssr->local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -4778,19 +4686,19 @@ do_standby_switchover(void)
 		int i = 0;
 		int unreachable_node_count = 0;
 
-		get_all_node_records(local_conn, &all_nodes);
+		get_all_node_records(ssr->local_conn, &(ssr->all_nodes));
 
-		repmgrd_info = (RepmgrdInfo **) pg_malloc0(sizeof(RepmgrdInfo *) * all_nodes.node_count);
+		ssr->repmgrd_info = (RepmgrdInfo **) pg_malloc0(sizeof(RepmgrdInfo *) * ssr->all_nodes.node_count);
 
-		log_notice(_("attempting to pause repmgrd on %i nodes"), all_nodes.node_count);
-		for (cell = all_nodes.head; cell; cell = cell->next)
+		log_notice(_("attempting to pause repmgrd on %i nodes"), ssr->all_nodes.node_count);
+		for (cell = ssr->all_nodes.head; cell; cell = cell->next)
 		{
-			repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
-			repmgrd_info[i]->node_id = cell->node_info->node_id;
-			repmgrd_info[i]->pid = UNKNOWN_PID;
-			repmgrd_info[i]->paused = false;
-			repmgrd_info[i]->running = false;
-			repmgrd_info[i]->pg_running = true;
+			ssr->repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
+			ssr->repmgrd_info[i]->node_id = cell->node_info->node_id;
+			ssr->repmgrd_info[i]->pid = UNKNOWN_PID;
+			ssr->repmgrd_info[i]->paused = false;
+			ssr->repmgrd_info[i]->running = false;
+			ssr->repmgrd_info[i]->pg_running = true;
 
 			cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -4800,7 +4708,7 @@ do_standby_switchover(void)
 				 * unable to connect; treat this as an error
 				 */
 
-				repmgrd_info[i]->pg_running = false;
+				ssr->repmgrd_info[i]->pg_running = false;
 
 				/*
 				 * Only worry about unreachable nodes if they're marked as active
@@ -4824,12 +4732,12 @@ do_standby_switchover(void)
 				continue;
 			}
 
-			repmgrd_info[i]->running = repmgrd_is_running(cell->node_info->conn);
-			repmgrd_info[i]->pid = repmgrd_get_pid(cell->node_info->conn);
-			repmgrd_info[i]->paused = repmgrd_is_paused(cell->node_info->conn);
+			ssr->repmgrd_info[i]->running = repmgrd_is_running(cell->node_info->conn);
+			ssr->repmgrd_info[i]->pid = repmgrd_get_pid(cell->node_info->conn);
+			ssr->repmgrd_info[i]->paused = repmgrd_is_paused(cell->node_info->conn);
 
-			if (repmgrd_info[i]->running == true)
-				repmgrd_running_count++;
+			if (ssr->repmgrd_info[i]->running == true)
+				ssr->repmgrd_running_count++;
 
 			i++;
 		}
@@ -4844,7 +4752,7 @@ do_standby_switchover(void)
 			appendPQExpBuffer(&msg,
 							  _("unable to connect to %i of %i node(s), unable to pause all repmgrd instances"),
 							  unreachable_node_count,
-							  all_nodes.node_count);
+							  ssr->all_nodes.node_count);
 
 			initPQExpBuffer(&detail);
 
@@ -4875,8 +4783,8 @@ do_standby_switchover(void)
 			{
 				log_hint(_("use -F/--force to continue anyway"));
 
-				clear_node_info_list(&sibling_nodes);
-				clear_node_info_list(&all_nodes);
+				clear_node_info_list(&ssr->sibling_nodes);
+				clear_node_info_list(&ssr->all_nodes);
 
 				exit(ERR_SWITCHOVER_FAIL);
 			}
@@ -4884,16 +4792,16 @@ do_standby_switchover(void)
 		}
 
 		/* pause repmgrd on all reachable nodes */
-		if (repmgrd_running_count > 0)
+		if (ssr->repmgrd_running_count > 0)
 		{
 			i = 0;
-			for (cell = all_nodes.head; cell; cell = cell->next)
+			for (cell = ssr->all_nodes.head; cell; cell = cell->next)
 			{
 
 				/*
 				 * Skip if node was unreachable
 				 */
-				if (repmgrd_info[i]->pg_running == false)
+				if (ssr->repmgrd_info[i]->pg_running == false)
 				{
 					log_warning(_("node \"%s\" (ID: %i) unreachable, unable to pause repmgrd"),
 								cell->node_info->node_name,
@@ -4906,7 +4814,7 @@ do_standby_switchover(void)
 				/*
 				 * Skip if repmgrd not running on node
 				 */
-				if (repmgrd_info[i]->running == false)
+				if (ssr->repmgrd_info[i]->running == false)
 				{
 					log_notice(_("repmgrd not running on node \"%s\" (ID: %i), not pausing"),
 								cell->node_info->node_name,
@@ -4919,7 +4827,7 @@ do_standby_switchover(void)
 				 * leave the repmgrd instances in the cluster in the same state they
 				 * were before the switchover.
 				 */
-				if (repmgrd_info[i]->paused == true)
+				if (ssr->repmgrd_info[i]->paused == true)
 				{
 					PQfinish(cell->node_info->conn);
 					cell->node_info->conn = NULL;
@@ -4951,7 +4859,7 @@ do_standby_switchover(void)
 		else
 		{
 			/* close all connections - we'll reestablish later */
-			for (cell = all_nodes.head; cell; cell = cell->next)
+			for (cell = ssr->all_nodes.head; cell; cell = cell->next)
 			{
 				if (cell->node_info->conn != NULL)
 				{
@@ -4962,6 +4870,76 @@ do_standby_switchover(void)
 		}
 	}
 
+	return;
+}
+
+/*
+ * Perform a switchover by:
+ *
+ *  - stopping current primary node
+ *  - promoting this standby node to primary
+ *  - forcing the previous primary node to follow this node
+ *
+ * Where running and not already paused, repmgrd will be paused (and
+ * subsequently unpaused), unless --repmgrd-no-pause provided.
+ *
+ * Note that this operation can only be considered to have failed completely
+ * ("ERR_SWITCHOVER_FAIL") in these situations:
+ *
+ *  - the prerequisites for a switchover are not met
+ *  - the demotion candidate could not be shut down cleanly
+ *  - the promotion candidate could not be promoted
+ *
+ * All other failures (demotion candidate did not connect to new primary etc.)
+ * are considered partial failures ("ERR_SWITCHOVER_INCOMPLETE")
+ *
+ * TODO:
+ *  - make connection test timeouts/intervals configurable (see below)
+ */
+
+
+void
+do_standby_switchover(void)
+{
+	bool command_success = false;
+	bool shutdown_success = false;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	PQExpBufferData logmsg;
+	PQExpBufferData detailmsg;
+	PQExpBufferData command_output;
+	PQExpBufferData remote_command_str;
+	PQExpBufferData node_rejoin_options;
+	PQExpBufferData event_details;
+
+	int			r,
+				i;
+
+	/* this flag will use to generate the final message generated */
+	bool		switchover_success = true;
+
+	XLogRecPtr	remote_last_checkpoint_lsn = InvalidXLogRecPtr;
+	ReplInfo	replication_info;
+
+	/* temporary log file for "repmgr node rejoin" on the demotion candidate */
+	char		node_rejoin_log[MAXPGPATH] = "";
+
+	/* standby switchover record */
+	t_standby_switchover_rec ssr;
+
+	/* number of free walsenders required on promotion candidate
+	 * (at least one will be required for the demotion candidate)
+	 */
+	ssr.sibling_nodes_stats.min_required_wal_senders = 1;
+
+	/*
+	 * SANITY CHECKS
+	 *
+	 * We'll be doing a bunch of operations on the remote server (primary to
+	 * be demoted) - careful checks needed before proceeding.
+	 */
+
+	do_standby_switchover_sanity_checks(&ssr);
+
 
 	/*
 	 * Sanity checks completed - prepare for the switchover
@@ -4971,19 +4949,19 @@ do_standby_switchover(void)
 	{
 		log_notice(_("local node \"%s\" (ID: %i) would be promoted to primary; "
 					 "current primary \"%s\" (ID: %i) would be demoted to standby"),
-				   local_node_record.node_name,
-				   local_node_record.node_id,
-				   remote_node_record.node_name,
-				   remote_node_record.node_id);
+				   ssr.local_node_record.node_name,
+				   ssr.local_node_record.node_id,
+				   ssr.remote_node_record.node_name,
+				   ssr.remote_node_record.node_id);
 	}
 	else
 	{
 		log_notice(_("local node \"%s\" (ID: %i) will be promoted to primary; "
 					 "current primary \"%s\" (ID: %i) will be demoted to standby"),
-				   local_node_record.node_name,
-				   local_node_record.node_id,
-				   remote_node_record.node_name,
-				   remote_node_record.node_id);
+				   ssr.local_node_record.node_name,
+				   ssr.local_node_record.node_id,
+				   ssr.remote_node_record.node_name,
+				   ssr.remote_node_record.node_id);
 	}
 
 
@@ -4998,7 +4976,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	initPQExpBuffer(&command_output);
 
-	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+	make_remote_repmgr_path(&remote_command_str, &ssr.remote_node_record);
 
 	if (runtime_options.dry_run == true)
 	{
@@ -5009,8 +4987,8 @@ do_standby_switchover(void)
 	else
 	{
 		log_notice(_("stopping current primary node \"%s\" (ID: %i)"),
-				   remote_node_record.node_name,
-				   remote_node_record.node_id);
+				   ssr.remote_node_record.node_name,
+				   ssr.remote_node_record.node_id);
 		appendPQExpBufferStr(&remote_command_str,
 							 "node service --action=stop --checkpoint");
 
@@ -5024,7 +5002,7 @@ do_standby_switchover(void)
 
 	/* XXX handle failure */
 
-	(void) remote_command(remote_host,
+	(void) remote_command(ssr.remote_host,
 						  runtime_options.remote_user,
 						  remote_command_str.data,
 						  config_file_options.ssh_options,
@@ -5048,17 +5026,17 @@ do_standby_switchover(void)
 		string_remove_trailing_newlines(shutdown_command);
 
 		log_info(_("following shutdown command would be run on node \"%s\":\n  \"%s\""),
-				 remote_node_record.node_name,
+				 ssr.remote_node_record.node_name,
 				 shutdown_command);
 
 		log_info(_("parameter \"shutdown_check_timeout\" is set to %i seconds"),
 				 config_file_options.shutdown_check_timeout);
 
-		clear_node_info_list(&sibling_nodes);
+		clear_node_info_list(&ssr.sibling_nodes);
 
-		key_value_list_free(&remote_config_files);
+		key_value_list_free(&ssr.remote_config_files);
 
-		if (dry_run_success == false)
+		if (ssr.dry_run_success == false)
 		{
 			log_error(_("prerequisites for executing STANDBY SWITCHOVER are *not* met"));
 			log_hint(_("see preceding error messages"));
@@ -5083,7 +5061,7 @@ do_standby_switchover(void)
 		log_info(_("checking for primary shutdown; %i of %i attempts (\"shutdown_check_timeout\")"),
 				 i + 1, config_file_options.shutdown_check_timeout);
 
-		ping_res = PQping(remote_conninfo);
+		ping_res = PQping(ssr.remote_conninfo);
 
 		log_debug("ping status is: %s", print_pqping_status(ping_res));
 
@@ -5100,13 +5078,13 @@ do_standby_switchover(void)
 			 */
 
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+			make_remote_repmgr_path(&remote_command_str, &ssr.remote_node_record);
 			appendPQExpBufferStr(&remote_command_str,
 								 "node status --is-shutdown-cleanly");
 
 			initPQExpBuffer(&command_output);
 
-			command_success = remote_command(remote_host,
+			command_success = remote_command(ssr.remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
 											 config_file_options.ssh_options,
@@ -5164,18 +5142,18 @@ do_standby_switchover(void)
 	}
 
 	/* this is unlikely to happen, but check and handle gracefully anyway */
-	if (PQstatus(local_conn) != CONNECTION_OK)
+	if (PQstatus(ssr.local_conn) != CONNECTION_OK)
 	{
 		log_warning(_("connection to local node lost, reconnecting..."));
-		log_detail("\n%s", PQerrorMessage(local_conn));
-		PQfinish(local_conn);
+		log_detail("\n%s", PQerrorMessage(ssr.local_conn));
+		PQfinish(ssr.local_conn);
 
-		local_conn = establish_db_connection(config_file_options.conninfo, false);
+		ssr.local_conn = establish_db_connection(config_file_options.conninfo, false);
 
-		if (PQstatus(local_conn) != CONNECTION_OK)
+		if (PQstatus(ssr.local_conn) != CONNECTION_OK)
 		{
 			log_error(_("unable to reconnect to local node \"%s\""),
-					  local_node_record.node_name);
+					  ssr.local_node_record.node_name);
 			exit(ERR_DB_CONN);
 		}
 		log_verbose(LOG_INFO, _("successfully reconnected to local node"));
@@ -5192,7 +5170,7 @@ do_standby_switchover(void)
 
 		for (i = 0; i < config_file_options.wal_receive_check_timeout; i++)
 		{
-			get_replication_info(local_conn, STANDBY, &replication_info);
+			get_replication_info(ssr.local_conn, STANDBY, &replication_info);
 			if (replication_info.last_wal_receive_lsn >= remote_last_checkpoint_lsn)
 				break;
 
@@ -5217,8 +5195,8 @@ do_standby_switchover(void)
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
 		log_warning(_("local node \"%s\" is behind shutdown primary \"%s\""),
-					local_node_record.node_name,
-					remote_node_record.node_name);
+					ssr.local_node_record.node_name,
+					ssr.remote_node_record.node_name);
 		log_detail(_("local node last receive LSN is %X/%X, primary shutdown checkpoint LSN is %X/%X"),
 				   format_lsn(replication_info.last_wal_receive_lsn),
 				   format_lsn(remote_last_checkpoint_lsn));
@@ -5227,7 +5205,7 @@ do_standby_switchover(void)
 		{
 			log_notice(_("aborting switchover"));
 			log_hint(_("use --always-promote to force promotion of standby"));
-			PQfinish(local_conn);
+			PQfinish(ssr.local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
 		}
 	}
@@ -5255,13 +5233,13 @@ do_standby_switchover(void)
 	 * a superuser connection so that pg_promote() can be used.
 	 */
 
-	if (PQserverVersion(local_conn) >= 120000 && superuser_conn != NULL)
+	if (PQserverVersion(ssr.local_conn) >= 120000 && ssr.superuser_conn != NULL)
 	{
-		_do_standby_promote_internal(superuser_conn);
+		_do_standby_promote_internal(ssr.superuser_conn);
 	}
 	else
 	{
-		_do_standby_promote_internal(local_conn);
+		_do_standby_promote_internal(ssr.local_conn);
 	}
 
 
@@ -5273,10 +5251,10 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.force_rewind_used == true)
 	{
-		PGconn *checkpoint_conn = local_conn;
-		if (superuser_conn != NULL)
+		PGconn *checkpoint_conn = ssr.local_conn;
+		if (ssr.superuser_conn != NULL)
 		{
-			checkpoint_conn = superuser_conn;
+			checkpoint_conn = ssr.superuser_conn;
 		}
 
 		if (is_superuser_connection(checkpoint_conn, NULL) == true)
@@ -5284,7 +5262,7 @@ do_standby_switchover(void)
 			log_notice(_("issuing CHECKPOINT on node \"%s\" (ID: %i) "),
 					   config_file_options.node_name,
 					   config_file_options.node_id);
-			checkpoint(superuser_conn);
+			checkpoint(ssr.superuser_conn);
 		}
 		else
 		{
@@ -5317,7 +5295,7 @@ do_standby_switchover(void)
 			log_hint(_("the former primary will need to be restored manually, or use \"repmgr node rejoin\""));
 
 			termPQExpBuffer(&node_rejoin_options);
-			PQfinish(local_conn);
+			PQfinish(ssr.local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
 		}
 
@@ -5333,7 +5311,7 @@ do_standby_switchover(void)
 		appendPQExpBufferStr(&node_rejoin_options,
 							 " --config-files=");
 
-		for (cell = remote_config_files.head; cell; cell = cell->next)
+		for (cell = ssr.remote_config_files.head; cell; cell = cell->next)
 		{
 			if (first_entry == false)
 				appendPQExpBufferChar(&node_rejoin_options, ',');
@@ -5346,10 +5324,10 @@ do_standby_switchover(void)
 		appendPQExpBufferChar(&node_rejoin_options, ' ');
 	}
 
-	key_value_list_free(&remote_config_files);
+	key_value_list_free(&ssr.remote_config_files);
 
 	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+	make_remote_repmgr_path(&remote_command_str, &ssr.remote_node_record);
 
 	/*
 	 * Here we'll coerce the local node's connection string into
@@ -5358,7 +5336,7 @@ do_standby_switchover(void)
 	 * remote node.
 	 */
 	{
-		char	   *conninfo_normalized = normalize_conninfo_string(local_node_record.conninfo);
+		char	   *conninfo_normalized = normalize_conninfo_string(ssr.local_node_record.conninfo);
 
 		appendPQExpBuffer(&remote_command_str,
 						  "%s -d ",
@@ -5393,7 +5371,7 @@ do_standby_switchover(void)
 	log_debug("executing:\n  %s", remote_command_str.data);
 	initPQExpBuffer(&command_output);
 
-	command_success = remote_command(remote_host,
+	command_success = remote_command(ssr.remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 config_file_options.ssh_options,
@@ -5412,8 +5390,8 @@ do_standby_switchover(void)
 
 		appendPQExpBuffer(&logmsg,
 						  _("unable to execute \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i)"),
-						  remote_node_record.node_name,
-						  remote_node_record.node_id);
+						  ssr.remote_node_record.node_name,
+						  ssr.remote_node_record.node_id);
 		appendPQExpBufferStr(&detailmsg,
 							 command_output.data);
 
@@ -5427,8 +5405,8 @@ do_standby_switchover(void)
 		{
 			appendPQExpBuffer(&logmsg,
 							  _("execution of \"repmgr node rejoin\" on demotion candidate \"%s\" (ID: %i) failed"),
-							  remote_node_record.node_name,
-							  remote_node_record.node_id);
+							  ssr.remote_node_record.node_name,
+							  ssr.remote_node_record.node_id);
 
 			/*
 			 * Speculatively check if the demotion candidate has been restarted, e.g. by
@@ -5436,34 +5414,34 @@ do_standby_switchover(void)
 			 * This falls into the category "thing outside of our control which shouldn't
 			 * happen, but if it does, make it easier to find out what happened".
 			 */
-			remote_conn = establish_db_connection(remote_node_record.conninfo, false);
+			ssr.remote_conn = establish_db_connection(ssr.remote_node_record.conninfo, false);
 
-			if (PQstatus(remote_conn) == CONNECTION_OK)
+			if (PQstatus(ssr.remote_conn) == CONNECTION_OK)
 			{
-				if (get_recovery_type(remote_conn) == RECTYPE_PRIMARY)
+				if (get_recovery_type(ssr.remote_conn) == RECTYPE_PRIMARY)
 				{
 					appendPQExpBuffer(&detailmsg,
 									  _("PostgreSQL instance on demotion candidate \"%s\" (ID: %i) is running as a primary\n"),
-									  remote_node_record.node_name,
-									  remote_node_record.node_id);
+									  ssr.remote_node_record.node_name,
+									  ssr.remote_node_record.node_id);
 					log_warning("%s", detailmsg.data);
 				}
 			}
-			PQfinish(remote_conn);
+			PQfinish(ssr.remote_conn);
 
 			appendPQExpBuffer(&detailmsg,
 							  "check log file \"%s\" on \"%s\" for details",
 							  node_rejoin_log,
-							  remote_node_record.node_name);
+							  ssr.remote_node_record.node_name);
 
 			switchover_success = false;
 			join_success = JOIN_COMMAND_FAIL;
 		}
 		else
 		{
-			join_success = check_standby_join(local_conn,
-											  &local_node_record,
-											  &remote_node_record);
+			join_success = check_standby_join(ssr.local_conn,
+											  &ssr.local_node_record,
+											  &ssr.remote_node_record);
 
 
 
@@ -5473,8 +5451,8 @@ do_standby_switchover(void)
 									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not become available"),
 									  config_file_options.node_name,
 									  config_file_options.node_id,
-									  remote_node_record.node_name,
-									  remote_node_record.node_id);
+									  ssr.remote_node_record.node_name,
+									  ssr.remote_node_record.node_id);
 
 					switchover_success = false;
 
@@ -5484,8 +5462,8 @@ do_standby_switchover(void)
 									  _("node \"%s\" (ID: %i) promoted to primary, but demotion candidate \"%s\" (ID: %i) did not connect to the new primary"),
 									  config_file_options.node_name,
 									  config_file_options.node_id,
-									  remote_node_record.node_name,
-									  remote_node_record.node_id);
+									  ssr.remote_node_record.node_name,
+									  ssr.remote_node_record.node_id);
 					switchover_success = false;
 					break;
 				case JOIN_SUCCESS:
@@ -5493,8 +5471,8 @@ do_standby_switchover(void)
 									  _("node \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
 									  config_file_options.node_name,
 									  config_file_options.node_id,
-									  remote_node_record.node_name,
-									  remote_node_record.node_id);
+									  ssr.remote_node_record.node_name,
+									  ssr.remote_node_record.node_id);
 					break;
 				/* check_standby_join() does not return this */
 				case JOIN_COMMAND_FAIL:
@@ -5503,8 +5481,8 @@ do_standby_switchover(void)
 				case JOIN_UNKNOWN:
 					appendPQExpBuffer(&logmsg,
 									  "unable to determine success of node rejoin action for demotion candidate \"%s\" (ID: %i)",
-									  remote_node_record.node_name,
-									  remote_node_record.node_id);
+									  ssr.remote_node_record.node_name,
+									  ssr.remote_node_record.node_id);
 					switchover_success = false;
 					break;
 			}
@@ -5513,8 +5491,8 @@ do_standby_switchover(void)
 			{
 				appendPQExpBuffer(&detailmsg,
 								  "check the PostgreSQL log file on  demotion candidate \"%s\" (ID: %i)",
-								  remote_node_record.node_name,
-								  remote_node_record.node_id);
+								  ssr.remote_node_record.node_name,
+								  ssr.remote_node_record.node_id);
 			}
 		}
 	}
@@ -5542,13 +5520,13 @@ do_standby_switchover(void)
 	}
 
 
-	create_event_notification_extended(local_conn,
+	create_event_notification_extended(ssr.local_conn,
 									   &config_file_options,
 									   config_file_options.node_id,
 									   "standby_switchover",
 									   switchover_success,
 									   event_details.data,
-									   &event_info);
+									   &ssr.event_info);
 
 	termPQExpBuffer(&event_details);
 	termPQExpBuffer(&logmsg);
@@ -5560,12 +5538,12 @@ do_standby_switchover(void)
 	 * If --siblings-follow specified, attempt to make them follow the new
 	 * primary
 	 */
-	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
+	if (runtime_options.siblings_follow == true && ssr.sibling_nodes.node_count > 0)
 	{
-		sibling_nodes_follow(&local_node_record, &sibling_nodes, &sibling_nodes_stats);
+		sibling_nodes_follow(&ssr.local_node_record, &ssr.sibling_nodes, &ssr.sibling_nodes_stats);
 	}
 
-	clear_node_info_list(&sibling_nodes);
+	clear_node_info_list(&ssr.sibling_nodes);
 
 	/*
 	 * Clean up remote node (primary demoted to standby). It's possible that the node is
@@ -5574,9 +5552,9 @@ do_standby_switchover(void)
 
 	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
 	{
-		remote_conn = establish_db_connection(remote_node_record.conninfo, false);
+		ssr.remote_conn = establish_db_connection(ssr.remote_node_record.conninfo, false);
 
-		if (PQstatus(remote_conn) == CONNECTION_OK)
+		if (PQstatus(ssr.remote_conn) == CONNECTION_OK)
 			break;
 
 		log_info(_("sleeping 1 second; %i of %i attempts (\"standby_reconnect_timeout\") to reconnect to demoted primary"),
@@ -5586,7 +5564,7 @@ do_standby_switchover(void)
 	}
 
 	/* check new standby (old primary) is reachable */
-	if (PQstatus(remote_conn) != CONNECTION_OK)
+	if (PQstatus(ssr.remote_conn) != CONNECTION_OK)
 	{
 		switchover_success = false;
 
@@ -5594,10 +5572,10 @@ do_standby_switchover(void)
 
 		log_warning(_("switchover did not fully complete"));
 		log_detail(_("node \"%s\" (ID: %i) is now primary but node \"%s\" (ID: %i) is not reachable"),
-				   local_node_record.node_name,
-				   local_node_record.node_id,
-				   remote_node_record.node_name,
-				   remote_node_record.node_id);
+				   ssr.local_node_record.node_name,
+				   ssr.local_node_record.node_id,
+				   ssr.remote_node_record.node_name,
+				   ssr.remote_node_record.node_id);
 
 		if (config_file_options.use_replication_slots == true)
 		{
@@ -5614,9 +5592,9 @@ do_standby_switchover(void)
 		 */
 		if (config_file_options.use_replication_slots == true)
 		{
-			drop_replication_slot_if_exists(remote_conn,
-											remote_node_record.node_id,
-											local_node_record.slot_name);
+			drop_replication_slot_if_exists(ssr.remote_conn,
+											ssr.remote_node_record.node_id,
+											ssr.local_node_record.slot_name);
 		}
 
 
@@ -5625,30 +5603,30 @@ do_standby_switchover(void)
 		 * the standby became reachable but has not connected (or became disconnected).
 		 */
 
-		 node_attached = is_downstream_node_attached(local_conn,
-													 remote_node_record.node_name,
+		 node_attached = is_downstream_node_attached(ssr.local_conn,
+													 ssr.remote_node_record.node_name,
 													 NULL);
 		if (node_attached == NODE_ATTACHED)
 		{
 			switchover_success = true;
 			log_notice(_("switchover was successful"));
 			log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
-					   local_node_record.node_name,
-					   remote_node_record.node_name);
+					   ssr.local_node_record.node_name,
+					   ssr.remote_node_record.node_name);
 		}
 		else
 		{
 			log_notice(_("switchover is incomplete"));
 			log_detail(_("node \"%s\" is now primary but node \"%s\" is not attached as standby"),
-					   local_node_record.node_name,
-					   remote_node_record.node_name);
+					   ssr.local_node_record.node_name,
+					   ssr.remote_node_record.node_name);
 			switchover_success = false;
 		}
 
 	}
 
-	PQfinish(remote_conn);
-	PQfinish(local_conn);
+	PQfinish(ssr.remote_conn);
+	PQfinish(ssr.local_conn);
 
 	/*
 	 * Attempt to unpause all paused repmgrd instances, unless user explicitly
@@ -5656,17 +5634,17 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.repmgrd_no_pause == false)
 	{
-		if (repmgrd_running_count > 0)
+		if (ssr.repmgrd_running_count > 0)
 		{
 			ItemList repmgrd_unpause_errors = {NULL, NULL};
 			NodeInfoListCell *cell = NULL;
 			int i = 0;
 			int error_node_count = 0;
 
-			for (cell = all_nodes.head; cell; cell = cell->next)
+			for (cell = ssr.all_nodes.head; cell; cell = cell->next)
 			{
 
-				if (repmgrd_info[i]->paused == true && runtime_options.repmgrd_force_unpause == false)
+				if (ssr.repmgrd_info[i]->paused == true && runtime_options.repmgrd_force_unpause == false)
 				{
 					log_debug("repmgrd on node \"%s\" (ID: %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
 							  cell->node_info->node_name,
@@ -5729,7 +5707,7 @@ do_standby_switchover(void)
 			}
 		}
 
-		clear_node_info_list(&all_nodes);
+		clear_node_info_list(&ssr.all_nodes);
 	}
 
 	if (switchover_success == true)
