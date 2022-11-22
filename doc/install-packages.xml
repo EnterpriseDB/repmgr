@@ -112,7 +112,7 @@ sudo dnf repolist</programlisting>
           <para>
             Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr14</literal>):
             <programlisting>
-sudo dnf install repmgr14</programlisting>
+sudo dnf install repmgr_14</programlisting>
           </para>
           <tip>
             <para>
