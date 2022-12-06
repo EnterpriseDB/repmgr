@@ -274,9 +274,10 @@ do_primary_unregister(void)
 
 		if (get_primary_node_record(local_conn, &primary_node_info) == true)
 		{
-			log_detail(_("current primary registered as node \"%s\" (ID: %i, conninfo: \"%s\")"),
+			log_detail(_("current primary registered as node \"%s\" (ID: %i)"),
 					   primary_node_info.node_name,
-					   primary_node_info.node_id,
+					   primary_node_info.node_id);
+			log_debug(_("conninfo: \"%s\""),
 					   primary_node_info.conninfo);
 		}
 

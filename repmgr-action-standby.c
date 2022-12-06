@@ -429,8 +429,7 @@ do_standby_clone(void)
 
 		if (parse_success == false)
 		{
-			log_error(_("unable to parse conninfo string \"%s\" for upstream node"),
-					  recovery_conninfo_str);
+			log_error(_("unable to parse conninfo string for upstream node"));
 			log_detail("%s", errmsg);
 			if (PQstatus(source_conn) == CONNECTION_OK)
 				PQfinish(source_conn);
@@ -6127,8 +6126,8 @@ check_source_server_via_barman()
 
 	if (parse_success == false)
 	{
-		log_error(_("Unable to parse barman conninfo string \"%s\":\n%s"),
-				  barman_conninfo_str, errmsg);
+		log_error(_("Unable to parse barman conninfo string: %s"),
+			errmsg);
 		exit(ERR_BARMAN);
 	}
 

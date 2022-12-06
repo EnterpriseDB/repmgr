@@ -842,7 +842,7 @@ check_upstream_connection(PGconn **conn, const char *conninfo, PGconn **paired_c
 
 			if (PQstatus(test_conn) != CONNECTION_OK)
 			{
-				log_warning(_("unable to connect to \"%s\""), conninfo);
+				log_warning(_("unable to connect"));
 				log_detail("\n%s", PQerrorMessage(test_conn));
 				success = false;
 			}
