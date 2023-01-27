@@ -60,6 +60,7 @@ AC_SUBST(vpath_build)
 AC_CHECK_PROG(HAVE_GNUSED,gnused,yes,no)
 AC_CHECK_PROG(HAVE_GSED,gsed,yes,no)
 AC_CHECK_PROG(HAVE_SED,sed,yes,no)
+AC_CHECK_PROG(HAVE_FLEX,flex,yes,no)
 
 if test "$HAVE_GNUSED" = yes; then
  SED=gnused
@@ -72,6 +73,25 @@ else
 fi
 AC_SUBST(SED)
 
+AS_IF([test x"$HAVE_FLEX" != x"yes"], AC_MSG_ERROR([flex should be installed first]))
+
+#Checking libraries
+GENERIC_LIB_FAILED_MSG="library should be installed"
+
+AC_CHECK_LIB(selinux, is_selinux_enabled, [],
+     [AC_MSG_ERROR(['selinux' $GENERIC_LIB_FAILED_MSG])])
+
+AC_CHECK_LIB(lz4, LZ4_compress_default, [],
+     [AC_MSG_ERROR(['Z4' $GENERIC_LIB_FAILED_MSG])])
+
+AC_CHECK_LIB(xslt, xsltCleanupGlobals, [],
+     [AC_MSG_ERROR(['xslt' $GENERIC_LIB_FAILED_MSG])])
+
+AC_CHECK_LIB(pam, pam_start, [],
+     [AC_MSG_ERROR(['pam' $GENERIC_LIB_FAILED_MSG])])
+
+AC_CHECK_LIB(gssapi_krb5, gss_init_sec_context, [],
+     [AC_MSG_ERROR([gssapi_krb5 $GENERIC_LIB_FAILED_MSG])])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([Makefile.global])
