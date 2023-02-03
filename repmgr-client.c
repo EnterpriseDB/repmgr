@@ -3096,9 +3096,14 @@ get_standby_clone_mode(void)
 
 	if (*config_file_options.barman_host != '\0' && runtime_options.without_barman == false)
 		mode = barman;
-	else
-		mode = pg_basebackup;
-
+	else {
+		if (*config_file_options.pg_backupapi_host != '\0') {
+			log_info("Attempting to use `pg_backupapi` new restore mode");
+			mode = pg_backupapi;
+		}
+		else
+			mode = pg_basebackup;
+	}
 	return mode;
 }
 

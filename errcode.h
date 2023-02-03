@@ -49,5 +49,6 @@
 #define ERR_NODE_STATUS 25
 #define ERR_REPMGRD_PAUSE 26
 #define ERR_REPMGRD_SERVICE 27
+#define ERR_PGBACKUPAPI_SERVICE 28
 
 #endif							/* _ERRCODE_H_ */

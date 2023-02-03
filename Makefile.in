@@ -66,7 +66,7 @@ REPMGR_CLIENT_OBJS = repmgr-client.o \
 	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-witness.o \
 	repmgr-action-cluster.o repmgr-action-node.o repmgr-action-service.o repmgr-action-daemon.o \
 	configdata.o configfile.o configfile-scan.o log.o strutil.o controldata.o dirutil.o compat.o \
-	dbutils.o sysutils.o
+	dbutils.o sysutils.o pgbackupapi.o
 REPMGRD_OBJS = repmgrd.o repmgrd-physical.o configdata.o configfile.o configfile-scan.o log.o \
 	dbutils.o strutil.o controldata.o compat.o sysutils.o
 

@@ -21,6 +21,7 @@
 
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "repmgr.h"
 #include "dirutil.h"
@@ -29,7 +30,7 @@
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-standby.h"
-
+#include "pgbackupapi.h"
 
 typedef struct TablespaceDataListCell
 {
@@ -113,6 +114,7 @@ static void check_recovery_type(PGconn *conn);
 static void initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
+static int	run_pg_backupapi(t_node_info *node_record);
 
 static void copy_configuration_files(bool delete_after_copy);
 
@@ -687,18 +689,17 @@ do_standby_clone(void)
 		exit(SUCCESS);
 	}
 
-	if (mode != barman)
-	{
-		initialise_direct_clone(&local_node_record, &upstream_node_record);
-	}
-
 	switch (mode)
 	{
 		case pg_basebackup:
+			initialise_direct_clone(&local_node_record, &upstream_node_record);
 			log_notice(_("starting backup (using pg_basebackup)..."));
 			break;
 		case barman:
 			log_notice(_("retrieving backup from Barman..."));
+			break;
+		case pg_backupapi:
+			log_notice(_("starting backup (using pg_backupapi)..."));
 			break;
 		default:
 			/* should never reach here */
@@ -720,6 +721,9 @@ do_standby_clone(void)
 			break;
 		case barman:
 			r = run_file_backup(&local_node_record);
+			break;
+		case pg_backupapi:
+			r = run_pg_backupapi(&local_node_record);
 			break;
 		default:
 			/* should never reach here */
@@ -814,7 +818,6 @@ do_standby_clone(void)
 	}
 
 	/* Write the recovery.conf file */
-
 	if (create_recovery_file(&local_node_record,
 							 &recovery_conninfo,
 							 source_server_version_num,
@@ -845,6 +848,9 @@ do_standby_clone(void)
 
 		case barman:
 			log_notice(_("standby clone (from Barman) complete"));
+			break;
+		case pg_backupapi:
+			log_notice(_("standby clone (from pg_backupapi) complete"));
 			break;
 	}
 
@@ -936,6 +942,9 @@ do_standby_clone(void)
 			break;
 		case barman:
 			appendPQExpBufferStr(&event_details, "barman");
+			break;
+		case pg_backupapi:
+			appendPQExpBufferStr(&event_details, "pg_backupapi");
 			break;
 	}
 
@@ -7766,6 +7775,86 @@ stop_backup:
 		}
 	}
 
+	return r;
+}
+
+
+/*
+ * Perform a call to pg_backupapi endpoint to ask barman to write the backup
+ * for us. This will ensure that no matter the format on-disk of new backups,
+ * barman will always find a way how to read and write them.
+ * From repmgr 4 this is only used for Barman backups.
+ */
+static int
+run_pg_backupapi(t_node_info *local_node_record)
+{
+	int r = ERR_PGBACKUPAPI_SERVICE;
+	long http_return_code = 0;
+	short seconds_to_sleep = 3;
+	operation_task *task = malloc(sizeof(operation_task));
+	CURL *curl = curl_easy_init();
+	CURLcode ret;
+
+
+	task->host = malloc(strlen(config_file_options.pg_backupapi_host)+1);
+	task->remote_ssh_command = malloc(strlen(config_file_options.pg_backupapi_remote_ssh_command)+1);
+	task->node_name = malloc(strlen(config_file_options.pg_backupapi_node_name)+1);
+	task->operation_type = malloc(strlen(DEFAULT_STANDBY_PG_BACKUPAPI_OP_TYPE)+1);
+	task->backup_id = malloc(strlen(config_file_options.pg_backupapi_backup_id)+1);
+	task->destination_directory = malloc(strlen(local_data_directory)+1);
+
+	task->operation_id = malloc(MAX_BUFFER_LENGTH);
+	task->operation_status = malloc(MAX_BUFFER_LENGTH);
+
+	strcpy(task->host, config_file_options.pg_backupapi_host);
+	strcpy(task->remote_ssh_command, config_file_options.pg_backupapi_remote_ssh_command);
+	strcpy(task->node_name, config_file_options.pg_backupapi_node_name);
+	strcpy(task->operation_type, DEFAULT_STANDBY_PG_BACKUPAPI_OP_TYPE);
+	strcpy(task->backup_id, config_file_options.pg_backupapi_backup_id);
+	strcpy(task->destination_directory, local_data_directory);
+	strcpy(task->operation_id, "\0");
+
+	ret = create_new_task(curl, task);
+
+	if ((ret != CURLE_OK) || (strlen(task->operation_id) == 0)) {
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_return_code);
+		if (499 > http_return_code && http_return_code >= 400) {
+			log_error("Cannot find backup '%s' for node '%s'.", task->backup_id, task->node_name);
+		} else {
+			log_error("whilst reaching out pg_backup service: %s\n", curl_easy_strerror(ret));
+		}
+        }
+	else
+	{
+		log_info("Success creating the task: operation id '%s'", task->operation_id);
+
+		//We call init again because previous call included POST calls
+		curl_easy_cleanup(curl);
+		curl = curl_easy_init();
+		while (true)
+		{
+			ret = get_status_of_operation(curl, task);
+			if (strlen(task->operation_status) == 0) {
+				log_info("Retrying...");
+			}
+			else
+			{
+				log_info("status %s", task->operation_status);
+			}
+			if (strcmp(task->operation_status, "FAILED") == 0) {
+				break;
+			}
+			if (strcmp(task->operation_status, "DONE") == 0) {
+				r = SUCCESS;
+				break;
+			}
+
+			sleep(seconds_to_sleep);
+		}
+	}
+
+	curl_easy_cleanup(curl);
+	free(task);
 	return r;
 }
 

@@ -22,7 +22,7 @@ GIT_WORK_TREE=${repmgr_abs_srcdir}
 GIT_DIR=${repmgr_abs_srcdir}/.git
 export GIT_DIR
 export GIT_WORK_TREE
-
+PG_LDFLAGS=-lcurl -ljson-c
 include $(PGXS)
 
 -include ${repmgr_abs_srcdir}/Makefile.custom

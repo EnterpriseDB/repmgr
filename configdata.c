@@ -291,6 +291,46 @@ struct ConfigFileSetting config_file_settings[] =
 		{},
 		{}
 	},
+	/* pg_backupapi_backup_id*/
+	{
+		"pg_backupapi_backup_id",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pg_backupapi_backup_id },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pg_backupapi_backup_id) },
+		{}
+	},
+	/* pg_backupapi_host*/
+	{
+		"pg_backupapi_host",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pg_backupapi_host },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pg_backupapi_host) },
+		{}
+	},
+	/* pg_backupapi_node_name */
+	{
+		"pg_backupapi_node_name",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pg_backupapi_node_name },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pg_backupapi_node_name) },
+		{}
+	},
+	/* pg_backupapi_remote_ssh_command */
+	{
+		"pg_backupapi_remote_ssh_command",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pg_backupapi_remote_ssh_command },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pg_backupapi_remote_ssh_command) },
+		{}
+	},
 
 	/* =======================
 	 * standby follow settings
