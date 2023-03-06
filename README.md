@@ -40,7 +40,6 @@ Directories
  - `contrib/`: additional utilities
  - `doc/`: DocBook-based documentation files
  - `expected/`: expected regression test output
- - `scripts/`: example scripts
  - `sql/`: regression test input
 
 
@@ -70,7 +69,6 @@ news are always welcome.
 
 Thanks from the repmgr core team.
 
-* Ian Barwick
 * Jaime Casanova
 * Abhijit Menon-Sen
 * Simon Riggs
