@@ -50,7 +50,7 @@ size_t receive_operations_cb(void *content, size_t size, size_t nmemb, char *buf
 }
 
 char * define_base_url(operation_task *task) {
-	char *format = "http://%s:80/servers/%s/operations";
+	char *format = "http://%s:7480/servers/%s/operations";
 	char *url = malloc(MAX_BUFFER_LENGTH);
 
 	snprintf(url, MAX_BUFFER_LENGTH-1, format, task->host, task->node_name);
