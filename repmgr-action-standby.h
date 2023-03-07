@@ -30,6 +30,6 @@ extern void do_standby_help(void);
 
 extern bool do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_node_info *follow_target_node_record, PQExpBufferData *output, int general_error_code, int *error_code);
 
-
+void check_pg_backupapi_standby_clone_options(void);
 
 #endif							/* _REPMGR_ACTION_STANDBY_H_ */
