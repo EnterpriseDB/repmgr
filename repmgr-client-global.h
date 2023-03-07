@@ -193,7 +193,8 @@ typedef struct
 typedef enum
 {
 	barman,
-	pg_basebackup
+	pg_basebackup,
+	pg_backupapi
 } standy_clone_mode;
 
 typedef enum

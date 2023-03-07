@@ -164,6 +164,10 @@ typedef struct
 	char		archive_cleanup_command[MAXLEN];
 	bool		use_primary_conninfo_password;
 	char		passfile[MAXPGPATH];
+	char		pg_backupapi_backup_id[NAMEDATALEN];
+	char		pg_backupapi_host[NAMEDATALEN];
+	char		pg_backupapi_node_name[NAMEDATALEN];
+	char		pg_backupapi_remote_ssh_command[MAXLEN];
 
 	/* standby promote settings */
 	int			promote_check_timeout;
