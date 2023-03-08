@@ -7795,6 +7795,7 @@ run_pg_backupapi(t_node_info *local_node_record)
 	CURL *curl = curl_easy_init();
 	CURLcode ret;
 
+	check_pg_backupapi_standby_clone_options();
 
 	task->host = malloc(strlen(config_file_options.pg_backupapi_host)+1);
 	task->remote_ssh_command = malloc(strlen(config_file_options.pg_backupapi_remote_ssh_command)+1);
@@ -7857,6 +7858,36 @@ run_pg_backupapi(t_node_info *local_node_record)
 	free(task);
 	return r;
 }
+
+/*
+ * pg_backupapi mode is enabled when config_file_options.pg_backupapi_host is set hence, we
+ * should also check the other required variables too.
+ */
+
+void check_pg_backupapi_standby_clone_options() {
+
+	bool error = false;
+
+	if (*config_file_options.pg_backupapi_remote_ssh_command == '\0') {
+		log_hint("Check config: remote ssh command is required");
+		error = true;
+	}
+	if (*config_file_options.pg_backupapi_node_name == '\0') {
+		log_hint("Check config: node name is required");
+		error = true;
+	}
+	if (*config_file_options.pg_backupapi_backup_id == '\0') {
+		log_hint("Check config: backup_id is required");
+		error = true;
+	}
+
+	if (error == true) {
+		log_error("Please fix the errors and try again");
+		exit(ERR_BAD_CONFIG);
+	}
+
+}
+
 
 
 static char *
