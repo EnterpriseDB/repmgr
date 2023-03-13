@@ -803,8 +803,7 @@ do_node_check(void)
 									 ERR_BAD_CONFIG);
 			}
 
-			log_error(_("unable to parse conninfo string \"%s\" for local node"),
-					  config_file_options.conninfo);
+			log_error(_("unable to parse conninfo string for local node"));
 			log_detail("%s", errmsg);
 
 			exit(ERR_BAD_CONFIG);
@@ -2671,7 +2670,7 @@ do_node_rejoin(void)
 		log_error(_("unable to connect to current registered primary \"%s\" (ID: %i)"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
-		log_detail(_("registered primary node conninfo is: \"%s\""),
+		log_debug(_("registered primary node conninfo is: \"%s\""),
 				   primary_node_record.conninfo);
 		/*
 		 * Catch case where provided upstream is not in recovery, but is also

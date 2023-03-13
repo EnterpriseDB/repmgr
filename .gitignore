@@ -55,4 +55,5 @@ repmgr4
 repmgrd4
 
 # generated files
+repmgr.bc
 configfile-scan.c

@@ -142,7 +142,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 
 	if (parse_success == false)
 	{
-		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo);
+		log_error(_("unable to parse provided conninfo string"));
 		log_detail("%s", errmsg);
 		free_conninfo_params(&conninfo_params);
 		return NULL;
@@ -260,8 +260,7 @@ establish_db_connection_with_replacement_param(const char *conninfo,
 
 	if (parse_success == false)
 	{
-		log_error(_("unable to parse conninfo string \"%s\" for local node"),
-				  conninfo);
+		log_error(_("unable to parse conninfo string for local node"));
 		log_detail("%s", errmsg);
 
 		if (exit_on_error == true)
@@ -476,7 +475,7 @@ get_conninfo_value(const char *conninfo, const char *keyword, char *output)
 
 	if (conninfo_options == NULL)
 	{
-		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo);
+		log_error(_("unable to parse provided conninfo string"));
 		return false;
 	}
 
@@ -884,7 +883,7 @@ normalize_conninfo_string(const char *conninfo_str)
 
 	if (parse_success == false)
 	{
-		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo_str);
+		log_error(_("unable to parse provided conninfo string"));
 		log_detail("%s", errmsg);
 		free_conninfo_params(&conninfo_params);
 		return NULL;
@@ -4964,7 +4963,7 @@ _is_server_available(const char *conninfo, bool quiet)
 
 	if (quiet == false)
 	{
-		log_warning(_("unable to ping \"%s\""), conninfo);
+		log_warning(_("unable to ping"));
 		log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
 	}
 
@@ -4987,7 +4986,7 @@ is_server_available_params(t_conninfo_param_list *param_list)
 
 		if (status != PQPING_OK)
 		{
-			log_warning(_("unable to ping \"%s\""), conninfo_str);
+			log_warning(_("unable to ping"));
 			log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
 		}
 

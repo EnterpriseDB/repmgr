@@ -154,7 +154,7 @@ do_witness_register(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to reconnect to the primary node (node %i)"), primary_node_id);
-		log_detail(_("primary node's conninfo is \"%s\""), primary_node_record.conninfo);
+		log_debug(_("primary node's conninfo is \"%s\""), primary_node_record.conninfo);
 
 		PQfinish(witness_conn);
 
