@@ -227,6 +227,103 @@ description = "Main cluster"
   </sect2>
  </sect1>
 
+  <sect2 id="cloning-from-barman-pg_backupapi-mode" xreflabel="Using Barman through its API (pg-backup-api)">
+    <title>Using Barman through its API (pg-backup-api)</title>
+    <indexterm>
+      <primary>cloning</primary>
+      <secondary>pg-backup-api</secondary>
+    </indexterm>
+
+    <para>
+      This mode (`pg-backupapi`) was introduced in v5.4.0 as a way to integrate further with Barman and let it
+      handle all writes. This also reduces the ssh keys you need to share because, as long as you have access to
+      the API service, you could start to perform recoveries right away. You just need to tell Barman what is
+      the backup you need and in which node to want it to be restored.
+    </para>
+
+    <para>
+      In order to enable <literal>pg_backupapi mode</literal> support for <command>repmgr standby clone</command>,
+      you need the following lines in repmgr.conf:
+      <itemizedlist spacing="compact" mark="bullet">
+        <listitem><para>pg_backupapi_host: Where pg-backup-api is hosted</para></listitem>
+        <listitem><para>pg_backupapi_node_name: Name of the server as understood by Barman</para></listitem>
+        <listitem><para>pg_backupapi_remote_ssh_command: How Barman will be connecting as to the node</para></listitem>
+        <listitem><para>pg_backupapi_backup_id: ID of the existing backup you need to restore</para></listitem>
+      </itemizedlist>
+
+      This is an example of how repmgr.conf would look like:
+
+      <programlisting>
+        pg_backupapi_host = '192.168.122.154'
+        pg_backupapi_node_name = 'burrito'
+        pg_backupapi_remote_ssh_command = 'ssh john_doe@192.168.122.1'
+        pg_backupapi_backup_id = '20230223T093201'
+      </programlisting>
+    </para>
+
+    <para>
+      <literal>pg_backupapi_host</literal> is the variable name that enables this mode, and when you set it,
+      all the rest of the above variables are required. Also, remember that this service is just an interface
+      between Barman and repmgr, hence if something fails during a recovery, you should check Barman's logs upon
+      why the process couldn't finish properly.
+    </para>
+
+    <note>
+      <simpara>
+        Despite in Barman you can define shortcuts ID like "lastest" or "oldest", they are not supported for the
+        time being in pg-backup-api. This shortcuts will be supported in a future release.
+      </simpara>
+     </note>
+
+    <para>
+      This is a real example of repmgr's output cloning with the API. Note that during this operation, we stopped
+      the service for a little while and repmgr had to retry but that doesn't affect the final outcome. The primary
+      is listening to port 6001 upon localhost:
+
+      <programlisting>
+$ repmgr -f ~/nodes/node_3/repmgr.conf standby clone -U repmgr -p 6001 -h localhost
+NOTICE: destination directory "/home/mario/nodes/node_3/data" provided
+INFO: Attempting to use `pg_backupapi` new restore mode
+INFO: connecting to source node
+DETAIL: connection string is: user=repmgr port=6001 host=localhost
+DETAIL: current installation size is 8541 MB
+DEBUG: 1 node records returned by source node
+DEBUG: connecting to: "user=repmgr dbname=repmgr host=localhost port=6001 connect_timeout=2 fallback_application_name=repmgr options=-csearch_path="
+DEBUG: upstream_node_id determined as 1
+INFO: Attempting to use `pg_backupapi` new restore mode
+INFO: replication slot usage not requested;  no replication slot will be set up for this standby
+NOTICE: starting backup (using pg_backupapi)...
+INFO: Success creating the task: operation id '20230309T150647'
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+Incorrect reply received for that operation ID.
+INFO: Retrying...
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status IN_PROGRESS
+INFO: status DONE
+NOTICE: standby clone (from pg_backupapi) complete
+NOTICE: you can now start your PostgreSQL server
+HINT: for example: pg_ctl -D /home/mario/nodes/node_3/data start
+HINT: after starting the server, you need to register this standby with "repmgr standby register"
+      </programlisting>
+
+    </para>
+  </sect2> <!--END cloning-from-barman-pg_backupapi-mode !-->
+
+
  <sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
    <title>Cloning and replication slots</title>
 
