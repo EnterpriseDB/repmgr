@@ -225,7 +225,6 @@ description = "Main cluster"
    </note>
 
   </sect2>
- </sect1>
 
   <sect2 id="cloning-from-barman-pg_backupapi-mode" xreflabel="Using Barman through its API (pg-backup-api)">
     <title>Using Barman through its API (pg-backup-api)</title>
@@ -322,7 +321,7 @@ HINT: after starting the server, you need to register this standby with "repmgr 
 
     </para>
   </sect2> <!--END cloning-from-barman-pg_backupapi-mode !-->
-
+ </sect1>
 
  <sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
    <title>Cloning and replication slots</title>
