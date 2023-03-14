@@ -234,10 +234,17 @@ description = "Main cluster"
     </indexterm>
 
     <para>
-      This mode (`pg-backupapi`) was introduced in v5.4.0 as a way to integrate further with Barman and let it
-      handle all writes. This also reduces the ssh keys you need to share because, as long as you have access to
-      the API service, you could start to perform recoveries right away. You just need to tell Barman what is
-      the backup you need and in which node to want it to be restored.
+      You can find information on how to install and setup pg-backup-api in
+      <ulink url="https://www.enterprisedb.com/docs/supported-open-source/barman/pg-backup-api/">the pg-backup-api
+      documentation</ulink>.
+    </para>
+
+    <para>
+      This mode (`pg-backupapi`) was introduced in v5.4.0 as a way to further integrate with Barman letting Barman
+      handle the restore. This also reduces the ssh keys that need to share between the backup and postgres nodes.
+      As long as you have access to the API service by HTTP calls, you could perform recoveries right away.
+      You just need to instruct Barman through the API which backup you need and on which node the backup needs to
+      to be restored on.
     </para>
 
     <para>
@@ -269,15 +276,15 @@ description = "Main cluster"
 
     <note>
       <simpara>
-        Despite in Barman you can define shortcuts ID like "lastest" or "oldest", they are not supported for the
-        time being in pg-backup-api. This shortcuts will be supported in a future release.
+        Despite in Barman you can define shortcuts like "lastest" or "oldest", they are not supported for the
+        time being in pg-backup-api. These shortcuts will be supported in a future release.
       </simpara>
      </note>
 
     <para>
       This is a real example of repmgr's output cloning with the API. Note that during this operation, we stopped
       the service for a little while and repmgr had to retry but that doesn't affect the final outcome. The primary
-      is listening to port 6001 upon localhost:
+      is listening on localhost's port 6001:
 
       <programlisting>
 $ repmgr -f ~/nodes/node_3/repmgr.conf standby clone -U repmgr -p 6001 -h localhost
