@@ -16,8 +16,22 @@
   </para>
 
   <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.4.0">
+    <title id="release-current">Release 5.4.0</title>
+    <para><emphasis>Thu 15 March, 2023</emphasis></para>
+    <para>
+      &repmgr; 5.4.0 is a major release.
+    </para>
+    <para>
+      This release provides support for cloning standbys using backups taken with <ulink url="http://www.pgbarman.org">barman</ulink>
+      with the use of <ulink url="https://github.com/EnterpriseDB/pg-backup-api">pg-backup-api</ulink>.
+    </para>
+    <para>
+      Minor fixes to the documentation.
+    </para>
+
   <sect1 id="release-5.3.3">
-    <title id="release-current">Release 5.3.3</title>
+    <title>Release 5.3.3</title>
     <para><emphasis>Mon 17 October, 2022</emphasis></para>
     <para>
       &repmgr; 5.3.3 is a minor release providing support for
