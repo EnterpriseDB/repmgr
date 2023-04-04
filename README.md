@@ -8,7 +8,7 @@ replication, and perform administrative tasks such as failover or switchover
 operations.
 
 The most recent `repmgr` version (5.3.2) supports all PostgreSQL versions from
-9.5 to 14. PostgreSQL 9.4 is also supported, with some restrictions.
+9.5 to 15. PostgreSQL 9.4 is also supported, with some restrictions.
 
 `repmgr` is distributed under the GNU GPL 3 and maintained by EnterpriseDB.
 
