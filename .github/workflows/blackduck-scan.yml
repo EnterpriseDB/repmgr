@@ -8,12 +8,13 @@ on:
     tags:
       - '**'
   workflow_dispatch:
-  pull_request:
 
 jobs:
   Blackduck-Scan:
-    runs-on: ubuntu-20.04
+    if: secrets.BLACKDUCK_URL != null
+    runs-on: ubuntu-22.04
     steps:
+
     - name: Checkout source repository
       id: checkout-source 
       uses: actions/checkout@v3
@@ -38,8 +39,8 @@ jobs:
       id: sbom-report
       shell: bash 
       run: |
-       chmod +x ./.github/workflows/blackduck/get_bd_sbom.sh
-       ./.github/workflows/blackduck/get_bd_sbom.sh ${{ secrets.BLACKDUCK_URL }} ${{ secrets.BLACKDUCK_API_TOKEN }} ${{ github.event.repository.name }} ${{ github.ref_type }}/${{ github.ref_name }}  
+        chmod +x ./.github/workflows/blackduck/get_bd_sbom.sh
+        ./.github/workflows/blackduck/get_bd_sbom.sh ${{ secrets.BLACKDUCK_URL }} ${{ secrets.BLACKDUCK_API_TOKEN }} ${{ github.event.repository.name }} ${{ github.ref_type }}/${{ github.ref_name }}  
 
     - name: Set current date as env variable
       id: get-date
@@ -60,28 +61,29 @@ jobs:
         cd /tmp/reports/ ;
         mv ${{ env.pdf-name }} ${{ env.NOW }}-${{ env.pdf-name }};
         mv sbom.zip ${{ env.NOW }}-${{ github.event.repository.name }}-`echo ${{ github.ref_name }}| sed -e 's/\//-/g'`-sbom.zip;
-
+      
     - name: Create report artifact
       id: create-report-artifact
       uses: actions/upload-artifact@v3
       with:
-       name: risk-report
-       path: /tmp/reports/*.pdf
+        name: risk-report
+        path: /tmp/reports/*.pdf
 
     - name: Create sbom artifact
       id: create-sbom-artifact
       uses: actions/upload-artifact@v3
       with:
-       name: sbom-report
-       path: /tmp/reports/*-sbom.zip
+        name: sbom-report
+        path: /tmp/reports/*-sbom.zip
 
   Deploy-to-S3:
-   needs: Blackduck-Scan
-   runs-on: ubuntu-20.04
-   permissions: # These permissions are needed to interact with GitHub's OIDC Token endpoint.
-    id-token: write
-    contents: read
-   steps:
+    needs: Blackduck-Scan
+    runs-on: ubuntu-22.04
+    permissions: # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+     id-token: write
+     contents: read
+    steps:
+
     - name: Download Artifacts
       id: download-artifact
       uses: actions/download-artifact@v3
@@ -92,10 +94,10 @@ jobs:
       id: configure-aws-credentials
       uses: aws-actions/configure-aws-credentials@v1-node16
       with:
-       role-to-assume: arn:aws:iam::934964804737:role/github-actions-foundation-security
-       role-session-name: blackduck-public-repo
-       role-duration-seconds: 1200 #20 minute TTL
-       aws-region: us-east-1  
+        role-to-assume: arn:aws:iam::934964804737:role/github-actions-foundation-security
+        role-session-name: blackduck-public-repo
+        role-duration-seconds: 1200 #20 minute TTL
+        aws-region: us-east-1
 
     - name: Upload to results to S3
       id: s3-upload
@@ -106,4 +108,4 @@ jobs:
         fi
       continue-on-error: true  
       env:
-        AWS_EC2_METADATA_DISABLED: 'true'
+        AWS_EC2_METADATA_DISABLED: 'true'   
