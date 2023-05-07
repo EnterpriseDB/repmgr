@@ -1922,14 +1922,14 @@ can_disable_walsender(PGconn *conn)
 	{
 		initPQExpBuffer(&query);
 		appendPQExpBufferStr(&query,
-							" SELECT pg_catalog.has_parameter_privilege('wal_retrieve_retry_interval', 'ALTER SYSTEM') ");
+						" SELECT pg_catalog.has_parameter_privilege('wal_retrieve_retry_interval', 'ALTER SYSTEM') ");
 
 		res = PQexec(conn, query.data);
 
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			log_db_error(conn, query.data,
-						_("can_disable_walsender(): unable to query user parameter privileges"));
+					_("can_disable_walsender(): unable to query user parameter privileges"));
 		}
 		else
 		{
