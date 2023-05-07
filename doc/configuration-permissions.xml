@@ -161,6 +161,8 @@
               <varname>standby_disconnect_on_failover</varname> is set to <literal>true</literal> in
               <filename>repmgr.conf</filename>. <command>ALTER SYSTEM</command> can only be executed by
               a superuser; if the &repmgr; user is not a superuser, this functionality will not be available.
+              From PostgreSQL 15 ALTER SYSTEM privilege for specific settings can be granted with e.g.
+              <command>GRANT ALTER SYSTEM ON PARAMETER wal_retrieve_retry_interval TO repmgr</command>.
             </simpara>
           </listitem>
         </itemizedlist>
