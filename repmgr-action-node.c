@@ -2365,18 +2365,25 @@ do_node_service(void)
 			conn = establish_db_connection_by_params(&source_conninfo, true);
 		}
 
-		if (is_superuser_connection(conn, NULL) == false)
+		if (can_execute_checkpoint(conn) == false)
 		{
 			if (runtime_options.dry_run == true)
 			{
-				log_warning(_("a CHECKPOINT would be issued here but no superuser connection is available"));
+				log_warning(_("a CHECKPOINT would be issued here but no authorized connection is available"));
 			}
 			else
 			{
-				log_warning(_("a superuser connection is required to issue a CHECKPOINT"));
+				log_warning(_("an authorized connection is required to issue a CHECKPOINT"));
 			}
 
-			log_hint(_("provide a superuser with -S/--superuser"));
+			if (PQserverVersion(conn) >= 150000)
+			{
+				log_hint(_("provide a superuser with -S/--superuser or grant pg_checkpoint role to repmgr user"));
+			}
+			else
+			{
+				log_hint(_("provide a superuser with -S/--superuser"));
+			}
 		}
 		else
 		{
