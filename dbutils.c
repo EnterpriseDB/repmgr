@@ -1941,16 +1941,16 @@ can_disable_walsender(PGconn *conn)
 
 	if (has_alter_system_priv == false)
 	{
-		log_warning(_("\"standby_disconnect_on_failover\" specified, but repmgr user is not authorized to ALTER SYSTEM"));
+		log_warning(_("\"standby_disconnect_on_failover\" specified, but repmgr user is not authorized to perform ALTER SYSTEM wal_retrieve_retry_interval"));
 
 		if (PQserverVersion(conn) >= 150000)
-        {
-            log_detail(_("superuser or ALTER SYSTEM wal_retrieve_retry_interval permission required to disable standbys on failover"));
-        }
-        else
-        {
-            log_detail(_("superuser permission required to disable standbys on failover"));
-        }
+		{
+			log_detail(_("superuser or ALTER SYSTEM wal_retrieve_retry_interval permission required to disable standbys on failover"));
+		}
+		else
+		{
+			log_detail(_("superuser permission required to disable standbys on failover"));
+		}
 	}
 
 	return has_alter_system_priv;
