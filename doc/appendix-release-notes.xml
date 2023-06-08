@@ -16,8 +16,29 @@
   </para>
 
   <!-- remember to update the release date in ../repmgr_version.h.in -->
+  <sect1 id="release-5.4.1">
+    <title id="release-current">Release 5.4.1</title>
+    <para><emphasis>??? ?? ??????, 202?</emphasis></para>
+    <para>
+      &repmgr; 5.4.1 is a minor release providing ...
+    </para>
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              &repmgrd;: ensure witness node metadata is updated if the primary
+              node changed while the witness &repmgrd; was not running.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-5.4.0">
-    <title id="release-current">Release 5.4.0</title>
+    <title>Release 5.4.0</title>
     <para><emphasis>Thu 15 March, 2023</emphasis></para>
     <para>
       &repmgr; 5.4.0 is a major release.
@@ -29,6 +50,7 @@
     <para>
       Minor fixes to the documentation.
     </para>
+  </sect1>
 
   <sect1 id="release-5.3.3">
     <title>Release 5.3.3</title>
