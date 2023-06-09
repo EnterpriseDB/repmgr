@@ -2394,6 +2394,17 @@ monitor_streaming_witness(void)
 			terminate(ERR_BAD_CONFIG);
 		}
 
+		/*
+		 * It's possible that the primary changed while the witness repmgrd was not
+		 * running. This does not affect the functionality of the witness repmgrd, but
+		 * does mean outdated node metadata will be displayed, so update that.
+		 */
+		if (local_node_info.upstream_node_id != primary_node_id)
+		{
+			update_node_record_set_upstream(primary_conn, local_node_info.node_id, primary_node_id);
+			local_node_info.upstream_node_id = primary_node_id;
+		}
+
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
