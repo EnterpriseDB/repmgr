@@ -1,5 +1,8 @@
+5.4.1   2023-??-??
+        repmgrd: ensure witness node metadata is updated (Ian)
+
 5.4.0   2023-03-16
-	Support cloning replicas using pg-backup-api
+        Support cloning replicas using pg-backup-api
 
 5.3.3   2022-10-17
         Support for PostgreSQL added
