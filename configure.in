@@ -1,8 +1,8 @@
-AC_INIT([repmgr], [5.4.0], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
+AC_INIT([repmgr],[5.4.1],[repmgr@googlegroups.com],[repmgr],[https://repmgr.org/])
 
 AC_COPYRIGHT([Copyright (c) 2010-2021, EnterpriseDB Corporation])
 
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
 
 AC_ARG_VAR([PG_CONFIG], [Location to find pg_config for target PostgreSQL (default PATH)])
 
