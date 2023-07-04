@@ -10,8 +10,8 @@
   <note>
     <simpara>
       This section documents a subset of optional configuration settings; for a full
-      for a full and annotated view of all configuration options see the
-      see the <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">sample repmgr.conf file</ulink>
+      and annotated view of all configuration options see the
+      <ulink url="https://raw.githubusercontent.com/EnterpriseDB/repmgr/master/repmgr.conf.sample">sample repmgr.conf file</ulink>
     </simpara>
   </note>
 
