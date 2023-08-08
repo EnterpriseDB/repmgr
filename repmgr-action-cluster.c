@@ -1543,7 +1543,7 @@ do_cluster_help(void)
 	printf(_("    --event                   filter specific event\n"));
 	printf(_("    --node-id                 restrict entries to node with this ID\n"));
 	printf(_("    --node-name               restrict entries to node with this name\n"));
-	printf(_("    --compact                 omit \"Details\" column"));
+	printf(_("    --compact                 omit \"Details\" column\n"));
 	printf(_("    --csv                     emit output as CSV\n"));
 	puts("");
 
