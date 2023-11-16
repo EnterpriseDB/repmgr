@@ -18,9 +18,9 @@
   <!-- remember to update the release date in ../repmgr_version.h.in -->
   <sect1 id="release-5.4.1">
     <title id="release-current">Release 5.4.1</title>
-    <para><emphasis>??? ?? ??????, 202?</emphasis></para>
+    <para><emphasis>Tue 04 July, 2023</emphasis></para>
     <para>
-      &repmgr; 5.4.1 is a minor release providing ...
+      &repmgr; 5.4.1 is a minor release providing a fix for witness metadata update
     </para>
     <sect2>
       <title>Bug fixes</title>
