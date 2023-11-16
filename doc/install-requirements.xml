@@ -14,7 +14,7 @@
   </para>
 
   <para>
-   &repmgr; &repmgrversion; is compatible with all PostgreSQL versions from 9.4. See
+   &repmgr; &repmgrversion; is compatible with all PostgreSQL versions from 10. See
    section <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
    for an overview of version compatibility.
   </para>
