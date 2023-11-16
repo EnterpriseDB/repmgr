@@ -120,13 +120,13 @@
               &repmgr; 5.4
             </entry>
             <entry>
-              (dev)
+              YES
             </entry>
             <entry>
               <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
             </entry>
             <entry>
-              9.4, 9.5, 9.6, 10, 11, 12, 13, 15
+              10, 11, 12, 13, 14, 15, 16
             </entry>
             <entry>
               &nbsp;
