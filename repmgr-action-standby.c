@@ -5288,7 +5288,7 @@ do_standby_switchover(void)
 			checkpoint_conn = superuser_conn;
 		}
 
-		if (is_superuser_connection(checkpoint_conn, NULL) == true)
+		if (can_execute_checkpoint(checkpoint_conn) == true)
 		{
 			log_notice(_("issuing CHECKPOINT on node \"%s\" (ID: %i) "),
 					   config_file_options.node_name,
@@ -5297,7 +5297,16 @@ do_standby_switchover(void)
 		}
 		else
 		{
-			log_warning(_("no superuser connection available, unable to issue CHECKPOINT"));
+			log_warning(_("no authorized connection available, unable to issue CHECKPOINT"));
+
+			if (PQserverVersion(conn) >= 150000)
+			{
+				log_hint(_("provide a superuser with -S/--superuser or grant pg_checkpoint role to repmgr user"));
+			}
+			else
+			{
+				log_hint(_("provide a superuser with -S/--superuser"));
+			}
 		}
 	}
 
