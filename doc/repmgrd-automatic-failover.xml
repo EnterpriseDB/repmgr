@@ -279,7 +279,9 @@
   <note>
     <para>
       <option>standby_disconnect_on_failover</option> is available with PostgreSQL 9.5 and later.
-      Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
+      Until PostgreSQL 14 this requires that the <literal>repmgr</literal> database user is a superuser.
+      From PostgreSQL 15 a specific ALTER SYSTEM privilege can be granted to the <literal>repmgr</literal> database
+      user with e.g. <command>GRANT ALTER SYSTEM ON PARAMETER wal_retrieve_retry_interval TO repmgr</command>.
     </para>
   </note>
   <para>

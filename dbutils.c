@@ -1913,15 +1913,47 @@ can_disable_walsender(PGconn *conn)
 	if (is_superuser_connection(conn, NULL) == true)
 		return true;
 
-	/*
-	 * As of PostgreSQL 14, it is not possible for a non-superuser
-	 * to execute ALTER SYSTEM, so further checks are superfluous.
-	 * This will need modifying for PostgreSQL 15.
-	 */
-	log_warning(_("\"standby_disconnect_on_failover\" specified, but repmgr user is not a superuser"));
-	log_detail(_("superuser permission required to disable standbys on failover"));
+	PQExpBufferData query;
+	PGresult   *res;
+	bool		has_alter_system_priv = false;
 
-	return false;
+	/* GRANT ALTER SYSTEM available from PostgreSQL 15 */
+	if (PQserverVersion(conn) >= 150000)
+	{
+		initPQExpBuffer(&query);
+		appendPQExpBufferStr(&query,
+						" SELECT pg_catalog.has_parameter_privilege('wal_retrieve_retry_interval', 'ALTER SYSTEM') ");
+
+		res = PQexec(conn, query.data);
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_db_error(conn, query.data,
+					_("can_disable_walsender(): unable to query user parameter privileges"));
+		}
+		else
+		{
+			has_alter_system_priv = atobool(PQgetvalue(res, 0, 0));
+		}
+		termPQExpBuffer(&query);
+		PQclear(res);
+	}
+
+	if (has_alter_system_priv == false)
+	{
+		log_warning(_("\"standby_disconnect_on_failover\" specified, but repmgr user is not authorized to perform ALTER SYSTEM wal_retrieve_retry_interval"));
+
+		if (PQserverVersion(conn) >= 150000)
+		{
+			log_detail(_("superuser or ALTER SYSTEM wal_retrieve_retry_interval permission required to disable standbys on failover"));
+		}
+		else
+		{
+			log_detail(_("superuser permission required to disable standbys on failover"));
+		}
+	}
+
+	return has_alter_system_priv;
 }
 
 /*

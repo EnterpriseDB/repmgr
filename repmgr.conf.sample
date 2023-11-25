@@ -340,7 +340,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #repmgrd_exit_on_inactive_node=false	# If "true", and the node record is marked as "inactive", abort repmgrd startup
 #standby_disconnect_on_failover=false	# If "true", in a failover situation wait for all standbys to
 					# disconnect their WAL receivers before electing a new primary
-					# (PostgreSQL 9.5 and later only; repmgr user must be a superuser for this)
+					# Can be true in PostgreSQL 9.5 and later only. Until PostgreSQL 14 repmgr user must be a superuser to use this.
+					# From PostgreSQL 15 repmgr must be a superuser or have 'ALTER SYSTEM wal_retrieve_retry_interval' privilege.
+					# (see: https://repmgr.org/docs/current/repmgrd-standby-disconnection-on-failover.html )
 #sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover" is true, the maximum length of time
 					#  (in seconds) to wait for other standbys to confirm they have disconnected their
 					# WAL receivers
