@@ -1,3 +1,5 @@
+[English](./README.md)|[简体中文](./README_CH.md)
+
 repmgr: Replication Manager for PostgreSQL
 ==========================================
 
