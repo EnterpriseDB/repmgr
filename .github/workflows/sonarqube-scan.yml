@@ -1,0 +1,77 @@
+###
+# Foundation-security SonarQube workflow
+# version: 2.1
+###
+name: Foundation-Security/SonarQube Scan
+
+on:
+  push:
+    tags:
+      - "**"
+    branches:
+      - "*main*"
+      - "*master*"
+      - "*STABLE*"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - "**"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to scan"
+        required: true
+        default: "main"
+
+jobs:
+  SonarQube-Scan:
+    name: SonarQube Scan Job
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source repository for dispatch runs
+        id: checkout-source-dispatch
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref }}
+          path: source
+          token: ${{ secrets.GH_SLONIK }}
+
+      - name: Checkout source repository for non-dispatch runs
+        id: checkout-source
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
+          path: source
+          token: ${{ secrets.GH_SLONIK }}
+
+      - name: Checkout foundation-security repository
+        id: checkout-foundation-security
+        uses: actions/checkout@v4
+        with:
+          repository: EnterpriseDB/foundation-security
+          ref: v2
+          path: foundation-security
+          token: ${{ secrets.GH_SLONIK }}
+
+      - name: SonarQube Scan
+        id: call-sq-composite
+        uses: ./foundation-security/actions/sonarqube
+        with:
+          github-token: ${{ secrets.GH_SLONIK }}
+          github-ref: ${{ github.ref_name }}
+          sonarqube-url: ${{ vars.SQ_URL }}
+          sonarqube-token: ${{ secrets.SONARQUBE_TOKEN }}
+          project-name: ${{ github.event.repository.name }}
+          pull-request-key: ${{ github.event.number }}
+          pull-request-branch: ${{ github.head_ref }}
+          pull-request-base-branch: ${{ github.base_ref }}
+          foundation-security-sonarqube-token: ${{ secrets.FOUNDATION_SECURITY_SONARQUBE_TOKEN }}
+          cloudsmith-token: ${{ secrets.CLOUDSMITH_READ_ALL }}
