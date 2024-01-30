@@ -1,0 +1,99 @@
+###
+# Foundation-security BlackDuck workflow
+# version: 2.1
+###
+name: Foundation-Security/Black Duck Scan
+
+on:
+  push:
+    tags:
+      - "**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - "**"
+  schedule:
+    - cron: "0 3 * * *" # 3:00 AM UTC / 10PM EST
+  workflow_dispatch:
+    inputs:
+      scan-mode:
+        description: "BlackDuck Scan mode"
+        required: true
+        type: choice
+        options:
+          - RAPID
+          - INTELLIGENT
+        default: RAPID
+      ref:
+        description: "Branch to scan"
+        required: true
+
+jobs:
+  Blackduck-Scan:
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout source repository for dispatch runs
+        id: checkout-source-dispatch
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref }}
+          path: source
+          token: ${{ secrets.GH_SLONIK }}
+
+      - name: Set project name and version for dispatch runs
+        id: set-project-name-and-version-dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "PROJECT_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
+          echo "PROJECT_VERSION=${{ inputs.ref }}" >> "$GITHUB_ENV"
+
+      - name: Checkout source repository for non-dispatch runs
+        id: checkout-source
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
+          path: source
+          token: ${{ secrets.GH_SLONIK }}
+
+      - name: Set project name and version for non-dispatch runs
+        id: set-project-name-and-version
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          echo "PROJECT_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
+          echo "PROJECT_VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
+
+      - name: Get short hash
+        shell: bash
+        if: ${{ inputs.scan-mode == 'INTELLIGENT' }}
+        run: |
+          cd source
+          echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
+
+      - name: Checkout foundation-security repository
+        id: checkout-foundation-security
+        uses: actions/checkout@v4
+        with:
+          repository: EnterpriseDB/foundation-security
+          ref: v2
+          path: foundation-security
+          token: ${{secrets.GH_SLONIK}}
+
+      - name: BlackDuck Scan
+        id: call-bd-action
+        uses: ./foundation-security/actions/blackduck
+        with:
+          github-token: ${{ secrets.GH_SLONIK }}
+          cloudsmith-token: ${{ secrets.CLOUDSMITH_READ_ALL }}
+          commit-hash: ${{ env.sha_short }}
+          git-tag: ${{ github.tag }}
+          blackduck-url: ${{ vars.BD_URL }}
+          blackduck-api-token: ${{ secrets.BLACKDUCK_API_TOKEN }}
+          project-name: ${{ env.PROJECT_NAME }}
+          project-version: ${{ env.PROJECT_VERSION }}
