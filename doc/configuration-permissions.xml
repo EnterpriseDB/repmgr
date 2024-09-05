@@ -80,8 +80,8 @@
         of the above predefined roles.
       </para>
       <para>
-        PostgreSQL 15 introduced <varname>pg_checkpoint</varname> default role which allows at a non-superuser
-        &repmgr; database user to perform CHECKPOINT command.
+        PostgreSQL 15 introduced the <varname>pg_checkpoint</varname> predefined role which allows a 
+        non-superuser &repmgr; database user to perform a CHECKPOINT command.
       </para>
       <para>
         Membership of these roles can be granted with e.g. <command>GRANT pg_read_all_stats TO repmgr</command>.
@@ -152,7 +152,7 @@
               <link linkend="repmgr-standby-switchover">repmgr standby switchover</link>. This can only
               be executed by a superuser; if the &repmgr; user is not a superuser,
               the <option>-S</option>/<option>--superuser</option> should be used.
-              From PostgreSQL 15 the <varname>pg_checkpoint</varname> default role removes the need of
+              From PostgreSQL 15 the <varname>pg_checkpoint</varname> predefined role removes the need of
               superuser permissions to perform <command>CHECKPOINT</command> command.
             </simpara>
             <simpara>

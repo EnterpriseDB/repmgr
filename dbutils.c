@@ -1969,7 +1969,6 @@ can_disable_walsender(PGconn *conn)
 	return false;
 }
 
-
 /*
  * Determine if the user associated with the current connection is
  * a member of the "pg_monitor" default role, or optionally one
