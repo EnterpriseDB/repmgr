@@ -1979,13 +1979,13 @@ connection_has_pg_monitor_role(PGconn *conn, const char *subrole)
 	initPQExpBuffer(&query);
 	appendPQExpBufferStr(&query,
 						 "  SELECT CASE "
-						 "           WHEN pg_catalog.pg_has_role('pg_monitor','MEMBER') "
+						 "           WHEN pg_catalog.pg_has_role('pg_monitor','USAGE') "
 						 "             THEN TRUE ");
 
 	if (subrole != NULL)
 	{
 		appendPQExpBuffer(&query,
-						  "           WHEN pg_catalog.pg_has_role('%s','MEMBER') "
+						  "           WHEN pg_catalog.pg_has_role('%s','USAGE') "
 						  "             THEN TRUE ",
 						  subrole);
 	}
