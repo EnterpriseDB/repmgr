@@ -1873,7 +1873,7 @@ can_execute_checkpoint(PGconn *conn)
 
 	initPQExpBuffer(&query);
 	appendPQExpBufferStr(&query,
-						 " SELECT pg_catalog.pg_has_role('pg_checkpoint','MEMBER') ");
+						 " SELECT pg_catalog.pg_has_role('pg_checkpoint','USAGE') ");
 
 	res = PQexec(conn, query.data);
 
