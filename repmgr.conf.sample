@@ -12,7 +12,7 @@
 #
 # For details on the configuration file format see the documentation at:
 #
-#   https://repmgr.org/docs/current/configuration-file.html#CONFIGURATION-FILE-FORMAT
+#  https://repmgr.org/docs/current/configuration-file.html#CONFIGURATION-FILE-FORMAT
 #
 # =============================================================================
 # Required configuration items
@@ -76,7 +76,7 @@
 #location='default'		 # An arbitrary string defining the location of the node; this
 				 # is used during failover to check visibility of the
 				 # current primary node. For further details see:
-				 #   https://repmgr.org/docs/current/repmgrd-network-split.html
+				 #  https://repmgr.org/docs/current/repmgrd-network-split.html
 
 #use_replication_slots=no	 # whether to use physical replication slots
 				 # NOTE: when using replication slots,
@@ -181,8 +181,8 @@
 
 #pg_ctl_options=''			# Options to append to "pg_ctl"
 #pg_basebackup_options=''		# Options to append to "pg_basebackup"
-                                        # (Note: when cloning from Barman, repmgr will honour any
-                                        # --waldir/--xlogdir setting present in "pg_basebackup_options"
+					# (Note: when cloning from Barman, repmgr will honour any
+					# --waldir/--xlogdir setting present in "pg_basebackup_options"
 #rsync_options=''			# Options to append to "rsync"
 ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
@@ -212,8 +212,8 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 #recovery_min_apply_delay=		# If provided, "recovery_min_apply_delay" will be set to
 					# this value (PostgreSQL 9.4 and later). Value can be
-                                        # an integer representing milliseconds, or a string
-                                        # representing a period of time (e.g. '5 min').
+					# an integer representing milliseconds, or a string
+					# representing a period of time (e.g. '5 min').
 
 
 #------------------------------------------------------------------------------
@@ -299,7 +299,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# a value of zero prevents the node being promoted to primary
 					# (default: 100)
 
-#connection_check_type=ping		# How to check availability of the upstream node; valid options:
+#connection_check_type='ping'		# How to check availability of the upstream node; valid options:
 					#  'ping': use PQping() to check if the node is accepting connections
 					#  'connection': attempt to make a new connection to the node
 					#  'query': execute an SQL statement on the node via the existing connection
@@ -344,20 +344,27 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# From PostgreSQL 15 repmgr must be a superuser or have 'ALTER SYSTEM wal_retrieve_retry_interval' privilege.
 					# (see: https://repmgr.org/docs/current/repmgrd-standby-disconnection-on-failover.html )
 #sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover" is true, the maximum length of time
-					#  (in seconds) to wait for other standbys to confirm they have disconnected their
+					# (in seconds) to wait for other standbys to confirm they have disconnected their
 					# WAL receivers
 #primary_visibility_consensus=false	# If "true", only continue with failover if no standbys have seen
 					# the primary node recently. *Must* be the same on all nodes.
 #always_promote=false			# Always promote a node, even if repmgr metadata is outdated
-#failover_validation_command=''		# Script to execute for an external mechanism to validate the failover
-					# decision made by repmgrd. One or both of the following parameter placeholders
-					# should be provided, which will be replaced by repmgrd with the appropriate
-					# value: %n (node_id), %a (node_name). *Must* be the same on all nodes.
+#failover_validation_command=''	# Script to execute for an external mechanism to validate the failover
+					# decision made by repmgrd. Each of the following parameter placeholders
+					# should be provided, which will be replaced by repmgrd with the appropriate value:
+					#   %n (node_id)
+					#   %a (node_name)
+					#   %v (number of visible nodes)
+					#   %u (number of shared upstream nodes)
+					#   %t (total number of nodes)
+					# *Must* be the same on all nodes.
 #election_rerun_interval=15		# if "failover_validation_command" is set, and the command returns
 					# an error, pause the specified amount of seconds before rerunning the election.
-					#
-					# The following items are relevant for repmgrd running on the primary,
-					# and will be ignored on non-primary nodes
+
+# The following items are relevant for repmgrd running on the primary,
+# and will be ignored on non-primary nodes.
+# (see: https://repmgr.org/docs/current/repmgrd-primary-child-disconnection.html )
+
 #child_nodes_check_interval=5		# Interval (in seconds) to check for attached child nodes (standbys)
 #child_nodes_connected_min_count=-1	# Minimum number of child nodes which must remain connected, otherwise
 					# disconnection command will be triggered
@@ -365,6 +372,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# (ignored if "child_nodes_connected_min_count" set)
 #child_nodes_disconnect_timeout=30	# Interval between child node disconnection and disconnection command execution
 #child_nodes_disconnect_command=''	# Command to execute if child node disconnection detected
+#child_nodes_connected_include_witness=false	# Whether to count the witness node (if in use) as a child node when determining whether to execute child_nodes_disconnect_command.
 
 #------------------------------------------------------------------------------
 # service control commands
@@ -387,20 +395,20 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #
 # For example, to use systemd, you can set
 #
-#    service_start_command = 'sudo systemctl start postgresql-9.6'
+#    service_start_command = 'sudo systemctl start postgresql-16'
 #    (...)
 #
 # and then use the following sudoers configuration:
 #
 #    # this is required when running sudo over ssh without -t:
 #    Defaults:postgres !requiretty
-#    postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-9.6, \
-#	/usr/bin/systemctl start postgresql-9.6, \
-#	/usr/bin/systemctl restart postgresql-9.6
+#    postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-16, \
+#        /usr/bin/systemctl start postgresql-16, \
+#        /usr/bin/systemctl restart postgresql-16
 #
 # Debian/Ubuntu users: use "sudo pg_ctlcluster" to execute service control commands.
 #
-# For more details, see: https://repmgr.org/docs/current/configuration-file-service-commands.html
+# For further details, see: https://repmgr.org/docs/current/configuration-file-service-commands.html
 
 #service_start_command = ''
 #service_stop_command = ''
@@ -442,5 +450,4 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# Note that these values will be checked when executing
 					# "repmgr standby switchover" to warn about potential
 					# issues with shutting down the demotion candidate.
-
 
