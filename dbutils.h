@@ -453,6 +453,7 @@ TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
 pid_t		get_wal_receiver_pid(PGconn *conn);
 
 /* user/role information functions */
+bool		can_execute_checkpoint(PGconn *conn);
 bool		can_execute_pg_promote(PGconn *conn);
 bool		can_disable_walsender(PGconn *conn);
 bool		connection_has_pg_monitor_role(PGconn *conn, const char *subrole);

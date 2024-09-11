@@ -77,7 +77,8 @@
           </para>
           <para>
             Note that a superuser connection is required to be able to execute the
-             <command>CHECKPOINT</command> command.
+            <command>CHECKPOINT</command> command. From PostgreSQL 15 the <varname>pg_checkpoint</varname>
+            predefined role removes the need for superuser permissions to perform <command>CHECKPOINT</command> command.
           </para>
         </listitem>
      </varlistentry>

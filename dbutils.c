@@ -1852,6 +1852,51 @@ get_wal_receiver_pid(PGconn *conn)
 /* =============================== */
 
 
+/*
+ * Determine if the user associated with the current connection can execute CHECKPOINT command.
+ * User must be a supersuer or a member of the pg_checkpoint default role (available from PostgreSQL 15).
+ */
+bool
+can_execute_checkpoint(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res;
+	bool		has_pg_checkpoint_role = false;
+
+	/* superusers can do anything, no role check needed */
+	if (is_superuser_connection(conn, NULL) == true)
+		return true;
+
+	/* pg_checkpoint available from PostgreSQL 15 */
+	if (PQserverVersion(conn) < 150000)
+		return false;
+
+	initPQExpBuffer(&query);
+	appendPQExpBufferStr(&query,
+						 " SELECT pg_catalog.pg_has_role('pg_checkpoint','USAGE') ");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data,
+					 _("can_execute_checkpoint(): unable to query user roles"));
+	}
+	else
+	{
+		has_pg_checkpoint_role = atobool(PQgetvalue(res, 0, 0));
+	}
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return has_pg_checkpoint_role;
+}
+
+
+/*
+ * Determine if the user associated with the current connection
+ * has sufficient permissions to use pg_promote function
+ */
 bool
 can_execute_pg_promote(PGconn *conn)
 {
@@ -2492,7 +2537,10 @@ get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions)
 /* node management functions */
 /* ========================= */
 
-/* assumes superuser connection */
+/*
+ * Assumes the connection can execute CHECKPOINT command.
+ * A check can be executed via 'can_execute_checkpoint' function.
+ */
 void
 checkpoint(PGconn *conn)
 {

@@ -79,7 +79,8 @@
     <para>
       Note that <command>CHECKPOINT</command> requires database superuser permissions to execute.
       If the <literal>repmgr</literal> user is not a superuser, the name of a superuser should be
-      provided with the <option>-S</option>/<option>--superuser</option> option.
+      provided with the <option>-S</option>/<option>--superuser</option> option. From PostgreSQL 15 the <varname>pg_checkpoint</varname>
+      predefined role removes the need for superuser permissions to perform <command>CHECKPOINT</command> command.
     </para>
     <para>
       If &repmgr; is unable to execute the <command>CHECKPOINT</command> command, the switchover
