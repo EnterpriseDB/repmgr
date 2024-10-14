@@ -70,7 +70,11 @@
 #include "repmgr-action-service.h"
 #include "repmgr-action-daemon.h"
 
+#if (PG_VERSION_NUM >= 170000)
+#include <common/file_utils.h> 		/* for PG_TEMP_FILE_PREFIX */
+#else
 #include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
+#endif
 
 /* globally available variables *
  * ============================ */
