@@ -5299,7 +5299,7 @@ do_standby_switchover(void)
 		{
 			log_warning(_("no authorized connection available, unable to issue CHECKPOINT"));
 
-			if (PQserverVersion(conn) >= 150000)
+			if (PQserverVersion(local_conn) >= 150000)
 			{
 				log_hint(_("provide a superuser with -S/--superuser or grant pg_checkpoint role to repmgr user"));
 			}
