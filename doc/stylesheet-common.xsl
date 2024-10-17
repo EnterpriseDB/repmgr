@@ -42,6 +42,14 @@
 <xsl:param name="variablelist.term.separator"></xsl:param>
 <xsl:param name="xref.with.number.and.title" select="0"></xsl:param>
 
+<!--
+  The below allows the stylesheets provided by the website to be applied fully
+  to the generated HTML.
+  -->
+<xsl:template name="body.attributes">
+  <xsl:attribute name="id">docContent</xsl:attribute>
+  <xsl:attribute name="class">container-fluid col-10</xsl:attribute>
+</xsl:template>
 
 <!-- Change display of some elements -->
 

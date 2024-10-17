@@ -22,6 +22,10 @@ ifndef FOP
 FOP = $(missing) fop
 endif
 
+ifeq ($(STYLE),website)
+XSLTPROC_HTML_FLAGS += --param website.stylesheet 1
+endif
+
 override XSLTPROCFLAGS += --stringparam repmgr.version '$(REPMGR_VERSION)'
 
 GENERATED_XML = version.xml
