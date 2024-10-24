@@ -962,6 +962,9 @@ main(int argc, char **argv)
 
 			if (strcasecmp(repmgr_action, "SHOW") == 0)
 				action = CLUSTER_SHOW;
+			/* alias to SHOW */
+			else if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = CLUSTER_SHOW;
 			else if (strcasecmp(repmgr_action, "EVENT") == 0)
 				action = CLUSTER_EVENT;
 			/* allow "CLUSTER EVENTS" as synonym for "CLUSTER EVENT" */
@@ -2678,7 +2681,7 @@ do_help(void)
 	printf(_("    %s [OPTIONS] primary {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"), progname());
 	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
-	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck|cleanup}\n"), progname());
+	printf(_("    %s [OPTIONS] cluster {show|status|event|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("    %s [OPTIONS] witness {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] service {status|pause|unpause}\n"), progname());
 	printf(_("    %s [OPTIONS] daemon  {start|stop}\n"), progname());
