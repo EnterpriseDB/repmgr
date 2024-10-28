@@ -32,7 +32,9 @@ DATA = \
   repmgr--5.2--5.3.sql \
   repmgr--5.3.sql \
   repmgr--5.3--5.4.sql \
-  repmgr--5.4.sql
+  repmgr--5.4.sql \
+  repmgr--5.4--5.5.sql \
+  repmgr--5.5.sql
 
 REGRESS = repmgr_extension
 

@@ -1,6 +1,6 @@
-AC_INIT([repmgr], [5.4.0], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
+AC_INIT([repmgr], [5.5.0], [repmgr@googlegroups.com], [repmgr], [https://repmgr.org/])
 
-AC_COPYRIGHT([Copyright (c) 2010-2021, EnterpriseDB Corporation])
+AC_COPYRIGHT([Copyright (c) 2010-2024, EnterpriseDB Corporation])
 
 AC_CONFIG_HEADER(config.h)
 
