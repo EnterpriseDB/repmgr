@@ -1359,6 +1359,8 @@ monitor_streaming_standby(void)
 	MonitoringState local_monitoring_state = MS_NORMAL;
 	instr_time	local_degraded_monitoring_start;
 
+	bool upstream_check_result;
+	int degraded_monitoring_elapsed;
 	int last_known_upstream_node_id = UNKNOWN_NODE_ID;
 
 	log_debug("monitor_streaming_standby()");
@@ -1547,7 +1549,6 @@ monitor_streaming_standby(void)
 
 	while (true)
 	{
-		bool upstream_check_result;
 
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
 
@@ -1770,8 +1771,7 @@ monitor_streaming_standby(void)
 
 		if (monitoring_state == MS_DEGRADED)
 		{
-			int			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
-			bool		upstream_check_result;
+			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
 
 			if (config_file_options.degraded_monitoring_timeout > 0
 				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
@@ -1894,7 +1894,6 @@ monitor_streaming_standby(void)
 					 */
 					if (failover_state == FAILOVER_STATE_PROMOTION_FAILED)
 					{
-						int			degraded_monitoring_elapsed;
 						int			former_upstream_node_id = local_node_info.upstream_node_id;
 						NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 						PQExpBufferData event_details;
@@ -1953,7 +1952,7 @@ monitor_streaming_standby(void)
 
 					if (local_node_info.type == PRIMARY)
 					{
-						int			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+						degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
 
 						log_notice(_("resuming monitoring as primary node after %i seconds"),
 								   degraded_monitoring_elapsed);

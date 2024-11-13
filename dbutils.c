@@ -1624,7 +1624,7 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
 	{
-		struct stat statbuf;
+		struct stat local_statbuf;
 		char		file_path[MAXPGPATH + sizeof(arcdir_ent->d_name)];
 		int			basenamelen = 0;
 
@@ -1634,7 +1634,7 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 				 arcdir_ent->d_name);
 
 		/* skip non-files */
-		if (stat(file_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		if (stat(file_path, &local_statbuf) == 0 && !S_ISREG(local_statbuf.st_mode))
 		{
 			continue;
 		}
