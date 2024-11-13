@@ -535,7 +535,7 @@ do_standby_clone(void)
 
 		if (external_config_files == true)
 		{
-			int			r;
+			r = 0;
 			PQExpBufferData msg;
 
 			initPQExpBuffer(&msg);
@@ -762,7 +762,7 @@ do_standby_clone(void)
 	if (mode == pg_basebackup && runtime_options.verify_backup == true)
 	{
 		PQExpBufferData command;
-		int r;
+		r = 0;
 		struct stat st;
 
 		initPQExpBuffer(&command);
@@ -3927,7 +3927,6 @@ do_standby_switchover(void)
 
 	if (PQserverVersion(local_conn) < 130000 && is_wal_replay_paused(local_conn, false) == true)
 	{
-		ReplInfo 	replication_info;
 		init_replication_info(&replication_info);
 
 		if (get_replication_info(local_conn, STANDBY, &replication_info) == false)
@@ -4784,7 +4783,7 @@ do_standby_switchover(void)
 	{
 		NodeInfoListCell *cell = NULL;
 		ItemList repmgrd_connection_errors = {NULL, NULL};
-		int i = 0;
+		i = 0;
 		int unreachable_node_count = 0;
 
 		get_all_node_records(local_conn, &all_nodes);
@@ -5099,8 +5098,6 @@ do_standby_switchover(void)
 		/* database server could not be contacted */
 		if (ping_res == PQPING_NO_RESPONSE || ping_res == PQPING_NO_ATTEMPT)
 		{
-			bool		command_success;
-
 			/*
 			 * remote server can't be contacted at protocol level - that
 			 * doesn't necessarily mean it's shut down, so we'll ask its
@@ -5678,7 +5675,7 @@ do_standby_switchover(void)
 		{
 			ItemList repmgrd_unpause_errors = {NULL, NULL};
 			NodeInfoListCell *cell = NULL;
-			int i = 0;
+			i = 0;
 			int error_node_count = 0;
 
 			for (cell = all_nodes.head; cell; cell = cell->next)
@@ -6513,12 +6510,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	if (mode == pg_basebackup)
 	{
 
-		PGconn	  **connections;
-		int			i;
-		int			available_wal_senders;
-		int			min_replication_connections = 1;
-		int			possible_replication_connections = 0;
-		t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+		PGconn		**connections;
+		int		available_wal_senders;
+		int		min_replication_connections			= 1;
+		int		possible_replication_connections	= 0;
+		i											= 0;
+		t_conninfo_param_list repl_conninfo			= T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 
 		/*
@@ -8480,7 +8477,6 @@ check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes
 		if (sibling_nodes->node_count > 0)
 		{
 			PQExpBufferData nodes;
-			NodeInfoListCell *cell;
 
 			initPQExpBuffer(&nodes);
 

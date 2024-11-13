@@ -394,7 +394,6 @@ do_node_status(void)
 		if (node_info.inactive_replication_slots > 0)
 		{
 			KeyValueList inactive_replication_slots = {NULL, NULL};
-			KeyValueListCell *cell = NULL;
 
 			(void) get_inactive_replication_slots(conn, &inactive_replication_slots);
 
@@ -524,8 +523,6 @@ do_node_status(void)
 		if (node_info.inactive_replication_slots)
 		{
 			KeyValueList inactive_replication_slots = {NULL, NULL};
-			KeyValueListCell *cell = NULL;
-
 			(void) get_inactive_replication_slots(conn, &inactive_replication_slots);
 			for (cell = inactive_replication_slots.head; cell; cell = cell->next)
 			{
@@ -2546,6 +2543,7 @@ do_node_rejoin(void)
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	bool		hide_standby_signal = false;
 
+	KeyValueListCell *cell = NULL;
 	PQExpBufferData command;
 	PQExpBufferData command_output;
 	PQExpBufferData follow_output;
@@ -2965,7 +2963,7 @@ do_node_rejoin(void)
 				else
 				{
 					while ((slotdir_ent = readdir(slotdir)) != NULL) {
-						struct stat statbuf;
+						struct stat local_statbuf;
 						PQExpBufferData slotdir_ent_path;
 
 						if (strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
@@ -2978,7 +2976,7 @@ do_node_rejoin(void)
 										  slotdir_path.data,
 										  slotdir_ent->d_name);
 
-						if (stat(slotdir_ent_path.data, &statbuf) == 0 && !S_ISDIR(statbuf.st_mode))
+						if (stat(slotdir_ent_path.data, &local_statbuf) == 0 && !S_ISDIR(local_statbuf.st_mode))
 						{
 							termPQExpBuffer(&slotdir_ent_path);
 							continue;
@@ -3109,7 +3107,6 @@ do_node_rejoin(void)
 		else
 		{
 			KeyValueList inactive_replication_slots = {NULL, NULL};
-			KeyValueListCell *cell = NULL;
 			int inactive_count = 0;
 			PQExpBufferData slotinfo;
 
