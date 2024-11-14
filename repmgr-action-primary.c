@@ -235,6 +235,38 @@ do_primary_register(void)
 	return;
 }
 
+static inline void reset_node_info(t_node_info *info)
+{
+	info->node_id 						= NODE_NOT_FOUND;
+	info->upstream_node_id				= NO_UPSTREAM_NODE;
+	info->type				 			= UNKNOWN;
+	info->node_name[0]					= '\0';
+	info->upstream_node_name[0]			= '\0';
+	info->conninfo[0]					= '\0';
+	info->repluser[0]					= '\0';
+	info->priority 						= DEFAULT_PRIORITY;
+	info->active						= true;
+	info->slot_name[0]					= '\0';
+	info->config_file[0]				= '\0';
+	info->last_wal_receive_lsn			= InvalidXLogRecPtr;
+	info->node_status					= NODE_STATUS_UNKNOWN;
+	info->recovery_type					= RECTYPE_UNKNOWN;
+	info->monitoring_state				= MS_NORMAL;
+	info->conn							= NULL;
+	info->details[0]					= '\0';
+	info->reachable						= true;
+	info->attached						= true;
+	/* various statistics */
+	info->max_wal_senders				= -1;
+	info->attached_wal_receivers		= -1;
+	info->max_replication_slots			= -1;
+	info->total_replication_slots		= -1;
+	info->active_replication_slots		= -1;
+	info->inactive_replication_slots	= -1;
+	info->replication_info				= NULL;
+
+	strlcpy(info->location, DEFAULT_LOCATION, sizeof(info->location));
+}
 
 /*
  * do_primary_unregister()
@@ -436,7 +468,7 @@ do_primary_unregister(void)
 		}
 		else if (recovery_type == RECTYPE_PRIMARY)
 		{
-			t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
+			reset_node_info(&primary_node_info);
 			bool		primary_record_found = false;
 
 			primary_record_found = get_primary_node_record(primary_conn, &primary_node_info);
