@@ -1,4 +1,9 @@
-5.4.1   2023-??-??
+5.5.0   2024-11-20
+        Support for PostgreSQL 17 added
+        Fix warnings detected by the -Wshadow=compatible-local
+          added in PostgreSQL 16
+
+5.4.1   2023-07-04
         repmgrd: ensure witness node metadata is updated (Ian)
 
 5.4.0   2023-03-16

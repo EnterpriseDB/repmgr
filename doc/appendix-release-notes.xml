@@ -16,9 +16,24 @@
   </para>
 
   <!-- remember to update the release date in ../repmgr_version.h.in -->
+
+  <sect1 id="release-5.5.0">
+    <title>Release 5.5.0</title>
+    <para><emphasis>Wed 20 November, 2024</emphasis></para>
+    <para>
+      &repmgr; 5.5.0 is a major release.
+    </para>
+    <para>
+      This release adds support for PostgreSQL 17
+    </para>
+    <para>
+      Fixes warnings detected by the -Wshadow gcc flag added in PostgreSQL 16.
+    </para>
+  </sect1>
+
   <sect1 id="release-5.4.1">
     <title id="release-current">Release 5.4.1</title>
-    <para><emphasis>??? ?? ??????, 202?</emphasis></para>
+    <para><emphasis>Tue 04 Jul, 2023</emphasis></para>
     <para>
       &repmgr; 5.4.1 is a minor release providing ...
     </para>
