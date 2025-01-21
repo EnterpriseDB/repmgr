@@ -68,7 +68,6 @@ news are always welcome.
 
 Thanks from the repmgr core team.
 
-* Ian Barwick
 * Israel Barth
 * Mario González
 * Martín Marqués
@@ -76,6 +75,7 @@ Thanks from the repmgr core team.
 
 Past contributors:
 
+* Ian Barwick
 * Jaime Casanova
 * Abhijit Menon-Sen
 * Simon Riggs
