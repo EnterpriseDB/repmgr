@@ -1499,6 +1499,7 @@ do_cluster_help(void)
 
 	printf(_("Usage:\n"));
 	printf(_("    %s [OPTIONS] cluster show\n"), progname());
+	printf(_("    %s [OPTIONS] cluster status\n"), progname());
 	printf(_("    %s [OPTIONS] cluster matrix\n"), progname());
 	printf(_("    %s [OPTIONS] cluster crosscheck\n"), progname());
 	printf(_("    %s [OPTIONS] cluster event\n"), progname());
@@ -1513,6 +1514,11 @@ do_cluster_help(void)
 	puts("");
 	printf(_("    --csv                     emit output as CSV (with a subset of fields)\n"));
 	printf(_("    --compact                 display only a subset of fields\n"));
+	puts("");
+
+	printf(_("CLUSTER STATUS\n"));
+	puts("");
+	printf(_("  \"cluster status\" is an alias to \"cluster show\".\n"));
 	puts("");
 
 	printf(_("CLUSTER MATRIX\n"));
