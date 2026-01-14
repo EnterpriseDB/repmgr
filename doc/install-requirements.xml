@@ -14,7 +14,7 @@
   </para>
 
   <para>
-   &repmgr; &repmgrversion; is compatible with all PostgreSQL versions from 9.4. See
+   &repmgr; &repmgrversion; is compatible with all supported PostgreSQL versions from 13.x. See
    section <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
    for an overview of version compatibility.
   </para>
@@ -45,7 +45,7 @@
      of incompatibilities.
    </simpara>
    <simpara>
-     If different &quot;major&quot; &repmgr; versions (e.g. 4.1.x and &repmgrversion;.x)
+     If different &quot;major&quot; &repmgr; versions (e.g. 5.2.x and &repmgrversion;)
      are installed on different nodes, in the best case &repmgr; (in particular &repmgrd;)
      will not run. In the worst case, you will end up with a broken cluster.
    </simpara>
@@ -89,7 +89,6 @@
       which PostgreSQL version.
     </para>
 
-
     <table id="repmgr-compatibility-matrix">
       <title>&repmgr; compatibility matrix</title>
 
@@ -117,16 +116,16 @@
         <tbody>
           <row>
             <entry>
-              &repmgr; 5.4
+              &repmgr; 5.5
             </entry>
             <entry>
-              (dev)
+              Yes
             </entry>
             <entry>
-              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+              <link linkend="release-5.5.0">&repmgrversion;</link> (&releasedate;)
             </entry>
             <entry>
-              9.4, 9.5, 9.6, 10, 11, 12, 13, 15
+              13, 14, 15, 16, 17
             </entry>
             <entry>
               &nbsp;
@@ -135,13 +134,31 @@
 
           <row>
             <entry>
-              &repmgr; 5.3
+              &repmgr; 5.4.1
             </entry>
             <entry>
-              YES
+              Yes
             </entry>
             <entry>
-              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+              <link linkend="release-5.4.1">5.4.1</link> (2023-04-04)
+            </entry>
+            <entry>
+              10, 11, 12, 13, 14, 15
+            </entry>
+            <entry>
+              &nbsp;
+            </entry>
+          </row>
+
+          <row>
+            <entry>
+              &repmgr; 5.3.1
+            </entry>
+            <entry>
+              Yes
+            </entry>
+            <entry>
+              <link linkend="release-5.3.1">5.3.1</link> (2022-02-15)
             </entry>
             <entry>
               9.4, 9.5, 9.6, 10, 11, 12, 13, 14, 15
@@ -156,7 +173,7 @@
               &repmgr; 5.2
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <link linkend="release-5.2.1">5.2.1</link> (2020-12-07)
@@ -174,7 +191,7 @@
               &repmgr; 5.1
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <link linkend="release-5.1.0">5.1.0</link> (2020-04-13)
@@ -192,7 +209,7 @@
               &repmgr; 5.0
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <link linkend="release-5.0">5.0</link> (2019-10-15)
@@ -211,7 +228,7 @@
               &repmgr; 4.x
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <link linkend="release-4.4">4.4</link> (2019-06-27)
@@ -229,7 +246,7 @@
               &repmgr; 3.x
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <ulink url="https://repmgr.org/release-notes-3.3.2.html">3.3.2</ulink> (2017-05-30)
@@ -247,7 +264,7 @@
               &repmgr; 2.x
             </entry>
             <entry>
-              NO
+              No
             </entry>
             <entry>
               <ulink url="https://repmgr.org/release-notes-2.0.3.html">2.0.3</ulink> (2015-04-16)
@@ -266,12 +283,12 @@
 
     <important>
       <para>
-        The &repmgr; 2.x and 3.x series are no longer maintained or supported.
+        The &repmgr; series older than 5.x are no longer maintained or supported.
         We strongly recommend  upgrading to the latest &repmgr; version.
       </para>
       <para>
         Following the release of &repmgr; 5.0, there will be no further releases of
-        the &repmgr; 4.x series. Note that &repmgr; 5.x is an incremental development
+        the &repmgr; 4.x series or older. Note that &repmgr; 5.x is an incremental development
         of the 4.x series and &repmgr; 4.x users should upgrade to this as soon as possible.
       </para>
     </important>
