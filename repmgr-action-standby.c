@@ -8383,14 +8383,8 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 		* recovery.conf
 		*/
 		if ((param_list->values[c] == NULL) ||
-			(param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
-			continue;
-
-		/*
-		* Skip "replication" - this is set automatically by libpq for
-		* replication connections.
-		*/
-		if (strcmp(param_list->keywords[c], "replication") == 0)
+			(param_list->values[c][0] == '\0') ||
+			(strcmp(param_list->keywords[c], "replication") == 0))
 			continue;
 
 		/* only include "password" if explicitly requested */
