@@ -125,7 +125,7 @@ static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
 static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, int server_version_num, char *dest, bool as_file);
-static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list, int server_version_num);
+static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
@@ -8221,7 +8221,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	}
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(&primary_conninfo_buf, primary_conninfo, server_version_num);
+	write_primary_conninfo(&primary_conninfo_buf, primary_conninfo);
 	key_value_list_set(&recovery_config,
 					   "primary_conninfo", primary_conninfo_buf.data);
 
@@ -8363,7 +8363,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 
 
 static void
-write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list, int server_version_num)
+write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 {
 	PQExpBufferData conninfo_buf;
 	bool		application_name_provided = false;
@@ -8392,16 +8392,6 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list,
 		*/
 		if (strcmp(param_list->keywords[c], "replication") == 0)
 			continue;
-
-		/*
-		* PostgreSQL 17 and later require "dbname" in primary_conninfo for
-		* failover replication slots (synchronized slots). Earlier versions
-		* don't need it and historically it was excluded.
-		*/
-		if (strcmp(param_list->keywords[c], "dbname") == 0 &&
-			server_version_num < 170000)
-			continue;
-
 
 		/* only include "password" if explicitly requested */
 		if (strcmp(param_list->keywords[c], "password") == 0)
