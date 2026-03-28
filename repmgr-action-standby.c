@@ -8368,7 +8368,6 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 	PQExpBufferData conninfo_buf;
 	bool		application_name_provided = false;
 	bool		password_provided = false;
-	bool		dbname_found = false;
 	int			c;
 	char	   *escaped = NULL;
 	t_conninfo_param_list env_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
