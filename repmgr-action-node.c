@@ -2838,9 +2838,29 @@ do_node_rejoin(void)
 		appendShellString(&command,
 						  config_file_options.data_directory);
 
-		appendPQExpBuffer(&command,
-						  " --source-server='%s'",
-						  primary_node_record.conninfo);
+		if (runtime_options.superuser[0] != '\0')
+		{
+			t_conninfo_param_list rewind_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+			char *rewind_conninfo_str = NULL;
+
+			initialize_conninfo_params(&rewind_conninfo, false);
+			parse_conninfo_string(primary_node_record.conninfo, &rewind_conninfo, NULL, false);
+			param_set(&rewind_conninfo, "user", runtime_options.superuser);
+			rewind_conninfo_str = param_list_to_string(&rewind_conninfo);
+
+			appendPQExpBuffer(&command,
+							  " --source-server='%s'",
+							  rewind_conninfo_str);
+
+			pfree(rewind_conninfo_str);
+			free_conninfo_params(&rewind_conninfo);
+		}
+		else
+		{
+			appendPQExpBuffer(&command,
+							  " --source-server='%s'",
+							  primary_node_record.conninfo);
+		}
 
 		if (runtime_options.dry_run == true)
 		{
@@ -3698,6 +3718,7 @@ do_node_help(void)
 	printf(_("    --config-archive-dir    directory to temporarily store retained configuration files\n" \
 			 "                              (default: /tmp)\n"));
 	printf(_("    -W, --no-wait           don't wait for the node to rejoin cluster\n"));
+	printf(_("    -S, --superuser=USERNAME  superuser to use for pg_rewind if repmgr user is not superuser\n"));
 	puts("");
 
 	printf(_("NODE SERVICE\n"));

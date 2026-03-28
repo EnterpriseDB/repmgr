@@ -192,6 +192,9 @@
           <listitem>
             <simpara><link linkend="repmgr-node-service">repmgr node service</link> (to execute <command>CHECKPOINT</command> via the <option>--checkpoint</option>; note this is also called by <link linkend="repmgr-standby-switchover">repmgr standby switchover</link>)</simpara>
           </listitem>
+          <listitem>
+            <simpara><link linkend="repmgr-node-rejoin">repmgr node rejoin</link> (to execute <command>repmgr node rejoin --force-rewind</command>)</simpara>
+          </listitem>
         </itemizedlist>
       </para>
     </sect3>
