@@ -1761,6 +1761,7 @@ check_cli_parameters(const int action)
 			case STANDBY_SWITCHOVER:
 			case NODE_CHECK:
 			case NODE_SERVICE:
+			case NODE_REJOIN:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
