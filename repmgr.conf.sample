@@ -281,6 +281,13 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# in a non-standard location)
 
 #------------------------------------------------------------------------------
+# pgBackRest options
+#------------------------------------------------------------------------------
+
+#pgbackrest_config_file=''			# The full path to pgBackRest configuration file
+#pgbackrest_stanza=''				    # The pgBackRest stanza name to use
+
+#------------------------------------------------------------------------------
 # Failover and monitoring settings (repmgrd)
 #------------------------------------------------------------------------------
 #

@@ -331,6 +331,26 @@ struct ConfigFileSetting config_file_settings[] =
 		{ .strmaxlen = sizeof(config_file_options.pg_backupapi_remote_ssh_command) },
 		{}
 	},
+	/* pgbackrest_config_file */
+	{
+		"pgbackrest_config_file",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pgbackrest_config_file },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pgbackrest_config_file) },
+		{ .postprocess_func = &repmgr_canonicalize_path }
+	},
+	/* pgbackrest_stanza */
+	{
+		"pgbackrest_stanza",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pgbackrest_stanza },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pgbackrest_stanza) },
+		{}
+	},
 
 	/* =======================
 	 * standby follow settings
