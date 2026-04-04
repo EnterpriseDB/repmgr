@@ -5345,6 +5345,13 @@ do_standby_switchover(void)
 							  "=%s",
 							  runtime_options.force_rewind_path);
 		}
+
+		if (runtime_options.force_rewind_wal_recovery == true)
+		{
+			appendPQExpBufferStr(&node_rejoin_options,
+								 " --force-rewind-wal-recovery");
+		}
+
 		appendPQExpBufferStr(&node_rejoin_options,
 							 " --config-files=");
 
@@ -9299,6 +9306,7 @@ do_standby_help(void)
 	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
 	printf(_("  --force-rewind[=VALUE]              use \"pg_rewind\" to reintegrate the old primary if necessary\n"));
 	printf(_("                                        (PostgreSQL 9.4 - provide \"pg_rewind\" path)\n"));
+	printf(_("  --force-rewind-wal-recovery         add \"--restore-target-wal\" to pg_rewind execution\n"));
 
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));

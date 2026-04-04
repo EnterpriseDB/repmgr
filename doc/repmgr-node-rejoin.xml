@@ -87,6 +87,16 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>--force-rewind-wal-recovery</option></term>
+        <listitem>
+          <para>
+            Add <option>--restore-target-wal</option> to the <application>pg_rewind</application>
+            execution.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--config-files</option></term>
         <listitem>
           <para>

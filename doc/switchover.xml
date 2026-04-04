@@ -233,6 +233,11 @@
       To have &repmgr; execute <application>pg_rewind</application> if it detects this
       situation after promoting the new primary, add the <option>--force-rewind</option>
       option.
+      If <application>pg_rewind</application> is used, the
+      <option>--force-rewind-wal-recovery</option> option can be provided to cause
+      &repmgr; to add the <option>--restore-target-wal</option> flag to the
+      <application>pg_rewind</application> command, which ensures all necessary WAL
+      files are available.
     </para>
     <note>
       <simpara>
