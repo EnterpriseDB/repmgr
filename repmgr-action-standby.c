@@ -535,7 +535,6 @@ do_standby_clone(void)
 
 		if (external_config_files == true)
 		{
-			r = 0;
 			PQExpBufferData msg;
 
 			initPQExpBuffer(&msg);
@@ -762,7 +761,6 @@ do_standby_clone(void)
 	if (mode == pg_basebackup && runtime_options.verify_backup == true)
 	{
 		PQExpBufferData command;
-		r = 0;
 		struct stat st;
 
 		initPQExpBuffer(&command);
@@ -4783,8 +4781,8 @@ do_standby_switchover(void)
 	{
 		NodeInfoListCell *cell = NULL;
 		ItemList repmgrd_connection_errors = {NULL, NULL};
-		i = 0;
 		int unreachable_node_count = 0;
+		i = 0;
 
 		get_all_node_records(local_conn, &all_nodes);
 
@@ -5675,8 +5673,8 @@ do_standby_switchover(void)
 		{
 			ItemList repmgrd_unpause_errors = {NULL, NULL};
 			NodeInfoListCell *cell = NULL;
-			i = 0;
 			int error_node_count = 0;
+			i = 0;
 
 			for (cell = all_nodes.head; cell; cell = cell->next)
 			{
@@ -6514,8 +6512,8 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		int		available_wal_senders;
 		int		min_replication_connections			= 1;
 		int		possible_replication_connections	= 0;
-		i											= 0;
 		t_conninfo_param_list repl_conninfo			= T_CONNINFO_PARAM_LIST_INITIALIZER;
+		i											= 0;
 
 
 		/*
