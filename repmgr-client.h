@@ -22,91 +22,99 @@
 #include <getopt_long.h>
 #include "log.h"
 
-
-#define NO_ACTION			   0	/* Dummy default action */
-#define PRIMARY_REGISTER	   1
-#define PRIMARY_UNREGISTER	   2
-#define STANDBY_REGISTER	   3
-#define STANDBY_UNREGISTER	   4
-#define STANDBY_CLONE		   5
-#define STANDBY_PROMOTE		   6
-#define STANDBY_FOLLOW		   7
-#define STANDBY_SWITCHOVER	   8
-#define WITNESS_REGISTER       9
-#define WITNESS_UNREGISTER     10
-#define NODE_STATUS			   11
-#define NODE_CHECK			   12
-#define NODE_SERVICE		   13
-#define NODE_REJOIN            14
-#define NODE_CONTROL           15
-#define CLUSTER_SHOW		   16
-#define CLUSTER_CLEANUP		   17
-#define CLUSTER_MATRIX		   18
-#define CLUSTER_CROSSCHECK	   19
-#define CLUSTER_EVENT		   20
-#define SERVICE_STATUS		   21
-#define SERVICE_PAUSE		   22
-#define SERVICE_UNPAUSE		   23
-#define DAEMON_START 		   24
-#define DAEMON_STOP 		   25
+enum RepmgrAction
+{
+  NO_ACTION             =  0, /* Dummy default action */
+  PRIMARY_REGISTER      =  1,
+  PRIMARY_UNREGISTER    =  2,
+  STANDBY_REGISTER      =  3,
+  STANDBY_UNREGISTER    =  4,
+  STANDBY_CLONE         =  5,
+  STANDBY_PROMOTE       =  6,
+  STANDBY_FOLLOW        =  7,
+  STANDBY_SWITCHOVER    =  8,
+  WITNESS_REGISTER      =  9,
+  WITNESS_UNREGISTER    = 10,
+  NODE_STATUS           = 11,
+  NODE_CHECK            = 12,
+  NODE_SERVICE          = 13,
+  NODE_REJOIN           = 14,
+  NODE_CONTROL          = 15,
+  CLUSTER_SHOW          = 16,
+  CLUSTER_CLEANUP       = 17,
+  CLUSTER_MATRIX        = 18,
+  CLUSTER_CROSSCHECK    = 19,
+  CLUSTER_EVENT         = 20,
+  SERVICE_STATUS        = 21,
+  SERVICE_PAUSE         = 22,
+  SERVICE_UNPAUSE       = 23,
+  DAEMON_START          = 24,
+  DAEMON_STOP           = 25
+};
 
 /* command line options without short versions */
-#define OPT_HELP						   1001
-#define OPT_COPY_EXTERNAL_CONFIG_FILES	   1002
-#define OPT_CSV							   1003
-#define OPT_NODE_ID						   1004
-#define OPT_NODE_NAME					   1005
-#define OPT_WITHOUT_BARMAN				   1006
-#define OPT_NO_UPSTREAM_CONNECTION		   1007
-#define OPT_WAIT_SYNC					   1008
-#define OPT_LOG_TO_FILE					   1009
-#define OPT_UPSTREAM_CONNINFO			   1010
-#define OPT_REPLICATION_USER			   1011
-#define OPT_EVENT						   1012
-#define OPT_LIMIT						   1013
-#define OPT_ALL							   1014
-#define OPT_DRY_RUN						   1015
-#define OPT_UPSTREAM_NODE_ID			   1016
-#define OPT_ACTION						   1017
-#define OPT_LIST_ACTIONS				   1018
-#define OPT_CHECKPOINT					   1019
-#define OPT_IS_SHUTDOWN_CLEANLY			   1020
-#define OPT_ALWAYS_PROMOTE				   1021
-#define OPT_FORCE_REWIND				   1022
-#define OPT_NAGIOS						   1023
-#define OPT_ARCHIVE_READY				   1024
-#define OPT_OPTFORMAT					   1025
-#define OPT_REPLICATION_LAG				   1026
-#define OPT_CONFIG_FILES				   1027
-#define OPT_SIBLINGS_FOLLOW				   1028
-#define OPT_ROLE						   1029
-#define OPT_DOWNSTREAM					   1030
-#define OPT_UPSTREAM					   1031
-#define OPT_SLOTS						   1032
-#define OPT_HAS_PASSFILE				   1033
-#define OPT_WAIT_START					   1034
-#define OPT_REPL_CONN					   1035
-#define OPT_REMOTE_NODE_ID				   1036
-#define OPT_REPLICATION_CONF_ONLY		   1037
-#define OPT_NO_WAIT						   1038
-#define OPT_MISSING_SLOTS				   1039
-#define OPT_REPMGRD_NO_PAUSE			   1040
-#define OPT_VERSION_NUMBER				   1041
-#define OPT_DATA_DIRECTORY_CONFIG		   1042
-#define OPT_COMPACT						   1043
-#define OPT_DETAIL						   1044
-#define OPT_REPMGRD_FORCE_UNPAUSE		   1045
-#define OPT_REPLICATION_CONFIG_OWNER	   1046
-#define OPT_DB_CONNECTION				   1047
-#define OPT_VERIFY_BACKUP				   1048
-#define OPT_RECOVERY_MIN_APPLY_DELAY       1049
-#define OPT_REPMGRD						   1050
+enum RepmgrActionOption
+{
+  OPT_HELP 						                  = 1001,
+  OPT_COPY_EXTERNAL_CONFIG_FILES 	      = 1002,
+  OPT_CSV 							                = 1003,
+  OPT_NODE_ID 						              = 1004,
+  OPT_NODE_NAME 					              = 1005,
+  OPT_WITHOUT_BARMAN 				            = 1006,
+  OPT_NO_UPSTREAM_CONNECTION 		        = 1007,
+  OPT_WAIT_SYNC 					              = 1008,
+  OPT_LOG_TO_FILE 					            = 1009,
+  OPT_UPSTREAM_CONNINFO 			          = 1010,
+  OPT_REPLICATION_USER 			            = 1011,
+  OPT_EVENT 						                = 1012,
+  OPT_LIMIT 						                = 1013,
+  OPT_ALL 							                = 1014,
+  OPT_DRY_RUN 						              = 1015,
+  OPT_UPSTREAM_NODE_ID 	                = 1016,
+  OPT_ACTION 						                = 1017,
+  OPT_LIST_ACTIONS 			                = 1018,
+  OPT_CHECKPOINT 				                = 1019,
+  OPT_IS_SHUTDOWN_CLEANLY 	        		= 1020,
+  OPT_ALWAYS_PROMOTE 			        	    = 1021,
+  OPT_FORCE_REWIND 				              = 1022,
+  OPT_NAGIOS 						                = 1023,
+  OPT_ARCHIVE_READY 				            = 1024,
+  OPT_OPTFORMAT 					              = 1025,
+  OPT_REPLICATION_LAG 			        	  = 1026,
+  OPT_CONFIG_FILES 				              = 1027,
+  OPT_SIBLINGS_FOLLOW 			        	  = 1028,
+  OPT_ROLE 						                  = 1029,
+  OPT_DOWNSTREAM 				                = 1030,
+  OPT_UPSTREAM 					                = 1031,
+  OPT_SLOTS 						                = 1032,
+  OPT_HAS_PASSFILE 			                = 1033,
+  OPT_WAIT_START 				                = 1034,
+  OPT_REPL_CONN 					              = 1035,
+  OPT_REMOTE_NODE_ID 		                = 1036,
+  OPT_REPLICATION_CONF_ONLY 		        = 1037,
+  OPT_NO_WAIT 						              = 1038,
+  OPT_MISSING_SLOTS 				            = 1039,
+  OPT_REPMGRD_NO_PAUSE 		              = 1040,
+  OPT_VERSION_NUMBER 			              = 1041,
+  OPT_DATA_DIRECTORY_CONFIG             = 1042,
+  OPT_COMPACT 						              = 1043,
+  OPT_DETAIL 						                = 1044,
+  OPT_REPMGRD_FORCE_UNPAUSE             = 1045,
+  OPT_REPLICATION_CONFIG_OWNER 	        = 1046,
+  OPT_DB_CONNECTION 				            = 1047,
+  OPT_VERIFY_BACKUP 				            = 1048,
+  OPT_RECOVERY_MIN_APPLY_DELAY          = 1049,
+  OPT_REPMGRD 						              = 1050
+};
 
 /* These options are for internal use only */
-#define OPT_CONFIG_ARCHIVE_DIR			   2001
-#define OPT_DISABLE_WAL_RECEIVER		   2002
-#define OPT_ENABLE_WAL_RECEIVER			   2003
-#define OPT_DUMP_CONFIG					   2004
+enum RepmgrActionOptionInternal
+{
+  OPT_CONFIG_ARCHIVE_DIR 			      = 2001,
+  OPT_DISABLE_WAL_RECEIVER 		      = 2002,
+  OPT_ENABLE_WAL_RECEIVER 			    = 2003,
+  OPT_DUMP_CONFIG 					        = 2004
+};
 
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
