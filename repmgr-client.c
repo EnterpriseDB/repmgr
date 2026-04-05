@@ -458,6 +458,10 @@ main(int argc, char **argv)
 				runtime_options.verify_backup = true;
 				break;
 
+			case OPT_WITHOUT_ARCHIVE_COMMAND:
+				runtime_options.without_archive_command = true;
+				break;
+
 				/*---------------------------
 				 * "standby register" options
 				 *---------------------------
@@ -2054,6 +2058,20 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("----siblings-follow is not effective when executing %s"),
+										action_name(action));
+		}
+	}
+
+	/* --without-archive-command */
+	if (runtime_options.without_archive_command == true)
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--without-archive-command is not effective when executing %s"),
 										action_name(action));
 		}
 	}
