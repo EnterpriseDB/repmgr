@@ -8,7 +8,7 @@ replication, and perform administrative tasks such as failover or switchover
 operations.
 
 The most recent `repmgr` version (5.5.x) supports all PostgreSQL versions from
-13 to 17. Despite it could be used with some older ones, some features might not
+13 to 18. Despite it could be used with some older ones, some features might not
 be available, however, it's strongly recommended to use the latest version.
 
 `repmgr` is distributed under the GNU GPL 3 and maintained by EnterpriseDB.
