@@ -114,6 +114,7 @@ static void check_recovery_type(PGconn *conn);
 static void initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
+static int	run_pgbackrest(t_node_info *local_node_record);
 static int	run_pg_backupapi(t_node_info *node_record);
 
 static void copy_configuration_files(bool delete_after_copy);
@@ -701,6 +702,9 @@ do_standby_clone(void)
 		case pg_backupapi:
 			log_notice(_("starting backup (using pg_backupapi)..."));
 			break;
+		case pgbackrest:
+			log_notice(_("starting backup (using pgBackRest)..."));
+			break;
 		default:
 			/* should never reach here */
 			log_error(_("unknown clone mode"));
@@ -724,6 +728,9 @@ do_standby_clone(void)
 			break;
 		case pg_backupapi:
 			r = run_pg_backupapi(&local_node_record);
+			break;
+		case pgbackrest:
+			r = run_pgbackrest(&local_node_record);
 			break;
 		default:
 			/* should never reach here */
@@ -945,6 +952,9 @@ do_standby_clone(void)
 			break;
 		case pg_backupapi:
 			appendPQExpBufferStr(&event_details, "pg_backupapi");
+			break;
+		case pgbackrest:
+			appendPQExpBufferStr(&event_details, "pgbackrest");
 			break;
 	}
 
@@ -7784,6 +7794,151 @@ stop_backup:
 	return r;
 }
 
+static int
+run_pgbackrest(t_node_info *local_node_record)
+{
+	PQExpBufferData command;
+	int			r = SUCCESS;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+
+	/* Ensure data directory is ready */
+	if (runtime_options.dry_run == false)
+	{
+		if (!create_pg_dir(local_data_directory, runtime_options.force))
+		{
+			log_error(_("unable to use directory \"%s\""), local_data_directory);
+			log_hint(_("use -F/--force to force this directory to be overwritten"));
+			return ERR_BAD_CONFIG;
+		}
+	}
+
+	initPQExpBuffer(&command);
+
+	appendPQExpBufferStr(&command, "pgbackrest");
+
+	if (*config_file_options.pgbackrest_config_file != '\0')
+	{
+		appendPQExpBuffer(&command, " --config=%s", config_file_options.pgbackrest_config_file);
+	}
+
+	appendPQExpBuffer(&command, " --stanza=%s", config_file_options.pgbackrest_stanza);
+
+	appendPQExpBufferStr(&command, " restore");
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("would execute:\n  %s"), command.data);
+		termPQExpBuffer(&command);
+		return SUCCESS;
+	}
+
+	log_info(_("executing:\n  %s"), command.data);
+
+	if (local_command(command.data, NULL) == false)
+	{
+		r = ERR_BAD_BASEBACKUP;
+	}
+
+	termPQExpBuffer(&command);
+
+	/* If restore failed, return early */
+	if (r != SUCCESS)
+		return r;
+
+	/*
+	 * if replication slots in use, create replication slot
+	 */
+	if (config_file_options.use_replication_slots == true)
+	{
+		bool		slot_warning = false;
+
+		if (runtime_options.no_upstream_connection == true)
+		{
+			slot_warning = true;
+		}
+		else
+		{
+			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+			t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+			PGconn	   *upstream_conn = NULL;
+
+			/* check connections are still available */
+			(void) connection_ping_reconnect(primary_conn);
+
+			if (source_conn != primary_conn)
+				(void) connection_ping_reconnect(source_conn);
+
+			record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
+
+			if (record_status != RECORD_FOUND)
+			{
+				log_error(_("unable to retrieve node record for upstream node %i"), upstream_node_id);
+				slot_warning = true;
+			}
+			else
+			{
+				upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
+				if (PQstatus(upstream_conn) != CONNECTION_OK)
+				{
+					log_error(_("unable to connect to upstream node %i to create a replication slot"), upstream_node_id);
+					slot_warning = true;
+				}
+				else
+				{
+					record_status = get_slot_record(upstream_conn, local_node_record->slot_name, &slot_info);
+
+					if (record_status == RECORD_FOUND)
+					{
+						log_verbose(LOG_INFO,
+									_("replication slot \"%s\" already exists on upstream node %i"),
+									local_node_record->slot_name,
+									upstream_node_id);
+					}
+					else
+					{
+						PQExpBufferData errmsg;
+						bool		success;
+
+						initPQExpBuffer(&errmsg);
+						success = create_replication_slot(upstream_conn,
+														  local_node_record->slot_name,
+														  &upstream_node_record,
+														  &errmsg);
+						if (success == false)
+						{
+							log_error(_("unable to create replication slot \"%s\" on upstream node %i"),
+									  local_node_record->slot_name,
+									  upstream_node_id);
+							log_detail("%s", errmsg.data);
+							slot_warning = true;
+						}
+						else
+						{
+							log_notice(_("replication slot \"%s\" created on upstream node \"%s\" (ID: %i)"),
+									   local_node_record->slot_name,
+									   upstream_node_record.node_name,
+									   upstream_node_id);
+						}
+						termPQExpBuffer(&errmsg);
+					}
+
+					PQfinish(upstream_conn);
+				}
+			}
+		}
+
+		if (slot_warning == true)
+		{
+			log_warning(_("\"use_replication_slots\" specified but a replication slot could not be created"));
+			log_hint(_("ensure a replication slot called \"%s\" is created on the upstream node (ID: %i)"),
+					 local_node_record->slot_name,
+					 upstream_node_id);
+		}
+	}
+
+	return r;
+}
+
 
 /*
  * Perform a call to pg_backupapi endpoint to ask barman to write the backup
@@ -9243,6 +9398,7 @@ do_standby_help(void)
 	printf(_("  --verify-backup                     verify a cloned node using the \"pg_verifybackup\" utility\n"));
 #endif
 	printf(_("  --without-barman                    do not clone from Barman even if configured\n"));
+	printf(_("  --without-pgbackrest                do not clone from pgBackRest even if configured\n"));
 	printf(_("  --replication-conf-only             generate replication configuration for a previously cloned instance\n"));
 	printf(_("  --recovery-min-apply-delay          set PostgreSQL configuration parameter \"recovery_min_apply_delay\"\n" \
 			 "                                      (overrides any setting in repmgr.conf)\n"));

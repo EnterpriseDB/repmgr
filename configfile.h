@@ -168,6 +168,8 @@ typedef struct
 	char		pg_backupapi_host[NAMEDATALEN];
 	char		pg_backupapi_node_name[NAMEDATALEN];
 	char		pg_backupapi_remote_ssh_command[MAXLEN];
+	char		pgbackrest_config_file[MAXPGPATH];
+	char		pgbackrest_stanza[NAMEDATALEN];
 
 	/* standby promote settings */
 	int			promote_check_timeout;

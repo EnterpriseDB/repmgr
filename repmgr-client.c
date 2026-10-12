@@ -444,6 +444,10 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
+			case OPT_WITHOUT_PGBACKREST:
+				runtime_options.without_pgbackrest = true;
+				break;
+
 			case OPT_REPLICATION_CONF_ONLY:
 				runtime_options.replication_conf_only = true;
 				break;
@@ -3105,6 +3109,8 @@ get_standby_clone_mode(void)
 			log_info("Attempting to use `pg_backupapi` new restore mode");
 			mode = pg_backupapi;
 		}
+		else if (*config_file_options.pgbackrest_stanza != '\0' && runtime_options.without_pgbackrest == false)
+			mode = pgbackrest;
 		else
 			mode = pg_basebackup;
 	}
