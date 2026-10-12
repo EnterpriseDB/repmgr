@@ -8382,11 +8382,17 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 		 * Skip empty settings and ones which don't make any sense in
 		 * recovery.conf
 		 */
-		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
-			strcmp(param_list->keywords[c], "replication") == 0 ||
+		if (strcmp(param_list->keywords[c], "replication") == 0 ||
 			(param_list->values[c] == NULL) ||
 			(param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
 			continue;
+
+		if (strcmp(param_list->keywords[c], "dbname") == 0)
+		{
+			dbname_found = true;
+			appendPQExpBuffer(&conninfo_buf, " dbname=%s", param_list->values[c]);
+			continue;
+		}
 
 		/* only include "password" if explicitly requested */
 		if (strcmp(param_list->keywords[c], "password") == 0)
