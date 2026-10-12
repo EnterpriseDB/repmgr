@@ -459,6 +459,17 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
       </varlistentry>
 
       <varlistentry>
+        <term><option>--without-archive-command</option></term>
+        <listitem>
+          <para>
+            Allows cloning from a source node where <varname>archive_mode</varname> is enabled
+            but <varname>archive_command</varname> is empty. This is useful when using certain
+            backup tools that require this configuration.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--without-barman </option></term>
         <listitem>
           <para>
