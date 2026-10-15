@@ -8379,11 +8379,10 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
 	{
 		/*
-		 * Skip empty settings and ones which don't make any sense in
-		 * recovery.conf
-		 */
-		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
-			strcmp(param_list->keywords[c], "replication") == 0 ||
+		* Skip empty settings and ones which don't make any sense in
+		* recovery.conf
+		*/
+		if (strcmp(param_list->keywords[c], "replication") == 0 ||
 			(param_list->values[c] == NULL) ||
 			(param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
 			continue;
