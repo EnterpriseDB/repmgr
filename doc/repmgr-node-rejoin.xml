@@ -114,6 +114,29 @@
 
 
       <varlistentry>
+        <term><option>-S/--superuser</option></term>
+        <listitem>
+          <para>
+            Specify a superuser to be used by <application>pg_rewind</application>
+            for its source server connection.
+          </para>
+          <para>
+            <application>pg_rewind</application> requires a normal (non-replication)
+            connection with <literal>pg_read_server_files</literal> privilege or
+            superuser rights. If the &repmgr; user has the <literal>REPLICATION</literal>
+            attribute but lacks these privileges, use this option to specify
+            a suitably privileged user for the <application>pg_rewind</application>
+            connection. The superuser's password should be configured in
+            <filename>.pgpass</filename>.
+          </para>
+          <para>
+            This option is only effective in combination with
+            <option>--force-rewind</option>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>-W/--no-wait</option></term>
         <listitem>
           <para>
@@ -280,6 +303,23 @@
       to use it with &repmgr;, as while it is an extremely useful tool, it is <emphasis>not</emphasis>
       a &quot;magic bullet&quot; which can resolve all problematic replication situations.
     </para>
+
+    <note>
+      <para>
+        <command>pg_rewind</command> requires a normal (non-replication) connection to
+        the source server. The user for this connection must have superuser rights or
+        the <literal>pg_read_server_files</literal> role.
+      </para>
+      <para>
+        If the &repmgr; user has the <literal>REPLICATION</literal> attribute but does
+        not have the privileges required by <command>pg_rewind</command>, use the
+        <option>-S/--superuser</option> option to specify a suitably privileged user
+        for the <command>pg_rewind</command> source connection. For example:
+        <programlisting>
+    repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
+        --force-rewind -S postgres</programlisting>
+      </para>
+    </note>
 
     <para>
       A typical use-case for <command>pg_rewind</command> is when a scenario like the following
