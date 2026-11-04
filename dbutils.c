@@ -4312,9 +4312,15 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						src_ptr++;
 						if (event_info->node_name != NULL)
 						{
+							PQExpBufferData node_name_escaped;
+
 							log_verbose(LOG_DEBUG, "node_name: %s", event_info->node_name);
-							strlcpy(dst_ptr, event_info->node_name, end_ptr - dst_ptr);
+
+							initPQExpBuffer(&node_name_escaped);
+							shell_quote_string(event_info->node_name, &node_name_escaped);
+							strlcpy(dst_ptr, node_name_escaped.data, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
+							termPQExpBuffer(&node_name_escaped);
 						}
 						break;
 					case 'e':
@@ -4331,7 +4337,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 							PQExpBufferData details_escaped;
 							initPQExpBuffer(&details_escaped);
 
-							escape_double_quotes(details, &details_escaped);
+							shell_quote_string(details, &details_escaped);
 
 							strlcpy(dst_ptr, details_escaped.data, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
@@ -4355,10 +4361,15 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						src_ptr++;
 						if (event_info->conninfo_str != NULL)
 						{
+							PQExpBufferData conninfo_escaped;
+
 							log_debug("conninfo: %s", event_info->conninfo_str);
 
-							strlcpy(dst_ptr, event_info->conninfo_str, end_ptr - dst_ptr);
+							initPQExpBuffer(&conninfo_escaped);
+							shell_quote_string(event_info->conninfo_str, &conninfo_escaped);
+							strlcpy(dst_ptr, conninfo_escaped.data, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
+							termPQExpBuffer(&conninfo_escaped);
 						}
 						break;
 					case 'p':
