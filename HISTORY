@@ -1,3 +1,7 @@
+5.5.1   2026-11-04
+        Fix CWE-78 OS command injection via unescaped node metadata in
+          event_notification_command and failover_validation_command
+
 5.5.0   2024-11-20
         Support for PostgreSQL 17 added
         Fix warnings detected by the -Wshadow=compatible-local
