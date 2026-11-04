@@ -124,10 +124,15 @@
 #   %t - timestamp
 #   %d - details
 #
-# the values provided for "%t" and "%d" will probably contain spaces,
-# so should be quoted in the provided command configuration, e.g.:
+# the value provided for "%t" will probably contain spaces, so should be
+# quoted in the provided command configuration, e.g.:
 #
-#   event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+#   event_notification_command='/path/to/some/script %n %e %s "%t" %d'
+#
+# "%d" (and, where applicable, "%c" and "%a") are substituted already
+# shell-quoted by repmgr, so should NOT additionally be quoted here -
+# doing so will result in the literal quote characters being passed to
+# the script.
 #
 # By default, all notifications will be passed; the notification types
 # can be filtered to explicitly named ones, e.g.:

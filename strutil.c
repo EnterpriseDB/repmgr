@@ -450,6 +450,35 @@ escape_double_quotes(char *string, PQExpBufferData *out)
 }
 
 
+/*
+ * shell_quote_string()
+ *
+ * Single-quote "string" and append it to "out", escaping any embedded
+ * single quotes, so the result can be safely substituted as a single
+ * literal argument into a shell command string executed via system(3)
+ * or popen(3).
+ */
+void
+shell_quote_string(const char *string, PQExpBufferData *out)
+{
+	const char *ptr;
+
+	appendPQExpBufferChar(out, '\'');
+
+	for (ptr = string; *ptr; ptr++)
+	{
+		if (*ptr == '\'')
+			appendPQExpBufferStr(out, "'\\''");
+		else
+			appendPQExpBufferChar(out, *ptr);
+	}
+
+	appendPQExpBufferChar(out, '\'');
+
+	return;
+}
+
+
 char *
 string_skip_prefix(const char *prefix, char *string)
 {
