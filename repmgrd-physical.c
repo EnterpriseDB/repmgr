@@ -5096,7 +5096,7 @@ parse_failover_validation_command(const char *template, t_node_info *node_info, 
 				case 'a':
 					/* %a: node name */
 					src_ptr++;
-					appendPQExpBufferStr(out, node_info->node_name);
+					shell_quote_string(node_info->node_name, out);
 					break;
 				case 'v':
 					/* %v: visible nodes count */

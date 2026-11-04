@@ -1,3 +1,7 @@
+5.5.1   2026-11-04
+        Security fix: properly escape values substituted into
+          externally-configured notification commands
+
 5.5.0   2024-11-20
         Support for PostgreSQL 17 added
         Fix warnings detected by the -Wshadow=compatible-local

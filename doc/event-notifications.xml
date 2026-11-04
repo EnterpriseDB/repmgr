@@ -87,11 +87,20 @@
  </variablelist>
 
  <para>
-  The values provided for <literal>%t</literal> and <literal>%d</literal>
-  may contain spaces, so should be quoted in the provided command
-  configuration, e.g.:
+  The value provided for <literal>%t</literal> may contain spaces, so should
+  be quoted in the provided command configuration, e.g.:
   <programlisting>
-    event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'</programlisting>
+    event_notification_command='/path/to/some/script %n %e %s "%t" %d'</programlisting>
+ </para>
+
+ <para>
+  <literal>%d</literal> (and, where applicable, <literal>%c</literal> and
+  <literal>%a</literal>, described below) are substituted by
+  <application>repmgr</application> already shell-quoted (single-quoted,
+  with any embedded single quotes escaped). Do not additionally wrap these
+  three placeholders in your own quotes in
+  <varname>event_notification_command</varname>, as this will result in the
+  literal quote characters being passed to the script.
  </para>
 
  <para>
@@ -137,7 +146,10 @@
 
  <para>
   The values provided for <literal>%c</literal> and <literal>%a</literal>
-  may contain spaces, so should always be quoted.
+  may contain spaces, but are already shell-quoted by
+  <application>repmgr</application> as described above, so should
+  <emphasis>not</emphasis> be additionally quoted in
+  <varname>event_notification_command</varname>.
  </para>
 
  <para>
