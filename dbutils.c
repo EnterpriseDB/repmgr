@@ -1940,7 +1940,11 @@ can_execute_pg_promote(PGconn *conn)
 bool
 can_disable_walsender(PGconn *conn)
 {
-	/*
+  PQExpBufferData query;
+  PGresult *res;
+  bool has_alter_system_priv = false;
+  
+  /*
 	 * Requires PostgreSQL 9.5 or later, because ALTER SYSTEM
 	 */
 	if (PQserverVersion(conn) < 90500)
@@ -1957,10 +1961,6 @@ can_disable_walsender(PGconn *conn)
 	 */
 	if (is_superuser_connection(conn, NULL) == true)
 		return true;
-
-	PQExpBufferData query;
-	PGresult   *res;
-	bool		has_alter_system_priv = false;
 
 	/* GRANT ALTER SYSTEM available from PostgreSQL 15 */
 	if (PQserverVersion(conn) >= 150000)
