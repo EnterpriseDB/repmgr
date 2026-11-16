@@ -102,6 +102,7 @@ typedef struct
 	/* "standby switchover" options */
 	bool		always_promote;
 	bool		force_rewind_used;
+	bool		force_rewind_wal_recovery;
 	char		force_rewind_path[MAXPGPATH];
 	bool		siblings_follow;
 	bool		repmgrd_no_pause;
@@ -172,7 +173,7 @@ typedef struct
 		/* "standby register" options */ \
 		false, -1, DEFAULT_WAIT_START,   \
 		/* "standby switchover" options */ \
-		false, false, "", false, false, false,	\
+		false, false, false, "", false, false, false,	\
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \

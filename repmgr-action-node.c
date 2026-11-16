@@ -2842,6 +2842,18 @@ do_node_rejoin(void)
 						  " --source-server='%s'",
 						  primary_node_record.conninfo);
 
+		if (runtime_options.force_rewind_wal_recovery == true)
+		{
+			appendPQExpBufferStr(&command,
+								 " --restore-target-wal");
+		}
+
+		if (log_level == LOG_DEBUG)
+		{
+			appendPQExpBufferStr(&command,
+								 " --debug");
+		}
+
 		if (runtime_options.dry_run == true)
 		{
 			log_info(_("pg_rewind would now be executed"));
@@ -2905,8 +2917,14 @@ do_node_rejoin(void)
 
 				exit(ERR_REJOIN_FAIL);
 			}
+			else
+			{
+				log_detail(_("pg_rewind_execution succeeded"));
+				log_detail("%s", command_output.data);
 
-			termPQExpBuffer(&command_output);
+				termPQExpBuffer(&command_output);
+			}
+
 
 			/* Restore any previously archived config files */
 			_do_node_restore_config();
@@ -3692,6 +3710,8 @@ do_node_help(void)
 			 "                              (including usability of \"pg_rewind\" if requested)\n"));
 	printf(_("    --force-rewind[=VALUE]  execute \"pg_rewind\" if necessary\n"));
 	printf(_("                              (PostgreSQL 9.4 - provide full \"pg_rewind\" path)\n"));
+	printf(_("    --force-rewind-wal-recovery\n" \
+			 "                            add \"--restore-target-wal\" to pg_rewind execution\n"));
 
 	printf(_("    --config-files          comma-separated list of configuration files to retain\n" \
 			 "                            after executing \"pg_rewind\"\n"));

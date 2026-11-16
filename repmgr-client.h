@@ -101,6 +101,7 @@
 #define OPT_VERIFY_BACKUP				   1048
 #define OPT_RECOVERY_MIN_APPLY_DELAY       1049
 #define OPT_REPMGRD						   1050
+#define OPT_FORCE_REWIND_WAL_RECOVERY      1051
 
 /* These options are for internal use only */
 #define OPT_CONFIG_ARCHIVE_DIR			   2001
@@ -205,6 +206,7 @@ static struct option long_options[] =
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},
     {"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 	{"force-rewind", optional_argument, NULL, OPT_FORCE_REWIND},
+	{"force-rewind-wal-recovery", no_argument, NULL, OPT_FORCE_REWIND_WAL_RECOVERY},
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},

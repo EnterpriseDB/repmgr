@@ -494,6 +494,10 @@ main(int argc, char **argv)
 
 				break;
 
+			case OPT_FORCE_REWIND_WAL_RECOVERY:
+				runtime_options.force_rewind_wal_recovery = true;
+				break;
+
 			case OPT_SIBLINGS_FOLLOW:
 				runtime_options.siblings_follow = true;
 				break;
@@ -1918,6 +1922,20 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--force-rewind will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.force_rewind_wal_recovery == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+			case NODE_REJOIN:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--force-rewind-wal-recovery will be ignored when executing %s"),
 										action_name(action));
 		}
 	}
