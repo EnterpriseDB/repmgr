@@ -5359,6 +5359,13 @@ do_standby_switchover(void)
 		}
 
 		appendPQExpBufferChar(&node_rejoin_options, ' ');
+
+		if (runtime_options.superuser[0] != '\0')
+		{
+			appendPQExpBuffer(&node_rejoin_options,
+							  "--superuser=%s ",
+							  runtime_options.superuser);
+		}
 	}
 
 	key_value_list_free(&remote_config_files);
