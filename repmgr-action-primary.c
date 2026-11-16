@@ -468,8 +468,9 @@ do_primary_unregister(void)
 		}
 		else if (recovery_type == RECTYPE_PRIMARY)
 		{
+      bool		primary_record_found = false;
+
 			reset_node_info(&primary_node_info);
-			bool		primary_record_found = false;
 
 			primary_record_found = get_primary_node_record(primary_conn, &primary_node_info);
 
