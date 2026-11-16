@@ -6437,7 +6437,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	{
 		i = guc_set(conn, "archive_command", "!=", "");
 
-		if (i == 0 || i == -1)
+    if ((i == -1) || (i == 0 && runtime_options.without_archive_command == false))
 		{
 			if (i == 0)
 				log_error(_("parameter \"archive_command\" must be set to a valid command"));
