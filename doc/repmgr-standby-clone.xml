@@ -18,9 +18,9 @@
     <para>
       <command>repmgr standby clone</command> clones a PostgreSQL node from another
       PostgreSQL node, typically the primary, but optionally from any other node in
-      the cluster or from Barman. It creates the replication configuration required
-      to attach the cloned node to the primary node (or another standby, if cascading replication
-      is in use).
+      the cluster or from a backup tool like Barman or pgBackRest.
+      It creates the replication configuration required to attach the cloned node 
+      to the primary node (or another standby, if cascading replication is in use).
     </para>
     <note>
       <simpara>
@@ -234,7 +234,10 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
 
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
-     <command><ulink url="https://docs.pgbarman.org/#recover">barman recover</ulink></command> command).
+     <command><ulink url="https://docs.pgbarman.org/#recover">barman recover</ulink></command> command,
+     or using <application>pgBackRest</application>'s 
+     <command><ulink url="https://pgbackrest.org/command.html#command-restore">pgbackrest restore</ulink></command>
+     command).
    </para>
    <para>
      To integrate the standby as a &repmgr; node, once the standby has been cloned,
@@ -467,6 +470,15 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><option>--without-pgbackrest</option></term>
+        <listitem>
+          <para>
+            Do not use pgBackRest even if configured.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
@@ -484,4 +496,3 @@ pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
     </para>
   </refsect1>
 </refentry>
-

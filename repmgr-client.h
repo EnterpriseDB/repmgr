@@ -101,6 +101,7 @@
 #define OPT_VERIFY_BACKUP				   1048
 #define OPT_RECOVERY_MIN_APPLY_DELAY       1049
 #define OPT_REPMGRD						   1050
+#define OPT_WITHOUT_PGBACKREST			   1051
 
 /* These options are for internal use only */
 #define OPT_CONFIG_ARCHIVE_DIR			   2001
@@ -164,6 +165,7 @@ static struct option long_options[] =
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"upstream-node-id", required_argument, NULL, OPT_UPSTREAM_NODE_ID},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
+	{"without-pgbackrest", no_argument, NULL, OPT_WITHOUT_PGBACKREST},
 	{"replication-conf-only", no_argument, NULL, OPT_REPLICATION_CONF_ONLY},
 	{"verify-backup", no_argument, NULL, OPT_VERIFY_BACKUP },
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY },

@@ -330,6 +330,99 @@ HINT: after starting the server, you need to register this standby with "repmgr 
   </sect2> <!--END cloning-from-barman-pg_backupapi-mode !-->
  </sect1>
 
+ <sect1 id="cloning-from-pgbackrest" xreflabel="Cloning from pgBackRest">
+   <title>Cloning a standby from pgBackRest</title>
+
+   <indexterm>
+    <primary>cloning</primary>
+    <secondary>from pgBackRest</secondary>
+   </indexterm>
+   <indexterm>
+    <primary>pgBackRest</primary>
+    <secondary>cloning a standby</secondary>
+   </indexterm>
+
+   <para>
+    <xref linkend="repmgr-standby-clone"/> can use
+    <ulink url="https://pgbackrest.org/">pgBackRest</ulink>
+    to clone a standby.
+   </para>
+
+   <para>
+    pgBackRest support provides the following advantages:
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+       the primary node does not need to perform a new backup every time a
+       new standby is cloned
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       a standby node can be disconnected for longer periods without losing
+       the ability to catch up, and without causing accumulation of WAL
+       files on the primary node
+      </para>
+     </listitem>
+    </itemizedlist>
+   </para>
+
+  <sect2 id="cloning-from-pgbackrest-prerequisites">
+   <title>Prerequisites for cloning from pgBackRest</title>
+   <para>
+    In order to enable pgBackRest support for <command>repmgr standby clone</command>, following
+    prerequisites must be met:
+   <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+        the pgBackRest archive must include at least one valid backup for this server;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>pgbackrest_config_file</varname> setting in <filename>repmgr.conf</filename> is set to the full path
+        to the pgBackRest configuration file;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>pgbackrest_stanza</varname> setting in <filename>repmgr.conf</filename> is set to the name of the
+        stanza defined in that configuration file.
+      </para>
+     </listitem>
+   </itemizedlist>
+   </para>
+
+   <para>
+     For example, <filename>repmgr.conf</filename> should contain the following entries:
+    <programlisting>
+    pgbackrest_config_file='/etc/pgbackrest/pgbackrest.conf'
+    pgbackrest_stanza='demo'</programlisting>
+   </para>
+
+   <para>
+     Note that <command>repmgr standby clone</command> will execute the <command>pgbackrest restore</command>
+     command using the options defined in the pgBackRest configuration file, without adding
+     additional options to override them.
+   </para>
+
+   <para>
+     To use pgBackRest as a WAL file source, <varname>restore_command</varname> in <filename>repmgr.conf</filename>
+     should be configured to use the <command>pgbackrest archive-get</command> command, e.g.:
+     <programlisting>
+    restore_command='pgbackrest --stanza=demo archive-get %f %p'</programlisting>
+   </para>
+
+   <note>
+    <simpara>
+     pgBackRest support is automatically enabled if <varname>pgbackrest_stanza</varname>
+     is set. pgBackRest mode can be disabled using the <literal>--without-pgbackrest</literal>
+     command line option.
+    </simpara>
+   </note>
+  </sect2>
+ </sect1>
+
  <sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
    <title>Cloning and replication slots</title>
 
