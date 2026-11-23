@@ -3259,9 +3259,10 @@ make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_re
 	}
 
 	appendPQExpBuffer(output_buf,
-					  "%s -f %s ",
-					  progname(),
-					  remote_node_record->config_file);
+					  "%s -f ",
+					  progname());
+	shell_quote_string(remote_node_record->config_file, output_buf);
+	appendPQExpBufferChar(output_buf, ' ');
 
 	/*
 	 * If --log-level was explicitly supplied, pass that through

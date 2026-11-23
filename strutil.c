@@ -410,11 +410,18 @@ char *
 escape_string(PGconn *conn, const char *string)
 {
 	char	   *escaped_string;
+	size_t		len = strlen(string);
 	int			error;
 
-	escaped_string = pg_malloc0(MAXLEN);
+	/*
+	 * PQescapeStringConn() can write up to (2 * len) + 1 bytes to the
+	 * destination buffer, so size the allocation accordingly rather than
+	 * using the fixed MAXLEN buffer previously used here, which could be
+	 * exceeded by longer input strings.
+	 */
+	escaped_string = pg_malloc0((len * 2) + 1);
 
-	(void) PQescapeStringConn(conn, escaped_string, string, MAXLEN, &error);
+	(void) PQescapeStringConn(conn, escaped_string, string, len, &error);
 
 	if (error)
 	{
