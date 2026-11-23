@@ -4597,7 +4597,7 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 		appendPQExpBuffer(error_msg,
 						  _("unable to create replication slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
-						  PQerrorMessage(conn));
+						  PQerrorMessage(repl_conn));
 		success = false;
 	}
 
