@@ -4172,9 +4172,9 @@ do_standby_switchover(void)
 	 */
 	initPQExpBuffer(&remote_command_str);
 
-	appendPQExpBuffer(&remote_command_str,
-					  "test -f %s && echo 1 || echo 0",
-					  remote_node_record.config_file);
+	appendPQExpBufferStr(&remote_command_str, "test -f ");
+	shell_quote_string(remote_node_record.config_file, &remote_command_str);
+	appendPQExpBufferStr(&remote_command_str, " && echo 1 || echo 0");
 	initPQExpBuffer(&command_output);
 
 	command_success = remote_command(remote_host,
@@ -6118,15 +6118,16 @@ check_source_server()
 static void
 check_source_server_via_barman()
 {
-	char		buf[MAXLEN] = "";
 	char		barman_conninfo_str[MAXLEN] = "";
 	t_conninfo_param_list barman_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	char	   *errmsg = NULL;
 	bool		parse_success = false,
 				command_success = false;
 	char		where_condition[MAXLEN];
+	char		query_buf[MAXLEN] = "";
 	PQExpBufferData command_output;
 	PQExpBufferData repmgr_conninfo_buf;
+	PQExpBufferData barman_command;
 
 	int			c = 0;
 
@@ -6178,23 +6179,33 @@ check_source_server_via_barman()
 	}
 
 	initPQExpBuffer(&command_output);
-	maxlen_snprintf(buf,
-					"psql -AqtX -d \\\"%s\\\" -c \\\""
+
+	/*
+	 * Each argument is shell-quoted individually; the assembled command is
+	 * quoted as a whole for ssh by make_remote_command().
+	 */
+	maxlen_snprintf(query_buf,
 					" SELECT conninfo"
 					" FROM repmgr.nodes"
 					" WHERE %s"
-					" AND active IS TRUE"
-					"\\\"",
-					repmgr_conninfo_buf.data,
+					" AND active IS TRUE",
 					where_condition);
+
+	initPQExpBuffer(&barman_command);
+	appendPQExpBufferStr(&barman_command, "psql -AqtX -d ");
+	shell_quote_string(repmgr_conninfo_buf.data, &barman_command);
+	appendPQExpBufferStr(&barman_command, " -c ");
+	shell_quote_string(query_buf, &barman_command);
 
 	termPQExpBuffer(&repmgr_conninfo_buf);
 
 	command_success = remote_command(config_file_options.barman_host,
 									 runtime_options.remote_user,
-									 buf,
+									 barman_command.data,
 									 config_file_options.ssh_options,
 									 &command_output);
+
+	termPQExpBuffer(&barman_command);
 
 	if (command_success == false)
 	{
@@ -8722,9 +8733,10 @@ sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes
 			PGconn *witness_conn = NULL;
 
 			/* TODO: create "repmgr witness resync" or similar */
-			appendPQExpBuffer(&remote_command_str,
-							  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
-							  local_node_record->conninfo);
+			appendPQExpBufferStr(&remote_command_str, "witness register -d ");
+			shell_quote_string(local_node_record->conninfo, &remote_command_str);
+			appendPQExpBufferStr(&remote_command_str,
+								 " --force 2>/dev/null && echo \"1\" || echo \"0\"");
 
 			/*
 			 * Notify the witness repmgrd about the new primary, as at this point it will be assuming
