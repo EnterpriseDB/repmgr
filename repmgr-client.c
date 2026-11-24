@@ -3001,13 +3001,28 @@ test_ssh_connection(char *host, char *remote_user)
 
 	for (i = 0; bin_true_paths[i] && r != 0; ++i)
 	{
-		if (!remote_user[0])
-			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s 2>/dev/null",
-							config_file_options.ssh_options, host, bin_true_paths[i]);
-		else
-			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s 2>/dev/null",
-							config_file_options.ssh_options, host, remote_user,
-							bin_true_paths[i]);
+		PQExpBufferData ssh_command;
+
+		/*
+		 * "host" may originate from a node record's conninfo, so quote it
+		 * (and the user) for the shell and separate it from ssh's options.
+		 */
+		initPQExpBuffer(&ssh_command);
+		appendPQExpBuffer(&ssh_command, "ssh -o Batchmode=yes %s",
+						  config_file_options.ssh_options);
+
+		if (remote_user[0])
+		{
+			appendPQExpBufferStr(&ssh_command, " -l ");
+			shell_quote_string(remote_user, &ssh_command);
+		}
+
+		appendPQExpBufferStr(&ssh_command, " -- ");
+		shell_quote_string(host, &ssh_command);
+		appendPQExpBuffer(&ssh_command, " %s 2>/dev/null", bin_true_paths[i]);
+
+		maxlen_snprintf(script, "%s", ssh_command.data);
+		termPQExpBuffer(&ssh_command);
 
 		log_verbose(LOG_DEBUG, _("test_ssh_connection(): executing %s"), script);
 		r = system(script);

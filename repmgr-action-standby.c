@@ -6893,7 +6893,8 @@ run_basebackup(t_node_info *node_record)
 
 		conninfo_str = param_list_to_string(&conninfo);
 
-		appendPQExpBuffer(&params, " -d '%s'", conninfo_str);
+		appendPQExpBufferStr(&params, " -d ");
+		shell_quote_string(conninfo_str, &params);
 
 		pfree(conninfo_str);
 	}
@@ -6920,11 +6921,13 @@ run_basebackup(t_node_info *node_record)
 		}
 		else if (strlen(upstream_repluser))
 		{
-			appendPQExpBuffer(&params, " -U %s", upstream_repluser);
+			appendPQExpBufferStr(&params, " -U ");
+			shell_quote_string(upstream_repluser, &params);
 		}
 		else if (strlen(node_record->repluser))
 		{
-			appendPQExpBuffer(&params, " -U %s", node_record->repluser);
+			appendPQExpBufferStr(&params, " -U ");
+			shell_quote_string(node_record->repluser, &params);
 		}
 		else if (strlen(runtime_options.username))
 		{
@@ -6990,7 +6993,8 @@ run_basebackup(t_node_info *node_record)
 
 		if (slot_add == true)
 		{
-			appendPQExpBuffer(&params, " -S %s", node_record->slot_name);
+			appendPQExpBufferStr(&params, " -S ");
+			shell_quote_string(node_record->slot_name, &params);
 		}
 	}
 
