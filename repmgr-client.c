@@ -2984,7 +2984,6 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 int
 test_ssh_connection(char *host, char *remote_user)
 {
-	char		script[MAXLEN] = "";
 	int			r = 1,
 				i;
 
@@ -3021,11 +3020,9 @@ test_ssh_connection(char *host, char *remote_user)
 		shell_quote_string(host, &ssh_command);
 		appendPQExpBuffer(&ssh_command, " %s 2>/dev/null", bin_true_paths[i]);
 
-		maxlen_snprintf(script, "%s", ssh_command.data);
+		log_verbose(LOG_DEBUG, _("test_ssh_connection(): executing %s"), ssh_command.data);
+		r = system(ssh_command.data);
 		termPQExpBuffer(&ssh_command);
-
-		log_verbose(LOG_DEBUG, _("test_ssh_connection(): executing %s"), script);
-		r = system(script);
 	}
 
 	if (r != 0)
