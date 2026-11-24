@@ -5379,8 +5379,12 @@ do_standby_switchover(void)
 						  "%s -d ",
 						  node_rejoin_options.data);
 
-		appendRemoteShellString(&remote_command_str,
-								conninfo_normalized);
+		/*
+		 * The assembled command is quoted as a whole for ssh by
+		 * make_remote_command(), so only a single level of quoting is
+		 * needed here.
+		 */
+		shell_quote_string(conninfo_normalized, &remote_command_str);
 
 		appendPQExpBufferStr(&remote_command_str,
 							 " node rejoin");
