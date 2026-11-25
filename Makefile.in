@@ -46,7 +46,14 @@ all: \
 	repmgrd
 
 # When in development add -Werror
-PG_CPPFLAGS = -std=gnu89 -I$(includedir_internal) -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
+# PostgreSQL 19 headers require C99 or later, so only force gnu89 for older servers.
+# This must be evaluated before Makefile.global pulls in PGXS (which snapshots PG_CPPFLAGS).
+PG_CONFIG ?= @PG_CONFIG@
+PG_MAJOR_FOR_STD := $(shell $(PG_CONFIG) --version | sed -E 's/[^0-9]*([0-9]+).*/\1/')
+ifeq ($(shell test "$(PG_MAJOR_FOR_STD)" -lt 19 && echo yes),yes)
+STD_CFLAGS = -std=gnu89
+endif
+PG_CPPFLAGS = $(STD_CFLAGS) -I$(includedir_internal) -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
 SHLIB_LINK = $(libpq)
 
 
