@@ -7178,6 +7178,7 @@ run_file_backup(t_node_info *local_node_record)
 	char		buf[MAXLEN] = "";
 	char		basebackups_directory[MAXLEN] = "";
 	char		backup_id[MAXLEN] = "";
+	struct stat backup_info_stat;
 	TablespaceDataList tablespace_list = {NULL, NULL};
 	TablespaceDataListCell *cell_t = NULL;
 
@@ -7286,11 +7287,41 @@ run_file_backup(t_node_info *local_node_record)
 					(void) local_command(command,
 										 NULL);
 
+					maxlen_snprintf(filename, "%s/backup.info",
+									local_repmgr_tmp_directory);
+
+					/*
+					 * Newer Barman versions keep the backup metadata at
+					 * <server>/meta/<ID>-backup.info rather than
+					 * base/<ID>/backup.info; try that if the old location
+					 * did not yield a file.
+					 */
+					if (stat(filename, &backup_info_stat) != 0)
+					{
+						char		server_directory[MAXLEN] = "";
+						char	   *slash;
+
+						strncpy(server_directory, basebackups_directory, MAXLEN - 1);
+						slash = strrchr(server_directory, '/');
+						if (slash != NULL)
+						{
+							*slash = '\0';
+
+							maxlen_snprintf(command,
+											"rsync -a %s:%s/meta/%s-backup.info %s",
+											config_file_options.barman_host,
+											server_directory,
+											backup_id,
+											filename);
+
+							(void) local_command(command,
+												 NULL);
+						}
+					}
+
 					/*
 					 * Get tablespace data
 					 */
-					maxlen_snprintf(filename, "%s/backup.info",
-									local_repmgr_tmp_directory);
 					fi2 = fopen(filename, "r");
 					if (fi2 == NULL)
 					{
@@ -7313,7 +7344,11 @@ run_file_backup(t_node_info *local_node_record)
 					fclose(fi2);
 					unlink(filename);
 
-					continue;
+					/*
+					 * Older Barman versions list backup.info first (skipped
+					 * below); newer ones do not, so the first line may
+					 * already be a data file and must not be discarded.
+					 */
 				}
 
 				/*
