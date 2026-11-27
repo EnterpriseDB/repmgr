@@ -1042,9 +1042,13 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, ItemList *warnings, i
 		 * We'll pass cluster name and database connection string to the
 		 * remote repmgr - those are the only values it needs to work, and
 		 * saves us making assumptions about the location of repmgr.conf
+		 *
+		 * Note: "command" is quoted as a whole for ssh/the local shell by
+		 * make_remote_command(), so it must not be wrapped in its own
+		 * literal quotes here - doing so would prevent individual values
+		 * within it (quoted by make_remote_repmgr_path()) from being
+		 * correctly parsed as separate tokens by the remote shell.
 		 */
-		appendPQExpBufferChar(&command, '"');
-
 		make_remote_repmgr_path(&command, cell->node_info);
 
 		appendPQExpBufferStr(&command,
@@ -1060,7 +1064,6 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, ItemList *warnings, i
 			appendPQExpBufferStr(&command,
 								 " -L NOTICE");
 		}
-		appendPQExpBufferChar(&command, '"');
 
 		log_verbose(LOG_DEBUG, "build_cluster_matrix(): executing:\n  %s", command.data);
 
@@ -1264,12 +1267,13 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, ItemList *warnings, in
 		{
 			t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 			char	   *host = NULL;
-			PQExpBufferData quoted_command;
 
-			initPQExpBuffer(&quoted_command);
-			appendPQExpBuffer(&quoted_command,
-							  "\"%s\"",
-							  command.data);
+			/*
+			 * "command" is quoted as a whole for ssh/the local shell by
+			 * make_remote_command() (called via remote_command()), so it's
+			 * passed through as-is here rather than wrapped in literal
+			 * quotes of our own.
+			 */
 
 			initialize_conninfo_params(&remote_conninfo, false);
 
@@ -1280,16 +1284,15 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, ItemList *warnings, in
 
 			host = param_get(&remote_conninfo, "host");
 
-			log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): executing\n  %s", quoted_command.data);
+			log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): executing\n  %s", command.data);
 
 			(void) remote_command(host,
 								  runtime_options.remote_user,
-								  quoted_command.data,
+								  command.data,
 								  config_file_options.ssh_options,
 								  &command_output);
 
 			free_conninfo_params(&remote_conninfo);
-			termPQExpBuffer(&quoted_command);
 		}
 
 		termPQExpBuffer(&command);

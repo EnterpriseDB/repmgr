@@ -4172,9 +4172,9 @@ do_standby_switchover(void)
 	 */
 	initPQExpBuffer(&remote_command_str);
 
-	appendPQExpBuffer(&remote_command_str,
-					  "test -f %s && echo 1 || echo 0",
-					  remote_node_record.config_file);
+	appendPQExpBufferStr(&remote_command_str, "test -f ");
+	shell_quote_string(remote_node_record.config_file, &remote_command_str);
+	appendPQExpBufferStr(&remote_command_str, " && echo 1 || echo 0");
 	initPQExpBuffer(&command_output);
 
 	command_success = remote_command(remote_host,
@@ -5379,8 +5379,12 @@ do_standby_switchover(void)
 						  "%s -d ",
 						  node_rejoin_options.data);
 
-		appendRemoteShellString(&remote_command_str,
-								conninfo_normalized);
+		/*
+		 * The assembled command is quoted as a whole for ssh by
+		 * make_remote_command(), so only a single level of quoting is
+		 * needed here.
+		 */
+		shell_quote_string(conninfo_normalized, &remote_command_str);
 
 		appendPQExpBufferStr(&remote_command_str,
 							 " node rejoin");
@@ -6118,15 +6122,16 @@ check_source_server()
 static void
 check_source_server_via_barman()
 {
-	char		buf[MAXLEN] = "";
 	char		barman_conninfo_str[MAXLEN] = "";
 	t_conninfo_param_list barman_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	char	   *errmsg = NULL;
 	bool		parse_success = false,
 				command_success = false;
 	char		where_condition[MAXLEN];
+	char		query_buf[MAXLEN] = "";
 	PQExpBufferData command_output;
 	PQExpBufferData repmgr_conninfo_buf;
+	PQExpBufferData barman_command;
 
 	int			c = 0;
 
@@ -6178,23 +6183,33 @@ check_source_server_via_barman()
 	}
 
 	initPQExpBuffer(&command_output);
-	maxlen_snprintf(buf,
-					"psql -AqtX -d \\\"%s\\\" -c \\\""
+
+	/*
+	 * Each argument is shell-quoted individually; the assembled command is
+	 * quoted as a whole for ssh by make_remote_command().
+	 */
+	maxlen_snprintf(query_buf,
 					" SELECT conninfo"
 					" FROM repmgr.nodes"
 					" WHERE %s"
-					" AND active IS TRUE"
-					"\\\"",
-					repmgr_conninfo_buf.data,
+					" AND active IS TRUE",
 					where_condition);
+
+	initPQExpBuffer(&barman_command);
+	appendPQExpBufferStr(&barman_command, "psql -AqtX -d ");
+	shell_quote_string(repmgr_conninfo_buf.data, &barman_command);
+	appendPQExpBufferStr(&barman_command, " -c ");
+	shell_quote_string(query_buf, &barman_command);
 
 	termPQExpBuffer(&repmgr_conninfo_buf);
 
 	command_success = remote_command(config_file_options.barman_host,
 									 runtime_options.remote_user,
-									 buf,
+									 barman_command.data,
 									 config_file_options.ssh_options,
 									 &command_output);
+
+	termPQExpBuffer(&barman_command);
 
 	if (command_success == false)
 	{
@@ -6882,7 +6897,8 @@ run_basebackup(t_node_info *node_record)
 
 		conninfo_str = param_list_to_string(&conninfo);
 
-		appendPQExpBuffer(&params, " -d '%s'", conninfo_str);
+		appendPQExpBufferStr(&params, " -d ");
+		shell_quote_string(conninfo_str, &params);
 
 		pfree(conninfo_str);
 	}
@@ -6909,11 +6925,13 @@ run_basebackup(t_node_info *node_record)
 		}
 		else if (strlen(upstream_repluser))
 		{
-			appendPQExpBuffer(&params, " -U %s", upstream_repluser);
+			appendPQExpBufferStr(&params, " -U ");
+			shell_quote_string(upstream_repluser, &params);
 		}
 		else if (strlen(node_record->repluser))
 		{
-			appendPQExpBuffer(&params, " -U %s", node_record->repluser);
+			appendPQExpBufferStr(&params, " -U ");
+			shell_quote_string(node_record->repluser, &params);
 		}
 		else if (strlen(runtime_options.username))
 		{
@@ -6979,7 +6997,8 @@ run_basebackup(t_node_info *node_record)
 
 		if (slot_add == true)
 		{
-			appendPQExpBuffer(&params, " -S %s", node_record->slot_name);
+			appendPQExpBufferStr(&params, " -S ");
+			shell_quote_string(node_record->slot_name, &params);
 		}
 	}
 
@@ -7159,6 +7178,7 @@ run_file_backup(t_node_info *local_node_record)
 	char		buf[MAXLEN] = "";
 	char		basebackups_directory[MAXLEN] = "";
 	char		backup_id[MAXLEN] = "";
+	struct stat backup_info_stat;
 	TablespaceDataList tablespace_list = {NULL, NULL};
 	TablespaceDataListCell *cell_t = NULL;
 
@@ -7267,11 +7287,41 @@ run_file_backup(t_node_info *local_node_record)
 					(void) local_command(command,
 										 NULL);
 
+					maxlen_snprintf(filename, "%s/backup.info",
+									local_repmgr_tmp_directory);
+
+					/*
+					 * Newer Barman versions keep the backup metadata at
+					 * <server>/meta/<ID>-backup.info rather than
+					 * base/<ID>/backup.info; try that if the old location
+					 * did not yield a file.
+					 */
+					if (stat(filename, &backup_info_stat) != 0)
+					{
+						char		server_directory[MAXLEN] = "";
+						char	   *slash;
+
+						strncpy(server_directory, basebackups_directory, MAXLEN - 1);
+						slash = strrchr(server_directory, '/');
+						if (slash != NULL)
+						{
+							*slash = '\0';
+
+							maxlen_snprintf(command,
+											"rsync -a %s:%s/meta/%s-backup.info %s",
+											config_file_options.barman_host,
+											server_directory,
+											backup_id,
+											filename);
+
+							(void) local_command(command,
+												 NULL);
+						}
+					}
+
 					/*
 					 * Get tablespace data
 					 */
-					maxlen_snprintf(filename, "%s/backup.info",
-									local_repmgr_tmp_directory);
 					fi2 = fopen(filename, "r");
 					if (fi2 == NULL)
 					{
@@ -7294,7 +7344,11 @@ run_file_backup(t_node_info *local_node_record)
 					fclose(fi2);
 					unlink(filename);
 
-					continue;
+					/*
+					 * Older Barman versions list backup.info first (skipped
+					 * below); newer ones do not, so the first line may
+					 * already be a data file and must not be discarded.
+					 */
 				}
 
 				/*
@@ -8722,9 +8776,10 @@ sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes
 			PGconn *witness_conn = NULL;
 
 			/* TODO: create "repmgr witness resync" or similar */
-			appendPQExpBuffer(&remote_command_str,
-							  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
-							  local_node_record->conninfo);
+			appendPQExpBufferStr(&remote_command_str, "witness register -d ");
+			shell_quote_string(local_node_record->conninfo, &remote_command_str);
+			appendPQExpBufferStr(&remote_command_str,
+								 " --force 2>/dev/null && echo \"1\" || echo \"0\"");
 
 			/*
 			 * Notify the witness repmgrd about the new primary, as at this point it will be assuming

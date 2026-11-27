@@ -227,6 +227,8 @@ void
 make_remote_command(const char *host, const char *user, const char *command, const char *ssh_options, PQExpBufferData *ssh_command)
 {
 	PQExpBufferData ssh_host;
+	PQExpBufferData quoted_host;
+	PQExpBufferData quoted_command;
 
 	initPQExpBuffer(&ssh_host);
 
@@ -237,15 +239,29 @@ make_remote_command(const char *host, const char *user, const char *command, con
 
 	appendPQExpBufferStr(&ssh_host, host);
 
+	/*
+	 * "command" (the command to be executed on the remote host) is quoted
+	 * as a single shell argument here, so it's delivered to "ssh" intact
+	 * and is not re-parsed by the local shell this is eventually passed to
+	 * (popen() runs it via the shell). "ssh_host" is built from a conninfo
+	 * "host" value, so it is quoted too, and "--" ensures it can't be
+	 * misread as an additional ssh option.
+	 */
+	initPQExpBuffer(&quoted_command);
+	shell_quote_string(command, &quoted_command);
+
+	initPQExpBuffer(&quoted_host);
+	shell_quote_string(ssh_host.data, &quoted_host);
 
 	appendPQExpBuffer(ssh_command,
-					  "ssh -o Batchmode=yes %s %s %s",
+					  "ssh -o Batchmode=yes %s -- %s %s",
 					  ssh_options,
-					  ssh_host.data,
-					  command);
+					  quoted_host.data,
+					  quoted_command.data);
 
 	termPQExpBuffer(&ssh_host);
-
+	termPQExpBuffer(&quoted_host);
+	termPQExpBuffer(&quoted_command);
 }
 
 

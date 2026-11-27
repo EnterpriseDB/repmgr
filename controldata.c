@@ -283,7 +283,21 @@ get_controlfile(const char *DataDir)
 		return control_file_info;
 	}
 
-	if (version_num >= 120000)
+	if (version_num >= 190000)
+	{
+		/*
+		 * PostgreSQL 19 changed the layout of pg_control (CheckPoint gained
+		 * "wal_level" and "logicalDecodingEnabled", among other changes), so
+		 * the Pg12-style struct below can no longer be used. Use the
+		 * server's own definition; this requires repmgr to have been built
+		 * for PostgreSQL 19 or later.
+		 */
+#if PG_ACTUAL_VERSION_NUM >= 190000
+		expected_size = sizeof(ControlFileData);
+		ControlFileDataPtr = palloc0(expected_size);
+#endif
+	}
+	else if (version_num >= 120000)
 	{
 #if PG_ACTUAL_VERSION_NUM >= 120000
 		expected_size = sizeof(ControlFileData12);
@@ -321,7 +335,23 @@ get_controlfile(const char *DataDir)
 
 	control_file_info->control_file_processed = true;
 
-	if (version_num >= 120000)
+	if (version_num >= 190000)
+	{
+#if PG_ACTUAL_VERSION_NUM >= 190000
+		ControlFileData *ptr = (struct ControlFileData *)ControlFileDataPtr;
+		control_file_info->system_identifier = ptr->system_identifier;
+		control_file_info->state = ptr->state;
+		control_file_info->checkPoint = ptr->checkPoint;
+		control_file_info->data_checksum_version = ptr->data_checksum_version;
+		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
+		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
+#else
+		fprintf(stderr, "ERROR: please use a repmgr version built for PostgreSQL 19 or later\n");
+		exit(ERR_BAD_CONFIG);
+#endif
+	}
+	else if (version_num >= 120000)
 	{
 #if PG_ACTUAL_VERSION_NUM >= 120000
 		ControlFileData12 *ptr = (struct ControlFileData12 *)ControlFileDataPtr;

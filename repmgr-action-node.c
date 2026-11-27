@@ -2838,9 +2838,8 @@ do_node_rejoin(void)
 		appendShellString(&command,
 						  config_file_options.data_directory);
 
-		appendPQExpBuffer(&command,
-						  " --source-server='%s'",
-						  primary_node_record.conninfo);
+		appendPQExpBufferStr(&command, " --source-server=");
+		shell_quote_string(primary_node_record.conninfo, &command);
 
 		if (runtime_options.dry_run == true)
 		{

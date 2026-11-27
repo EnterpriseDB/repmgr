@@ -4597,7 +4597,7 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 		appendPQExpBuffer(error_msg,
 						  _("unable to create replication slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
-						  PQerrorMessage(conn));
+						  PQerrorMessage(repl_conn));
 		success = false;
 	}
 
@@ -4612,6 +4612,7 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 	bool		success = true;
+	char	   *escaped_slot_name;
 
 	ReplSlotStatus slot_status = _verify_replication_slot(conn, slot_name, error_msg);
 
@@ -4623,6 +4624,17 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	if (slot_status == SLOT_INACTIVE)
 		return true;
 
+	escaped_slot_name = escape_string(conn, slot_name);
+
+	if (escaped_slot_name == NULL)
+	{
+		if (error_msg != NULL)
+			appendPQExpBuffer(error_msg,
+							  _("unable to escape value provided for slot name \"%s\"\n"),
+							  slot_name);
+		return false;
+	}
+
 	initPQExpBuffer(&query);
 
 	/* In 9.6 and later, reserve the LSN straight away */
@@ -4630,14 +4642,16 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	{
 		appendPQExpBuffer(&query,
 						  "SELECT * FROM pg_catalog.pg_create_physical_replication_slot('%s', TRUE)",
-						  slot_name);
+						  escaped_slot_name);
 	}
 	else
 	{
 		appendPQExpBuffer(&query,
 						  "SELECT * FROM pg_catalog.pg_create_physical_replication_slot('%s')",
-						  slot_name);
+						  escaped_slot_name);
 	}
+
+	pfree(escaped_slot_name);
 
 	log_debug(_("create_replication_slot_sql(): creating slot \"%s\" on upstream"), slot_name);
 	log_verbose(LOG_DEBUG, "create_replication_slot_sql():\n%s", query.data);
@@ -4665,12 +4679,22 @@ drop_replication_slot_sql(PGconn *conn, char *slot_name)
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 	bool		success = true;
+	char	   *escaped_slot_name = escape_string(conn, slot_name);
+
+	if (escaped_slot_name == NULL)
+	{
+		log_error(_("unable to escape value provided for slot name"));
+		log_detail(_("slot name is: \"%s\""), slot_name);
+		return false;
+	}
 
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
 					  "SELECT pg_catalog.pg_drop_replication_slot('%s')",
-					  slot_name);
+					  escaped_slot_name);
+
+	pfree(escaped_slot_name);
 
 	log_verbose(LOG_DEBUG, "drop_replication_slot_sql():\n  %s", query.data);
 
@@ -4741,6 +4765,14 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 	RecordStatus record_status = RECORD_FOUND;
+	char	   *escaped_slot_name = escape_string(conn, slot_name);
+
+	if (escaped_slot_name == NULL)
+	{
+		log_error(_("unable to escape value provided for slot name"));
+		log_detail(_("slot name is: \"%s\""), slot_name);
+		return RECORD_ERROR;
+	}
 
 	initPQExpBuffer(&query);
 
@@ -4748,7 +4780,9 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 					  "SELECT slot_name, slot_type, active "
 					  "  FROM pg_catalog.pg_replication_slots "
 					  " WHERE slot_name = '%s' ",
-					  slot_name);
+					  escaped_slot_name);
+
+	pfree(escaped_slot_name);
 
 	log_verbose(LOG_DEBUG, "get_slot_record():\n%s", query.data);
 
@@ -5938,6 +5972,14 @@ _is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state, b
 
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	char	   *escaped_node_name = escape_string(conn, node_name);
+
+	if (escaped_node_name == NULL)
+	{
+		log_error(_("unable to escape value provided for node name"));
+		log_detail(_("node name is: \"%s\""), node_name);
+		return NODE_ATTACHED_UNKNOWN;
+	}
 
 	initPQExpBuffer(&query);
 
@@ -5945,7 +5987,9 @@ _is_downstream_node_attached(PGconn *conn, char *node_name, char **node_state, b
 					  " SELECT pid, state "
 					  "   FROM pg_catalog.pg_stat_replication "
 					  "  WHERE application_name = '%s'",
-					  node_name);
+					  escaped_node_name);
+
+	pfree(escaped_node_name);
 
 	res = PQexec(conn, query.data);
 
